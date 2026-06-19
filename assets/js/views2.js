@@ -823,6 +823,17 @@
                 '소개글 저장</button></span>' +
           '</div></div>' +
 
+        '<div class="card card-pad mb-2">' +
+          '<label class="field-label">' + icon('heart', 15) + ' 보호자 한마디</label>' +
+          '<textarea class="textarea" id="parent-note" rows="2" ' +
+            'placeholder="우리 아이를 만나는 분께 꼭 전하고 싶은 말을 적어 주세요.">' +
+            esc(manual.parentNote || '') + '</textarea>' +
+          '<div class="row between mt-1" style="gap:10px;flex-wrap:wrap">' +
+            '<span class="faint" style="font-size:.8rem">설명서 맨 끝에 ‘보호자 한마디’로 담깁니다 — 모든 기관용 공통 항목.</span>' +
+            '<button class="btn btn-soft btn-sm" id="save-parent-note">' + icon('check', 14) +
+              '한마디 저장</button>' +
+          '</div></div>' +
+
         '<div class="card card-pad mb-2" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
           '<div style="flex:1;min-width:160px">' +
             '<b>작성 현황</b> <span class="muted" style="font-size:.88rem">총 ' + total + '개 항목</span>' +
@@ -857,6 +868,14 @@
         manual.summaryNote = noteInp.value.trim();
         Store.saveManual(manual);
         toast('소개글이 저장되었습니다', 'ok');
+      };
+
+      // 보호자 한마디 저장
+      var pn = UI.el('save-parent-note');
+      if (pn) pn.onclick = function () {
+        manual.parentNote = UI.el('parent-note').value.trim();
+        Store.saveManual(manual);
+        toast('보호자 한마디가 저장되었습니다', 'ok');
       };
 
       // 탭 전환
@@ -1148,31 +1167,89 @@
   /* opts.scope: 'emergency'(응급 카드) | 'summary'(요약) | 'full'(전체 — 복약 포함) */
   /* ---------- 대상별 「내 아이 설명서」 (메일 최우선 차별화) ----------
      같은 데이터를 대상에 맞는 섹션만 골라 한 장으로 — 반복 설명 부담 해소 */
+  /* 대상별 우선순위·순서는 양육자 자문회의 확정안(기관별 구성항목 표)을 따른다.
+     intro = 기관별 '핵심 질문'(자문안) + 목적. */
   var AUDIENCES = {
     school: { label: '학교용', short: '학교', icon: 'school', color: 'var(--brand-connect)',
-      intro: '학교 생활에서 우리 아이를 이해하고 지원하기 위한 안내입니다.',
-      blocks: ['canDo', 'needHelp', 'likeDislike', 'comm', 'problem', 'safety', 'routine'] },
+      purpose: '학교 적응 및 학습 지원',
+      intro: '“선생님이 우리 아이를 가장 빨리 이해하려면?” — 학교 적응·학습 지원을 위한 안내입니다.',
+      blocks: ['comm', 'sensory', 'likeDislike', 'problem', 'canDo', 'needHelp', 'health'] },
     hospital: { label: '병원용', short: '병원', icon: 'hospital', color: 'var(--brand-grow)',
-      intro: '진료 시 참고할 우리 아이의 건강·감각·의사소통 정보입니다.',
-      blocks: ['meds', 'comm', 'problem', 'safety', 'needHelp'] },
+      purpose: '진료 및 건강관리 지원',
+      intro: '“의사가 진료 전에 무엇을 알면 좋을까?” — 진료·건강관리 지원을 위한 안내입니다.',
+      blocks: ['diagnosis', 'meds', 'history', 'problem', 'comm', 'parentNote'] },
     support: { label: '활동지원사용', short: '활동지원', icon: 'user', color: 'var(--brand-understand)',
-      intro: '활동지원·돌봄 시 우리 아이를 돕기 위한 안내입니다.',
-      blocks: ['routine', 'comm', 'problem', 'likeDislike', 'needHelp', 'safety', 'handover'] },
+      purpose: '일상생활 지원',
+      intro: '“활동지원사가 처음 만났을 때 무엇을 알아야 할까?” — 일상생활 지원을 위한 안내입니다.',
+      blocks: ['comm', 'problem', 'routine', 'safety', 'sensory', 'needHelp', 'handover'] },
     care: { label: '돌봄기관용', short: '돌봄기관', icon: 'users', color: 'var(--primary)',
-      intro: '돌봄기관에서 우리 아이를 종합적으로 이해하기 위한 안내입니다.',
-      blocks: ['canDo', 'needHelp', 'likeDislike', 'comm', 'problem', 'safety', 'routine', 'meds', 'handover'] }
+      purpose: '프로그램 참여 지원',
+      intro: '“복지관·주간보호센터 담당자가 시행착오 없이 지원하려면?” — 프로그램 참여 지원을 위한 안내입니다.',
+      blocks: ['likeDislike', 'comm', 'sensory', 'problem', 'canDo', 'health', 'parentNote'] }
   };
   V._AUDIENCES = AUDIENCES;
 
   function medsBlock(child) {
     if (!child.medications || !child.medications.length) return '';
     var med = '<div class="summary-block"><div class="blk-title">' +
-      '<span class="dot" style="background:var(--c-comm)"></span>복약 정보</div><ul>';
+      '<span class="dot" style="background:var(--c-comm)"></span>복용 약물</div><ul>';
     child.medications.forEach(function (m) {
       med += '<li>' + esc(m.name) + ' ' + esc(m.dose || '') +
         (m.time ? ' · ' + esc(m.time) : '') + (m.note ? ' — ' + esc(m.note) : '') + '</li>';
     });
     return med + '</ul></div>';
+  }
+  /* 진단 정보 — 진단명·진단시기·특성 요약 */
+  function diagnosisBlock(child) {
+    var d = child.disability || {};
+    if (!d.type && !d.diagnosedAt && !d.summary) return '';
+    var li = '';
+    if (d.type) li += '<li><b>진단명</b> · ' + esc(d.type) + '</li>';
+    if (d.diagnosedAt) li += '<li><b>진단 시기</b> · ' + esc(d.diagnosedAt) + '</li>';
+    if (d.summary) li += '<li><b>특성 요약</b> · ' + nl2br(d.summary) + '</li>';
+    return '<div class="summary-block"><div class="blk-title">' +
+      '<span class="dot" style="background:var(--brand-trust)"></span>진단 정보</div><ul>' + li + '</ul></div>';
+  }
+  /* 감각 특성 — 청각·시각·촉각 등 (프로필의 감각 특성 데이터) */
+  function sensoryBlock(child) {
+    var sv = (child.disability || {}).sensory;
+    if (!sv) return '';
+    return '<div class="summary-block"><div class="blk-title">' +
+      '<span class="dot" style="background:var(--brand-understand)"></span>감각 특성</div>' +
+      '<ul><li>' + nl2br(sv) + '</li></ul></div>';
+  }
+  /* 건강 정보 — 주치 병원 + 복용 약물 요약 (알레르기·응급은 상단 안전 블록에 포함) */
+  function healthBlock(child) {
+    var e = child.emergency || {};
+    var li = '';
+    if (e.hospital) li += '<li><b>주치 병원</b> · ' + esc(e.hospital) +
+      (e.doctor ? ' · ' + esc(e.doctor) : '') + '</li>';
+    (child.medications || []).forEach(function (m) {
+      li += '<li><b>복약</b> · ' + esc(m.name) + ' ' + esc(m.dose || '') +
+        (m.time ? ' · ' + esc(m.time) : '') + '</li>';
+    });
+    if (!li) return '';
+    return '<div class="summary-block"><div class="blk-title">' +
+      '<span class="dot" style="background:var(--brand-grow)"></span>건강 정보</div><ul>' + li + '</ul></div>';
+  }
+  /* 병력 및 치료 이력 — 치료·검사 기록에서 자동 집계 */
+  function historyBlock(child) {
+    var recs = (Store.recordsOf(child.id) || []).filter(function (r) {
+      return r.type === 'treatment' || r.type === 'assessment';
+    }).slice(0, 6);
+    if (!recs.length) return '';
+    var li = recs.map(function (r) {
+      return '<li>' + UI.fmtDate(r.date) + ' · ' + esc(r.title) + '</li>';
+    }).join('');
+    return '<div class="summary-block"><div class="blk-title">' +
+      '<span class="dot" style="background:var(--c-comm)"></span>병력 및 치료 이력</div><ul>' + li + '</ul></div>';
+  }
+  /* 보호자 한마디 — 보호자가 꼭 전달하고 싶은 내용 */
+  function parentNoteBlock(manual) {
+    if (!manual.parentNote) return '';
+    return '<div class="summary-block"><div class="blk-title">' +
+      '<span class="dot" style="background:var(--accent)"></span>보호자 한마디</div>' +
+      '<ul><li>' + nl2br(manual.parentNote) + '</li></ul></div>';
   }
   function handoverBlock(child) {
     if (!handoverFilled(child.handover)) return '';
@@ -1208,12 +1285,17 @@
       case 'canDo':       return summaryBlock('할 수 있어요', 'var(--c-cando)', s.canDo);
       case 'needHelp':    return summaryBlock('도움이 필요해요', 'var(--c-help)', s.needHelp);
       case 'likeDislike': return likeDislikeBlock(s);
-      case 'problem':     return summaryBlock('문제 행동 대응', 'var(--c-problem)', s.problem, true);
+      case 'problem':     return summaryBlock('도전적 행동 및 대응 방법', 'var(--c-problem)', s.problem, true);
       case 'safety':      return summaryBlock('안전 주의사항', 'var(--c-safety)', s.safety || []);
       case 'comm':        return summaryBlock('의사소통 방법', 'var(--c-comm)', s.comm);
       case 'routine':     return summaryBlock('생활 루틴', 'var(--c-routine)', s.routine || []);
       case 'meds':        return medsBlock(child);
       case 'handover':    return handoverBlock(child);
+      case 'diagnosis':   return diagnosisBlock(child);
+      case 'sensory':     return sensoryBlock(child);
+      case 'health':      return healthBlock(child);
+      case 'history':     return historyBlock(child);
+      case 'parentNote':  return parentNoteBlock(manual);
       default:            return '';
     }
   }
@@ -1252,12 +1334,15 @@
       sheet += renderBlock('safety', child, manual);
       sheet += renderBlock('comm', child, manual);
     } else {
-      ['canDo', 'needHelp', 'likeDislike', 'problem', 'safety', 'comm', 'routine'].forEach(function (k) {
+      // 전체 미리보기 — 자문안 권장 순서(이해 중심)
+      ['diagnosis', 'sensory', 'comm', 'likeDislike', 'problem', 'canDo', 'needHelp', 'safety', 'routine'].forEach(function (k) {
         sheet += renderBlock(k, child, manual);
       });
       if (scope === 'full') {
         sheet += renderBlock('meds', child, manual);
+        sheet += renderBlock('history', child, manual);
         sheet += renderBlock('handover', child, manual);
+        sheet += renderBlock('parentNote', child, manual);
       }
     }
 
