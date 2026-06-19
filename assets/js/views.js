@@ -89,6 +89,8 @@
     var links = [
       { k: 'profile', t: '프로필', h: '#/child/' + child.id },
       { k: 'manual', t: '설명서 작성', h: '#/manual/' + child.id },
+      { k: 'records', t: '기록', h: '#/records/' + child.id },
+      { k: 'gallery', t: '갤러리', h: '#/gallery/' + child.id },
       { k: 'summary', t: '미리보기', h: '#/summary/' + child.id },
       { k: 'plan', t: '미래 준비', h: '#/plan/' + child.id },
       { k: 'share', t: '대상별 공유', h: '#/share/' + child.id }
@@ -632,6 +634,72 @@
               icon('sprout', 16) + '미래 준비 보기</button>' +
           '</div></div>';
       }
+
+      // 오늘의 체크인 — 기분·수면·식사 + 복약 (건강·일상 관리 기본, 자문회의 100% 우선순위)
+      var todayLocal = (function () {
+        var d = new Date();
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
+          '-' + ('0' + d.getDate()).slice(-2);
+      })();
+      var DAILY = [
+        { f: 'mood',  label: '기분', opts: ['😣 힘듦', '😐 보통', '😊 좋음'] },
+        { f: 'sleep', label: '수면', opts: ['설쳤어요', '보통', '푹 잤어요'] },
+        { f: 'meal',  label: '식사', opts: ['적게 먹음', '보통', '잘 먹음'] }
+      ];
+      html += '<div class="card mb-3"><div class="card-head">' +
+        '<span style="color:var(--accent)">' + icon('check', 18) + '</span>' +
+        '<h3>오늘의 체크인</h3>' +
+        '<span class="faint" style="font-size:.78rem">탭 한 번이면 충분해요</span>' +
+        '<span class="badge" id="med-progress" style="margin-left:auto"></span></div>' +
+        '<div class="card-body" id="med-check-body" style="padding-top:14px;padding-bottom:14px">';
+      kids.forEach(function (c) {
+        var dc = Store.dailyCheckFor(c.id, todayLocal);
+        var taken = Store.medChecksFor(c.id, todayLocal);
+        html += '<div class="med-kid"><b>' + esc(c.name) + '</b>';
+        DAILY.forEach(function (row) {
+          html += '<div class="daily-row"><span class="lbl">' + row.label + '</span>' +
+            '<span class="chip-group">' + row.opts.map(function (o) {
+              return '<button type="button" class="chip pick sm' +
+                (dc[row.f] === o ? ' on' : '') + '" data-daily="' + row.f +
+                '" data-daily-val="' + esc(o) + '" data-daily-child="' + c.id + '">' +
+                esc(o) + '</button>';
+            }).join('') + '</span></div>';
+        });
+        (c.medications || []).forEach(function (m) {
+          var key = m.name + (m.time ? '@' + m.time : '');
+          var on = taken.indexOf(key) >= 0;
+          html += '<label class="checkline"><input type="checkbox" data-med="' + esc(key) +
+            '" data-med-child="' + c.id + '"' + (on ? ' checked' : '') + '>' +
+            '<span>' + icon('pill', 13) + ' ' + esc(m.name) + ' ' + esc(m.dose || '') +
+            (m.time ? ' · ' + esc(m.time) : '') + '</span></label>';
+        });
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      // 최근 기록 — 행동·치료·변화·검사 (기록은 기본 기능)
+      var allRecords = [];
+      kids.forEach(function (c) { allRecords = allRecords.concat(Store.recordsOf(c.id)); });
+      var recent = allRecords.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 5);
+      html += '<div class="card mb-3"><div class="card-head"><h3>최근 기록</h3>' +
+        (primary ? '<a class="btn btn-soft btn-sm" href="#/records/' + primary.id + '" style="margin-left:auto">' +
+          icon('plus', 14) + '기록하기</a>' : '') + '</div><div class="card-body">';
+      if (!recent.length) {
+        html += '<p class="muted center" style="padding:14px 0">아직 기록이 없어요. 오늘 첫 기록을 남겨 보세요.</p>';
+      } else {
+        html += recent.map(function (r) {
+          var c = Store.getChild(r.childId);
+          var meta = RT[r.type] || RT.behavior;
+          return '<a class="row" href="#/records/' + r.childId + '" style="padding:9px 0;border-bottom:1px solid var(--border)">' +
+            '<span style="color:' + meta.color + '">' + icon(meta.icon, 18) + '</span>' +
+            '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.92rem">' +
+              esc(r.title) + '</div>' +
+            '<div class="faint" style="font-size:.78rem">' + esc(c ? c.name : '') +
+              ' · ' + esc(meta.label) + ' · ' + UI.fmtDate(r.date) + '</div></div>' +
+            UI.moodStars(r.mood) + '</a>';
+        }).join('');
+      }
+      html += '</div></div>';
 
       // 이렇게 쓰여요 — 3단계
       var steps = [

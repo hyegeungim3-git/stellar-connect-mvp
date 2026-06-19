@@ -12,6 +12,8 @@
     { segs: ['child', ':id'],            view: 'childProfile' },
     { segs: ['manual', ':childId'],      view: 'manual' },
     { segs: ['summary', ':childId'],     view: 'summary' },
+    { segs: ['records', ':childId'],     view: 'records' },
+    { segs: ['gallery', ':childId'],     view: 'gallery' },
     { segs: ['plan', ':childId'],        view: 'plan' },
     { segs: ['share', ':childId'],       view: 'share' },
     { segs: ['v', ':token'],             view: 'viewer' },
@@ -42,8 +44,8 @@
   /* ---------- 네비게이션 정의 ---------- */
   var NAV_MAP = {
     dashboard: 'dashboard', childProfile: 'dashboard', childEdit: 'dashboard',
-    manual: 'manual', summary: 'share', plan: 'plan',
-    share: 'share', caregiver: 'caregiver', admin: 'admin'
+    manual: 'manual', summary: 'share', records: 'records', gallery: 'gallery',
+    plan: 'plan', share: 'share', caregiver: 'caregiver', admin: 'admin'
   };
 
   function currentChildId(r) {
@@ -60,7 +62,9 @@
     return [
       { key: 'dashboard', label: '홈',          icon: 'grid',  hash: '#/dashboard' },
       { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
+      { key: 'records',   label: '기록',        icon: 'note',  hash: cur ? '#/records/' + c : '#/dashboard' },
       { key: 'share',     label: '공유',        icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' },
+      { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: cur ? '#/gallery/' + c : '#/dashboard' },
       { key: 'plan',      label: '미래 준비',   icon: 'sprout', hash: cur ? '#/plan/' + c : '#/dashboard' },
       { key: 'caregiver', label: '양육자',      icon: 'user',  hash: '#/caregiver' }
     ];
@@ -275,6 +279,7 @@
     var pageTitle = ({
       login: '로그인', signup: '회원가입',
       dashboard: '홈', manual: '내 아이 설명서', summary: '설명서 미리보기',
+      records: '기록', gallery: '갤러리',
       share: '대상별 설명서·공유', plan: '미래 준비',
       viewer: '설명서 열람', caregiver: '양육자 정보', admin: '백오피스',
       childProfile: '아이 프로필', childEdit: '아이 정보'
