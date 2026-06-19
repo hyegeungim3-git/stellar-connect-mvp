@@ -1,0 +1,15 @@
+{
+  "name": "내 아이 설명서",
+  "short_name": "내 아이 설명서",
+  "description": "누구나 우리 아이를 한눈에 이해하도록 — 좋아하는 것·의사소통·감각·도전적 행동과 지원 방법을 정리해 학교용·병원용·돌봄용 설명서로 공유합니다. Stellar Connect (S:CON).",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2fa",
+  "theme_color": "#3566cd",
+  "icons": [
+    { "src": "assets/img/logo.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

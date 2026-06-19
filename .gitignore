@@ -1,0 +1,15 @@
+# 의존성 / 생성 산출물
+node_modules/
+www/
+
+# 네이티브 빌드 산출물
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+android/app/release/
+
+# 기타
+*.log
+.DS_Store

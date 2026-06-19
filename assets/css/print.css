@@ -1,0 +1,67 @@
+/* =====================================================================
+ * print.css — 「한 장 요약」 PDF 출력 전용 스타일
+ * 브라우저의 인쇄(Ctrl+P) → "PDF로 저장" 시 적용된다.
+ * 설명서 보기 화면의 .print-area 영역만 A4 한 장 분량으로 정리해 출력.
+ * ===================================================================== */
+
+@page { size: A4 portrait; margin: 12mm; }
+
+/* 화면 요소 전부 숨기고 출력 영역만 노출 */
+body * { visibility: hidden; }
+.print-area, .print-area * { visibility: visible; }
+.print-area { position: absolute; left: 0; top: 0; width: 100%; }
+
+/* 출력에서 제외할 요소 */
+.app-bar, .lp-bar, .sidebar, .bottom-nav, .breadcrumb, .app-foot,
+.page-head .btn, .no-print, #toast-host, #modal-host { display: none !important; }
+
+/* 출력 본문 */
+.print-area { font-size: 10.5pt; color: #16213f; line-height: 1.5; }
+.print-area .summary-sheet { border: none; box-shadow: none; border-radius: 0; }
+.print-area .summary-sheet .sheet-top {
+  background: #1f3a7e !important;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  padding: 16px 20px;
+}
+.print-area .sheet-body { padding: 16px 4px; }
+.print-area .summary-note {
+  background: #edebfc !important; border-color: #d9d4f8 !important;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.print-area .summary-emergency {
+  background: #fdf1ef !important; border-color: #f3cdc8 !important;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.print-area .summary-block { break-inside: avoid; margin-bottom: 12px; }
+.print-area .summary-block .dot,
+.print-area .summary-block ul li::before,
+.print-area .badge,
+.print-area .avatar {
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.print-area .sheet-foot {
+  padding: 11px 4px; background: #f6f8fd !important;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+/* ---------- 키링용 안심 카드 (가방·키링 부착, 명함 크기 — 점선 따라 자르기) ---------- */
+.print-area.keyring-print { position: absolute; left: 0; top: 0; }
+.keyring-card {
+  width: 86mm; min-height: 54mm; box-sizing: border-box;
+  border: 1.2px dashed #9aa6c4; border-radius: 4mm;
+  display: flex; gap: 4mm; padding: 5mm; align-items: center;
+  margin: 10mm auto 0;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.keyring-card .kc-qr { flex: none; }
+.keyring-card .kc-qr svg { width: 32mm; height: 32mm; display: block; }
+.keyring-card .kc-body { flex: 1; min-width: 0; }
+.keyring-card .kc-brand {
+  font-size: 6.5pt; letter-spacing: .14em; font-weight: 800; color: #3566cd;
+}
+.keyring-card .kc-name { font-size: 14pt; font-weight: 800; margin: 1mm 0; color: #16213f; }
+.keyring-card .kc-guide { font-size: 8pt; line-height: 1.5; color: #333; }
+.keyring-card .kc-guide b { letter-spacing: .12em; }
+.keyring-card .kc-contact {
+  font-size: 8.5pt; font-weight: 700; margin-top: 1.5mm; color: #16213f;
+}

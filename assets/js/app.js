@@ -1,0 +1,329 @@
+/* =====================================================================
+ * app.js — 라우터 / 앱 셸 / 부팅
+ * ===================================================================== */
+(function (global) {
+  'use strict';
+  var icon = UI.icon, esc = UI.esc;
+
+  /* ---------- 라우트 정의 ---------- */
+  var ROUTES = [
+    { segs: ['child', 'new'],            view: 'childEdit' },
+    { segs: ['child', ':id', 'edit'],    view: 'childEdit' },
+    { segs: ['child', ':id'],            view: 'childProfile' },
+    { segs: ['manual', ':childId'],      view: 'manual' },
+    { segs: ['summary', ':childId'],     view: 'summary' },
+    { segs: ['plan', ':childId'],        view: 'plan' },
+    { segs: ['share', ':childId'],       view: 'share' },
+    { segs: ['v', ':token'],             view: 'viewer' },
+    { segs: ['dashboard'],               view: 'dashboard' },
+    { segs: ['caregiver'],               view: 'caregiver' },
+    { segs: ['admin'],                   view: 'admin' },
+    { segs: ['login'],                   view: 'login' },
+    { segs: ['signup'],                  view: 'signup' },
+    { segs: [],                          view: 'home' }
+  ];
+
+  function parseHash() {
+    var raw = (location.hash || '').replace(/^#\/?/, '');
+    var segs = raw.split('/').filter(function (s) { return s.length; });
+    for (var i = 0; i < ROUTES.length; i++) {
+      var r = ROUTES[i];
+      if (r.segs.length !== segs.length) continue;
+      var params = {}, ok = true;
+      for (var j = 0; j < r.segs.length; j++) {
+        if (r.segs[j].charAt(0) === ':') params[r.segs[j].slice(1)] = decodeURIComponent(segs[j]);
+        else if (r.segs[j] !== segs[j]) { ok = false; break; }
+      }
+      if (ok) return { view: r.view, params: params };
+    }
+    return { view: 'home', params: {} };
+  }
+
+  /* ---------- 네비게이션 정의 ---------- */
+  var NAV_MAP = {
+    dashboard: 'dashboard', childProfile: 'dashboard', childEdit: 'dashboard',
+    manual: 'manual', summary: 'share', plan: 'plan',
+    share: 'share', caregiver: 'caregiver', admin: 'admin'
+  };
+
+  function currentChildId(r) {
+    if (r.params.childId) return r.params.childId;
+    if (r.params.id && (r.view === 'childProfile' || r.view === 'childEdit')) return r.params.id;
+    if (App.lastChildId) return App.lastChildId;
+    var u = Store.currentUser();
+    if (u) { var kids = Store.childrenOf(u.id); if (kids[0]) return kids[0].id; }
+    return null;
+  }
+
+  function navItems(cur) {
+    var c = cur || '';
+    return [
+      { key: 'dashboard', label: '홈',          icon: 'grid',  hash: '#/dashboard' },
+      { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
+      { key: 'share',     label: '공유',        icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' },
+      { key: 'plan',      label: '미래 준비',   icon: 'sprout', hash: cur ? '#/plan/' + c : '#/dashboard' },
+      { key: 'caregiver', label: '양육자',      icon: 'user',  hash: '#/caregiver' }
+    ];
+  }
+
+  /* ---------- 앱 셸 ---------- */
+  function shell(r) {
+    var u = Store.currentUser();
+    var cur = currentChildId(r);
+    var active = NAV_MAP[r.view] || '';
+    var items = navItems(cur);
+    var kids = Store.childrenOf(u.id);
+
+    // 사이드바
+    var sideNav = '<div class="nav-group-label">메뉴</div>' +
+      items.map(function (it) {
+        return '<a class="nav-item' + (active === it.key ? ' active' : '') + '" href="' + it.hash + '">' +
+          icon(it.icon, 19) + '<span>' + esc(it.label) + '</span></a>';
+      }).join('');
+    if (u.role === 'admin') {
+      sideNav += '<div class="nav-group-label">운영</div>' +
+        '<a class="nav-item' + (active === 'admin' ? ' active' : '') + '" href="#/admin">' +
+        icon('settings', 19) + '<span>백오피스</span></a>';
+    }
+
+    // 앱바
+    var childSwitch = kids.length
+      ? '<button class="child-switch" id="child-switch">' +
+          '<span class="avatar">' + (function () {
+            var cc = cur ? Store.getChild(cur) : kids[0];
+            return cc && cc.photo ? '<img src="' + cc.photo + '">' : esc(UI.initials(cc ? cc.name : ''));
+          })() + '</span>' +
+          '<span class="nm-full">' + esc((cur ? (Store.getChild(cur) || {}).name : kids[0].name) || '아이 선택') +
+          '</span>' + icon('chevD', 15) + '</button>'
+      : '';
+
+    var appbar = '<div class="app-bar">' +
+      '<div class="brand" id="brand">' + UI.brandMark(36) +
+        '<div class="wordmark"><b>내 아이 설명서</b>' +
+        '<span>Stellar Connect · S:CON</span></div></div>' +
+      '<div class="spacer"></div>' +
+      childSwitch +
+      '<div class="usermenu"><button class="trigger" id="user-trigger">' +
+        '<span class="avatar">' + esc(UI.initials(u.name)) + '</span>' +
+        '<span class="nm-full" style="font-weight:700;font-size:.9rem">' + esc(u.name) + '</span>' +
+        icon('chevD', 15) + '</button>' +
+        '<div class="dropdown hide" id="user-dropdown">' +
+          '<button data-go="#/caregiver">' + icon('user', 16) + '양육자 정보</button>' +
+          (u.role === 'admin'
+            ? '<button data-go="#/admin">' + icon('settings', 16) + '백오피스</button>' : '') +
+          '<div class="sep"></div>' +
+          '<button id="menu-reset">' + icon('alert', 16) + '데모 데이터 초기화</button>' +
+          '<button id="menu-logout">' + icon('logout', 16) + '로그아웃</button>' +
+        '</div></div>' +
+    '</div>';
+
+    // 하단 탭바 (모바일)
+    var bottom = '<nav class="bottom-nav">' +
+      items.slice(0, 4).map(function (it) {
+        return '<a href="' + it.hash + '" class="' + (active === it.key ? 'active' : '') + '">' +
+          icon(it.icon, 22) + '<span>' + esc(it.label) + '</span></a>';
+      }).join('') +
+      '<button id="more-btn">' + icon('menu', 22) + '<span>더보기</span></button>' +
+    '</nav>';
+
+    return '<div class="app-shell">' + appbar +
+      '<div class="app-body">' +
+        '<aside class="sidebar">' + sideNav +
+          '<div class="side-foot">치료를 넘어, 동반자로<br><b>ASTROGEN</b> 디지털 헬스케어</div>' +
+        '</aside>' +
+        '<main class="app-main">' +
+          '<div class="container" id="view-root"></div>' +
+          '<div class="app-foot">내 아이 설명서 · Stellar Connect (S:CON) by <b>ASTROGEN</b> · ' +
+          '1차 MVP 프로토타입</div>' +
+        '</main>' +
+      '</div>' + bottom + '</div>';
+  }
+
+  function wireShell(r) {
+    var u = Store.currentUser();
+    UI.el('brand').onclick = function () { App.navigate('#/dashboard'); };
+
+    var trigger = UI.el('user-trigger'), dd = UI.el('user-dropdown');
+    trigger.onclick = function (e) { e.stopPropagation(); dd.classList.toggle('hide'); };
+    document.addEventListener('click', function () { dd.classList.add('hide'); }, { once: true });
+    dd.querySelectorAll('[data-go]').forEach(function (b) {
+      b.onclick = function () { App.navigate(b.dataset.go); };
+    });
+    UI.el('menu-logout').onclick = function () {
+      Store.logout(); UI.toast('로그아웃되었습니다', 'ok'); App.navigate('#/');
+    };
+    UI.el('menu-reset').onclick = function () {
+      UI.Modal.confirm({ title: '데모 데이터 초기화', danger: true,
+        message: '모든 데이터를 지우고 초기 데모 상태로 되돌립니다.\n계속할까요?', okLabel: '초기화' })
+        .then(function (ok) {
+          if (!ok) return;
+          Store.resetDB(); Seed.seedIfEmpty();
+          UI.toast('초기화되었습니다', 'ok'); App.navigate('#/');
+        });
+    };
+
+    var cs = UI.el('child-switch');
+    if (cs) cs.onclick = function () {
+      var kids = Store.childrenOf(u.id);
+      UI.Modal.open({
+        title: '아이 선택', icon: 'users',
+        body: kids.map(function (c) {
+          return '<button class="card child-card" style="width:100%;margin-bottom:8px" data-pick="' +
+            c.id + '"><div class="avatar lg">' + (c.photo
+              ? '<img src="' + c.photo + '">' : esc(UI.initials(c.name))) + '</div>' +
+            '<div class="meta"><div class="nm">' + esc(c.name) + '</div>' +
+            '<div class="sub">' + esc(c.disability.type) + '</div></div>' +
+            icon('chevR', 18) + '</button>';
+        }).join('') +
+        '<button class="btn btn-soft btn-block" data-pick="new">' + icon('plus', 16) + '새 아이 등록</button>',
+        buttons: [],
+        onMount: function (root) {
+          root.querySelectorAll('[data-pick]').forEach(function (b) {
+            b.onclick = function () {
+              UI.Modal.close();
+              if (b.dataset.pick === 'new') App.navigate('#/child/new');
+              else { App.lastChildId = b.dataset.pick; App.navigate('#/child/' + b.dataset.pick); }
+            };
+          });
+        }
+      });
+    };
+
+    var more = UI.el('more-btn');
+    if (more) more.onclick = function () { openDrawer(r); };
+  }
+
+  function openDrawer(r) {
+    var u = Store.currentUser();
+    var cur = currentChildId(r);
+    var links = [
+      { t: '대시보드', i: 'grid', h: '#/dashboard' },
+      { t: '공유 관리', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' },
+      { t: '한 장 요약', i: 'print', h: cur ? '#/summary/' + cur : '#/dashboard' },
+      { t: '양육자 정보', i: 'user', h: '#/caregiver' }
+    ];
+    if (u.role === 'admin') links.push({ t: '백오피스', i: 'settings', h: '#/admin' });
+
+    var bd = document.createElement('div');
+    bd.className = 'drawer-backdrop';
+    var dr = document.createElement('div');
+    dr.className = 'drawer';
+    dr.innerHTML = '<div class="row between mb-2"><b>전체 메뉴</b>' +
+      '<button class="btn-icon" id="drawer-x">' + icon('x', 18) + '</button></div>' +
+      links.map(function (l) {
+        return '<a class="nav-item" href="' + l.h + '">' + icon(l.i, 19) +
+          '<span>' + esc(l.t) + '</span></a>';
+      }).join('') +
+      '<div class="divider"></div>' +
+      '<button class="nav-item" id="drawer-logout">' + icon('logout', 19) + '<span>로그아웃</span></button>';
+    document.body.appendChild(bd);
+    document.body.appendChild(dr);
+    function close() { bd.remove(); dr.remove(); }
+    bd.onclick = close;
+    dr.querySelector('#drawer-x').onclick = close;
+    dr.querySelectorAll('a').forEach(function (a) { a.onclick = close; });
+    dr.querySelector('#drawer-logout').onclick = function () {
+      close(); Store.logout(); App.navigate('#/');
+    };
+  }
+
+  /* ---------- 라우팅 실행 ---------- */
+  function route() {
+    if (Views._clipCleanup) Views._clipCleanup();
+    var r = parseHash();
+    var view = Views[r.view];
+    var app = UI.el('app');
+    var loggedIn = !!Store.currentUser();
+
+    // 로그인 사용자가 로그인/가입 페이지 접근 시 대시보드로
+    if (loggedIn && (r.view === 'login' || r.view === 'signup')) {
+      location.hash = '#/dashboard'; return;
+    }
+    // 앱 레이아웃은 로그인 필요
+    if (view.layout === 'app' && !loggedIn) {
+      location.hash = '#/login'; return;
+    }
+    // 현재 아이 기억
+    var cc = currentChildId(r);
+    if (cc) App.lastChildId = cc;
+
+    var doAnim = App._animate !== false;
+    App._animate = true;
+    try {
+      if (view.layout === 'public') {
+        app.innerHTML = view.render(r.params);
+        if (doAnim) { app.classList.remove('view-anim'); void app.offsetWidth; app.classList.add('view-anim'); }
+        if (view.mount) view.mount(r.params, app);
+      } else {
+        app.innerHTML = shell(r);
+        var root = UI.el('view-root');
+        root.innerHTML = view.render(r.params);
+        if (doAnim) root.classList.add('view-anim');
+        wireShell(r);
+        if (view.mount) view.mount(r.params, root);
+      }
+    } catch (e) {
+      console.error('렌더링 오류', e);
+      app.innerHTML = '<div class="container narrow"><div class="card card-pad">' +
+        '<h2>화면을 표시하는 중 문제가 발생했습니다</h2>' +
+        '<p class="muted">' + esc(e.message) + '</p>' +
+        '<button class="btn btn-primary" onclick="location.hash=\'#/dashboard\'">대시보드로</button>' +
+        '</div></div>';
+    }
+    window.scrollTo(0, App._scroll || 0);
+    App._scroll = 0;
+    var pageTitle = ({
+      login: '로그인', signup: '회원가입',
+      dashboard: '홈', manual: '내 아이 설명서', summary: '설명서 미리보기',
+      share: '대상별 설명서·공유', plan: '미래 준비',
+      viewer: '설명서 열람', caregiver: '양육자 정보', admin: '백오피스',
+      childProfile: '아이 프로필', childEdit: '아이 정보'
+    })[r.view];
+    document.title = pageTitle
+      ? pageTitle + ' · 내 아이 설명서'
+      : '내 아이 설명서 · Stellar Connect (S:CON)';
+  }
+
+  /* ---------- App 전역 ---------- */
+  global.App = {
+    _scroll: 0,
+    lastChildId: null,
+    navigate: function (hash) {
+      if (location.hash === hash) route();
+      else location.hash = hash;
+    },
+    refresh: function () {
+      App._scroll = window.scrollY || window.pageYOffset || 0;
+      App._animate = false;
+      route();
+    },
+    currentUser: function () { return Store.currentUser(); }
+  };
+
+  window.addEventListener('hashchange', function () { App._scroll = 0; route(); });
+
+  /* ---------- 하이브리드(Capacitor) — Android 하드웨어 뒤로가기 ---------- */
+  function setupHybridBackButton() {
+    var cap = global.Capacitor;
+    if (!cap || !cap.Plugins || !cap.Plugins.App) return;
+    cap.Plugins.App.addListener('backButton', function () {
+      // 1) 모달이 열려 있으면 모달부터 닫는다
+      var mh = document.getElementById('modal-host');
+      if (mh && mh.children.length) { UI.Modal.close(); return; }
+      // 2) 홈·대시보드(루트 화면)에서는 앱 종료
+      var h = global.location.hash;
+      var isRoot = !h || h === '#' || h === '#/' ||
+        h === '#/dashboard' || h === '#/login';
+      if (isRoot) { cap.Plugins.App.exitApp(); return; }
+      // 3) 그 외에는 일반 뒤로가기
+      global.history.back();
+    });
+  }
+
+  /* ---------- 부팅 ---------- */
+  document.addEventListener('DOMContentLoaded', function () {
+    Seed.seedIfEmpty();
+    setupHybridBackButton();
+    route();
+  });
+})(window);
