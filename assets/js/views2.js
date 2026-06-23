@@ -811,7 +811,7 @@
 
         '<div class="card card-pad mb-2">' +
           '<label class="field-label">' + icon('sparkle', 15) + ' 우리 아이 한 줄 소개</label>' +
-          '<input class="input" id="summary-note" maxlength="80" ' +
+          '<input class="input" id="summary-note" maxlength="100" ' +
             'placeholder="예) 준호는 예측 가능한 환경에서 가장 빛나는 아이예요." ' +
             'value="' + esc(manual.summaryNote) + '">' +
           '<div class="row between mt-1" style="gap:10px;flex-wrap:wrap">' +
@@ -855,16 +855,24 @@
 
       UI.el('btn-go-summary').onclick = function () { App.navigate('#/summary/' + child.id); };
 
-      // 한 줄 소개 — 글자수 카운터 + 저장
+      // 한 줄 소개 — 글자수 카운터 + 저장 (한글 IME는 maxlength를 우회하므로 직접 제한)
+      var NOTE_LIMIT = 100;
       var noteInp = UI.el('summary-note'), noteCnt = UI.el('note-count');
+      function capNote() {
+        if (noteInp.value.length > NOTE_LIMIT) noteInp.value = noteInp.value.slice(0, NOTE_LIMIT);
+      }
       function syncNoteCount() {
         var n = noteInp.value.length;
-        noteCnt.textContent = n + '/80';
-        noteCnt.className = 'char-count' + (n >= 70 ? ' warn' : '');
+        noteCnt.textContent = n + '/' + NOTE_LIMIT;
+        noteCnt.className = 'char-count' + (n >= NOTE_LIMIT - 10 ? ' warn' : '');
       }
       syncNoteCount();
       noteInp.addEventListener('input', syncNoteCount);
+      // 조합(한글) 완료·포커스 아웃 시 한도 보정 — 조합 중 자르면 입력이 깨져서 이 시점에만
+      noteInp.addEventListener('compositionend', function () { capNote(); syncNoteCount(); });
+      noteInp.addEventListener('blur', function () { capNote(); syncNoteCount(); });
       UI.el('save-note').onclick = function () {
+        capNote();
         manual.summaryNote = noteInp.value.trim();
         Store.saveManual(manual);
         toast('소개글이 저장되었습니다', 'ok');

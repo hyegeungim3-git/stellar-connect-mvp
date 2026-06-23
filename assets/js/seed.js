@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 8;   // 데모 데이터 변경 시 이 숫자를 올린다
+  var SEED_VERSION = 9;   // 데모 데이터 변경 시 이 숫자를 올린다
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -198,7 +198,7 @@
           item('물을 무서워하지 않아요 — 욕조·수영장 근처에서는 항상 곁에 있어 주세요.')
         ]
       },
-      summaryNote: '준호는 예측 가능한 환경에서 가장 빛나는 아이예요. 미리 알려주고 기다려주면, 기차 이야기로 금방 마음을 엽니다.',
+      summaryNote: '준호는 예측 가능한 환경에서 가장 빛나는 아이예요.',
       parentNote: '느려도 괜찮으니 끝까지 기다려 주세요. 준호는 시간을 주면 분명히 해냅니다. 우리 아이를 따뜻하게 봐주셔서 감사합니다.',
       updatedAt: '2026-05-18T08:00:00.000Z'
     };
