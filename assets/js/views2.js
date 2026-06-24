@@ -8,7 +8,7 @@
   var S = V._S, MSEC = V._MSEC, MTABS = V._MTABS;
   var readForm = V._readForm, readRows = V._readRows, ownedChild = V._ownedChild;
   var notFound = V._notFound, manualCount = V._manualCount;
-  var childContextBar = V._childContextBar, pageHead = V._pageHead;
+  var childContextBar = V._childContextBar, pageHead = V._pageHead, manualHeader = V._manualHeader;
 
   /* ---------- 동적 입력 행 ---------- */
   function dynRow(fields, vals) {
@@ -803,11 +803,10 @@
           esc(m.label) + '<span class="num">' + n + '</span></button>';
       }).join('');
 
-      return childContextBar(child, 'manual') +
-        pageHead('설명서', child.name + ' 설명서',
-          '우리 아이를 처음 만나는 사람도 이해할 수 있도록 적어 주세요.',
-          '<button class="btn btn-primary btn-sm" id="btn-go-summary">' +
-            icon('print', 15) + '한 장 요약 보기</button>') +
+      return manualHeader(child, 'write') +
+        '<p class="muted mb-2" style="font-size:.9rem;padding:0 4px">' +
+          '우리 아이를 처음 만나는 사람도 이해할 수 있도록 적어 주세요. ' +
+          '작성한 내용은 <b>미리보기</b>와 <b>대상별 공유</b>에 그대로 반영됩니다.</p>' +
 
         '<div class="card card-pad mb-2">' +
           '<label class="field-label">' + icon('sparkle', 15) + ' 우리 아이 한 줄 소개</label>' +
@@ -852,8 +851,6 @@
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
       var manual = Store.getManual(child.id);
-
-      UI.el('btn-go-summary').onclick = function () { App.navigate('#/summary/' + child.id); };
 
       // 한 줄 소개 — 글자수 카운터 + 저장 (한글 IME는 maxlength를 우회하므로 직접 제한)
       var NOTE_LIMIT = 100;
@@ -1368,22 +1365,18 @@
       if (!child) return notFound('아이 정보를 찾을 수 없어요');
       var manual = Store.getManual(child.id) || Store.saveManual(Store.emptyManual(child.id));
       if (manualCount(manual) === 0) {
-        return childContextBar(child, 'summary') +
+        return manualHeader(child, 'preview') +
           '<div class="card empty"><div class="emoji">📝</div>' +
           '<h3>아직 설명서 내용이 없어요</h3>' +
           '<p>설명서를 먼저 작성하면 한 장 요약을 만들 수 있어요.</p>' +
           '<button class="btn btn-primary" onclick="App.navigate(\'#/manual/' + child.id + '\')">' +
           '설명서 작성하러 가기</button></div>';
       }
-      return childContextBar(child, 'summary') +
-        pageHead('한 장 요약', child.name + ' 한 장 요약',
+      return manualHeader(child, 'preview') +
+        pageHead('미리보기', '한 장 요약',
           '학교·병원·치료실에 우리 아이를 한 장으로 소개해요.',
-          '<button class="btn btn-ghost btn-sm no-print" id="btn-edit-m">' +
-            icon('edit', 15) + '설명서 수정</button>' +
-          '<button class="btn btn-ghost btn-sm no-print" id="btn-print">' +
-            icon('print', 15) + 'PDF 저장</button>' +
-          '<button class="btn btn-primary btn-sm no-print" id="btn-share">' +
-            icon('share', 15) + '공유하기</button>') +
+          '<button class="btn btn-primary btn-sm no-print" id="btn-print">' +
+            icon('print', 15) + 'PDF 저장</button>') +
         '<div class="pill-info no-print mb-2">' + icon('info', 16) +
           '<div>‘PDF 저장’을 누르면 인쇄 창이 열립니다. 대상을 <b>‘PDF로 저장’</b>으로 선택하면 ' +
           'A4 한 장으로 깔끔하게 저장돼요.</div></div>' +
@@ -1391,12 +1384,8 @@
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
-      var pe = UI.el('btn-edit-m');
-      if (pe) pe.onclick = function () { App.navigate('#/manual/' + child.id); };
       var pp = UI.el('btn-print');
       if (pp) pp.onclick = function () { window.print(); };
-      var ps = UI.el('btn-share');
-      if (ps) ps.onclick = function () { App.navigate('#/share/' + child.id); };
     }
   };
 

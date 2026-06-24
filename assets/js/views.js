@@ -119,6 +119,33 @@
       '</div>' + (rightHTML ? '<div class="row gap-sm">' + rightHTML + '</div>' : '') +
       '</div></div>';
   }
+  /* 설명서 영역 통합 헤더 — 작성·미리보기·대상별 공유를 한 탭으로 묶는 세그먼트 서브탭 */
+  function manualHeader(child, active) {
+    var age = UI.calcAge(child.birthDate);
+    var segs = [
+      { k: 'write',   t: '작성',       i: 'edit',  h: '#/manual/' + child.id },
+      { k: 'preview', t: '미리보기',    i: 'eye',   h: '#/summary/' + child.id },
+      { k: 'share',   t: '대상별 공유', i: 'share', h: '#/share/' + child.id }
+    ];
+    var tabs = segs.map(function (s) {
+      return '<a href="' + s.h + '" class="seg' + (s.k === active ? ' on' : '') + '">' +
+        icon(s.i, 16) + '<span>' + esc(s.t) + '</span></a>';
+    }).join('');
+    return '<div class="card card-pad mb-2">' +
+      '<div class="manual-hd-top">' +
+        '<div class="avatar lg">' + (child.photo
+          ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:800;font-size:1.12rem">' + esc(child.name) + ' 설명서</div>' +
+          '<div class="muted" style="font-size:.84rem">' +
+            (age != null ? '만 ' + age + '세' : '') +
+            (child.gender ? ' · ' + esc(child.gender) : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="seg-tabs">' + tabs + '</div>' +
+    '</div>';
+  }
 
   /* =====================================================================
    * 랜딩 (홈)
@@ -766,7 +793,7 @@
     _S: S, _MSEC: MSEC, _MTABS: MTABS, _RT: RT,
     _readForm: readForm, _readRows: readRows, _ownedChild: ownedChild,
     _notFound: notFound, _manualCount: manualCount,
-    _childContextBar: childContextBar, _pageHead: pageHead,
+    _childContextBar: childContextBar, _pageHead: pageHead, _manualHeader: manualHeader,
     home: home, login: login, signup: signup, dashboard: dashboard,
     _demo: function () {
       Store.login('parent@example.com', '1234'); App.navigate('#/dashboard');
