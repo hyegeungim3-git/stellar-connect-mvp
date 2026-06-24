@@ -661,28 +661,6 @@ b, strong { font-weight: 700; }
 }
 .manual-tab.active .num { background: var(--primary-soft); color: var(--primary-dark); }
 
-/* 설명서 영역 통합 헤더 — 작성·미리보기·대상별 공유를 한 탭으로 묶는 세그먼트 서브탭 */
-.manual-hd-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
-.seg-tabs {
-  display: flex; gap: 6px; background: var(--surface-2);
-  padding: 5px; border-radius: 14px;
-}
-.seg-tabs .seg {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 11px 8px; border-radius: 10px; font-weight: 700; font-size: .92rem;
-  color: var(--text-muted); white-space: nowrap; transition: .15s var(--ease);
-}
-.seg-tabs .seg:hover { color: var(--primary-dark); }
-.seg-tabs .seg.on {
-  background: var(--surface); color: var(--primary-dark);
-  box-shadow: 0 1px 5px rgba(27, 42, 92, .12);
-}
-.seg-tabs .seg.on svg { color: var(--primary); }
-@media (max-width: 460px) {
-  .seg-tabs .seg { font-size: .84rem; padding: 10px 4px; gap: 5px; }
-  .seg-tabs .seg svg { display: none; }
-}
-
 .sec-head { display: flex; align-items: center; gap: 13px; }
 .sec-head .sec-ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none;

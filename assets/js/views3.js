@@ -8,7 +8,7 @@
   var S = V._S, RT = V._RT;
   var readForm = V._readForm, readRows = V._readRows, ownedChild = V._ownedChild;
   var notFound = V._notFound, manualCount = V._manualCount;
-  var childContextBar = V._childContextBar, pageHead = V._pageHead, manualHeader = V._manualHeader;
+  var childContextBar = V._childContextBar, pageHead = V._pageHead;
 
   function todayStr() { return new Date().toISOString().slice(0, 10); }
   function dynRow(fields, vals) {
@@ -711,7 +711,7 @@
       var shares = Store.sharesOf(child.id);
 
       if (manualCount(manual) === 0) {
-        return manualHeader(child, 'share') +
+        return childContextBar(child, 'share') +
           '<div class="card empty"><div class="emoji">📝</div>' +
           '<h3>설명서를 먼저 채워 주세요</h3>' +
           '<p>대상별 설명서는 작성한 내용을 바탕으로 자동으로 만들어집니다.</p>' +
@@ -838,8 +838,8 @@
           '<b>안심번호(050)</b>로 표시됩니다. 필요 없어지면 ‘공유 중단’으로 차단하세요.</div></div>' +
         list;
 
-      return manualHeader(child, 'share') +
-        pageHead('대상별 공유', '대상별 설명서 공유',
+      return childContextBar(child, 'share') +
+        pageHead('대상별 설명서', child.name + ' 설명서 공유',
           '대상에 맞는 「내 아이 설명서」를 만들어 학교·병원·치료실에 바로 전달하세요.') +
         hub + listSection + noteSec;
     },
