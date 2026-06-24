@@ -806,8 +806,11 @@
       return childContextBar(child, 'manual') +
         pageHead('설명서', child.name + ' 설명서',
           '우리 아이를 처음 만나는 사람도 이해할 수 있도록 적어 주세요.',
-          '<button class="btn btn-primary btn-sm" id="btn-go-summary">' +
-            icon('print', 15) + '한 장 요약 보기</button>') +
+          '<button class="btn btn-soft btn-sm" id="btn-toggle-preview">' +
+            icon('eye', 15) + '미리보기</button>') +
+
+        '<div class="manual-layout' + (S.manualPreview ? ' show-preview' : '') + '">' +
+        '<div class="manual-edit">' +
 
         '<div class="card card-pad mb-2">' +
           '<label class="field-label">' + icon('sparkle', 15) + ' 우리 아이 한 줄 소개</label>' +
@@ -847,13 +850,27 @@
         '</div>' +
 
         '<div class="manual-tabs">' + tabs + '</div>' +
-        '<div id="manual-panel">' + panelHTML(manual, S.manualTab) + '</div>';
+        '<div id="manual-panel">' + panelHTML(manual, S.manualTab) + '</div>' +
+        '</div>' +
+        '<aside class="manual-preview-pane">' +
+          '<div class="mp-head"><span>' + icon('eye', 15) + ' 미리보기</span>' +
+            '<a class="btn btn-ghost btn-sm" href="#/summary/' + child.id + '">' +
+              icon('print', 14) + '한 장 요약</a></div>' +
+          '<div class="mp-scroll">' + V._summarySheet(child, manual, { scope: 'full' }) + '</div>' +
+        '</aside>' +
+        '</div>';
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
       var manual = Store.getManual(child.id);
 
-      UI.el('btn-go-summary').onclick = function () { App.navigate('#/summary/' + child.id); };
+      var togBtn = UI.el('btn-toggle-preview');
+      if (togBtn) togBtn.onclick = function () {
+        S.manualPreview = !S.manualPreview;
+        var lay = document.querySelector('.manual-layout');
+        if (lay) lay.classList.toggle('show-preview', S.manualPreview);
+        togBtn.classList.toggle('active', S.manualPreview);
+      };
 
       // 한 줄 소개 — 글자수 카운터 + 저장 (한글 IME는 maxlength를 우회하므로 직접 제한)
       var NOTE_LIMIT = 100;

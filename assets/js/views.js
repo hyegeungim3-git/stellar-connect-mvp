@@ -7,7 +7,7 @@
   var esc = UI.esc, nl2br = UI.nl2br, icon = UI.icon, Modal = UI.Modal, toast = UI.toast;
 
   /* 화면 전환 사이 유지되는 임시 UI 상태 */
-  var S = { manualTab: 'canDo', recFilter: 'all', adminTab: 'stats', focusAdd: null };
+  var S = { manualTab: 'canDo', recFilter: 'all', adminTab: 'stats', focusAdd: null, manualPreview: false };
 
   /* ---------- 설명서 섹션 정의 ---------- */
   var MSEC = {
