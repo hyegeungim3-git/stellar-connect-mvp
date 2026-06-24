@@ -10,6 +10,35 @@
   var notFound = V._notFound, manualCount = V._manualCount;
   var childContextBar = V._childContextBar, pageHead = V._pageHead;
 
+  /* 미리보기 레이어 팝업 — 작성·프로필 어디서든 공용으로 연다 (보기 + PDF 저장 + 대상별 공유) */
+  function openPreview(child) {
+    var m = Store.getManual(child.id) || Store.saveManual(Store.emptyManual(child.id));
+    Modal.open({
+      title: child.name + ' 설명서 미리보기',
+      icon: 'eye', wide: true,
+      body: '<div class="preview-modal">' + V._summarySheet(child, m, { scope: 'full' }) + '</div>',
+      buttons: [
+        { label: '닫기', value: 'close', variant: 'ghost' },
+        { label: 'PDF 저장', value: 'print', variant: 'soft', icon: 'print' },
+        { label: '대상별 공유', value: 'share', variant: 'primary', icon: 'share' }
+      ],
+      onButton: function (v) {
+        if (v === 'print') {
+          // 키링 인쇄와 동일한 방식 — body에 임시 .print-area 추가 후 인쇄(모달은 print.css가 숨김)
+          var holder = document.createElement('div');
+          holder.className = 'print-area';
+          holder.innerHTML = V._summarySheet(child, m, { scope: 'full' });
+          document.body.appendChild(holder);
+          window.print();
+          document.body.removeChild(holder);
+          return 'keep';
+        }
+        if (v === 'share') App.navigate('#/share/' + child.id);
+      }
+    });
+  }
+  V._openPreview = openPreview;
+
   /* ---------- 동적 입력 행 ---------- */
   function dynRow(fields, vals) {
     vals = vals || {};
@@ -287,14 +316,14 @@
         })() +
         '<div class="card card-pad mt-2" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">' +
           '<button class="btn btn-ghost btn-sm" id="btn-del">' + icon('trash', 15) + '아이 정보 삭제</button>' +
-          '<button class="btn btn-soft btn-sm" id="btn-summary">' + icon('print', 15) + '한 장 요약 보기</button>' +
+          '<button class="btn btn-soft btn-sm" id="btn-profile-preview">' + icon('eye', 15) + '미리보기</button>' +
         '</div>';
     },
     mount: function (p) {
       var child = ownedChild(p.id);
       UI.el('btn-edit').onclick = function () { App.navigate('#/child/' + p.id + '/edit'); };
       UI.el('btn-manual').onclick = function () { App.navigate('#/manual/' + p.id); };
-      UI.el('btn-summary').onclick = function () { App.navigate('#/summary/' + p.id); };
+      UI.el('btn-profile-preview').onclick = function () { openPreview(child); };
 
       // 프로필 사진 바로 변경
       var bp = UI.el('btn-photo'), pq = UI.el('photo-quick');
@@ -853,19 +882,7 @@
       var child = ownedChild(p.childId); if (!child) return;
       var manual = Store.getManual(child.id);
 
-      UI.el('btn-preview').onclick = function () {
-        var m = Store.getManual(child.id) || Store.emptyManual(child.id);
-        Modal.open({
-          title: child.name + ' 설명서 미리보기',
-          icon: 'eye', wide: true,
-          body: '<div class="preview-modal">' + V._summarySheet(child, m, { scope: 'full' }) + '</div>',
-          buttons: [
-            { label: '닫기', value: 'close', variant: 'ghost' },
-            { label: '한 장 요약·공유', value: 'full', variant: 'primary', icon: 'print' }
-          ],
-          onButton: function (v) { if (v === 'full') App.navigate('#/summary/' + child.id); }
-        });
-      };
+      UI.el('btn-preview').onclick = function () { openPreview(child); };
 
       // 한 줄 소개 — 글자수 카운터 + 저장 (한글 IME는 maxlength를 우회하므로 직접 제한)
       var NOTE_LIMIT = 100;

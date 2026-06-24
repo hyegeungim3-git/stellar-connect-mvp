@@ -91,7 +91,6 @@
       { k: 'manual', t: '설명서 작성', h: '#/manual/' + child.id },
       { k: 'records', t: '기록', h: '#/records/' + child.id },
       { k: 'gallery', t: '갤러리', h: '#/gallery/' + child.id },
-      { k: 'summary', t: '미리보기', h: '#/summary/' + child.id },
       { k: 'plan', t: '미래 준비', h: '#/plan/' + child.id },
       { k: 'share', t: '대상별 공유', h: '#/share/' + child.id }
     ];
