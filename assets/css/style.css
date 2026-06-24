@@ -661,29 +661,6 @@ b, strong { font-weight: 700; }
 }
 .manual-tab.active .num { background: var(--primary-soft); color: var(--primary-dark); }
 
-/* 설명서 작성 + 실시간 미리보기 (데스크톱 2단 / 모바일 토글) */
-.manual-layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
-.manual-edit { min-width: 0; }
-.manual-preview-pane { display: none; min-width: 0; }
-.manual-layout.show-preview .manual-preview-pane { display: block; }
-.manual-preview-pane .mp-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-bottom: 12px; font-weight: 800; color: var(--primary-dark);
-}
-.manual-preview-pane .mp-head > span { display: flex; align-items: center; gap: 7px; }
-#btn-toggle-preview.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-#btn-toggle-preview.active svg { color: #fff; }
-@media (min-width: 1080px) {
-  .manual-layout { grid-template-columns: minmax(0, 1fr) 420px; }
-  .manual-preview-pane { display: block !important; position: sticky;
-    top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px) + 14px); }
-  .manual-preview-pane .mp-scroll {
-    max-height: calc(100vh - var(--appbar-h) - 90px); overflow-y: auto;
-    padding-right: 2px; border-radius: var(--radius-lg);
-  }
-  #btn-toggle-preview { display: none; }
-}
-
 .sec-head { display: flex; align-items: center; gap: 13px; }
 .sec-head .sec-ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none;
@@ -855,6 +832,7 @@ table.tbl td.actions { white-space: nowrap; }
   max-height: 90vh; overflow-y: auto; animation: modalIn .24s var(--ease);
 }
 .modal.wide { max-width: 700px; }
+.preview-modal .summary-sheet { box-shadow: none; }
 @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.97); } }
 .modal-head {
   padding: 19px 24px; border-bottom: 1px solid var(--border);
