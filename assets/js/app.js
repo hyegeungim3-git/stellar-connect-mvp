@@ -106,6 +106,8 @@
         '<span>Stellar Connect · S:CON</span></div></div>' +
       '<div class="spacer"></div>' +
       childSwitch +
+      '<button class="btn-icon app-help" id="help-btn" aria-label="이 화면 도움말" title="이 화면 도움말">' +
+        icon('help', 18) + '</button>' +
       '<div class="usermenu"><button class="trigger" id="user-trigger">' +
         '<span class="avatar">' + esc(UI.initials(u.name)) + '</span>' +
         '<span class="nm-full" style="font-weight:700;font-size:.9rem">' + esc(u.name) + '</span>' +
@@ -155,6 +157,8 @@
     });
     var mt = UI.el('menu-tour');
     if (mt) mt.onclick = function () { dd.classList.add('hide'); if (global.Tour) Tour.start(); };
+    var hb = UI.el('help-btn');
+    if (hb) hb.onclick = function () { if (global.Help) Help.open(r.view); };
     UI.el('menu-logout').onclick = function () {
       Store.logout(); UI.toast('로그아웃되었습니다', 'ok'); App.navigate('#/');
     };

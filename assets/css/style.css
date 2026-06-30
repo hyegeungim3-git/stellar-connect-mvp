@@ -860,6 +860,14 @@ table.tbl td.actions { white-space: nowrap; }
 @keyframes tourPulse { 0%, 100% { outline-color: var(--primary); } 50% { outline-color: rgba(53, 102, 205, .15); } }
 @media (max-width: 960px) { .tour-tip { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .tour-pulse, .tour-tip { animation: none; } }
+
+/* 화면별 도움말 (?) */
+.app-bar .app-help { flex: none; }
+.help-intro { font-size: .92rem; color: var(--text-muted); line-height: 1.55; margin: 0 0 14px; }
+.help-row { padding: 11px 0; border-top: 1px solid var(--border); }
+.help-row:first-of-type { border-top: none; padding-top: 0; }
+.help-row b { display: block; font-size: .95rem; color: var(--primary-dark); margin-bottom: 3px; }
+.help-row span { font-size: .88rem; color: var(--text); line-height: 1.55; }
 @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.97); } }
 .modal-head {
   padding: 19px 24px; border-bottom: 1px solid var(--border);
