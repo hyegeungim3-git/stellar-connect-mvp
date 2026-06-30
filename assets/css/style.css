@@ -833,6 +833,33 @@ table.tbl td.actions { white-space: nowrap; }
 }
 .modal.wide { max-width: 700px; }
 .preview-modal .summary-sheet { box-shadow: none; }
+
+/* 둘러보기 가이드 (셀프 온보딩) */
+.tour-tip {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px;
+  width: min(440px, calc(100vw - 28px)); z-index: 200;
+  background: var(--surface); border: 1px solid var(--primary-100);
+  border-radius: var(--radius-lg); box-shadow: 0 14px 50px rgba(27, 42, 92, .28);
+  padding: 16px 18px 14px; animation: tourIn .22s var(--ease);
+}
+@keyframes tourIn { from { opacity: 0; transform: translate(-50%, 14px); } }
+.tour-tip .tour-step { font-size: .7rem; font-weight: 800; letter-spacing: .08em; color: var(--primary); }
+.tour-tip h3 { font-size: 1.06rem; margin: 5px 0 7px; padding-right: 26px; }
+.tour-tip p { font-size: .9rem; color: var(--text-muted); line-height: 1.6; margin: 0; }
+.tour-tip .tour-x {
+  position: absolute; right: 11px; top: 11px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text-muted); border-radius: 9px;
+}
+.tour-tip .tour-x:hover { background: var(--primary-soft); color: var(--primary); }
+.tour-tip .tour-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 15px; }
+.tour-pulse {
+  outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 12px;
+  animation: tourPulse 1.25s ease-in-out infinite; scroll-margin: 100px;
+}
+@keyframes tourPulse { 0%, 100% { outline-color: var(--primary); } 50% { outline-color: rgba(53, 102, 205, .15); } }
+@media (max-width: 960px) { .tour-tip { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
+@media (prefers-reduced-motion: reduce) { .tour-pulse, .tour-tip { animation: none; } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.97); } }
 .modal-head {
   padding: 19px 24px; border-bottom: 1px solid var(--border);

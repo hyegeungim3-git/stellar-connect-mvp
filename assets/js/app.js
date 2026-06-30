@@ -111,6 +111,7 @@
         '<span class="nm-full" style="font-weight:700;font-size:.9rem">' + esc(u.name) + '</span>' +
         icon('chevD', 15) + '</button>' +
         '<div class="dropdown hide" id="user-dropdown">' +
+          '<button id="menu-tour">' + icon('info', 16) + '둘러보기 가이드</button>' +
           '<button data-go="#/caregiver">' + icon('user', 16) + '양육자 정보</button>' +
           (u.role === 'admin'
             ? '<button data-go="#/admin">' + icon('settings', 16) + '백오피스</button>' : '') +
@@ -152,6 +153,8 @@
     dd.querySelectorAll('[data-go]').forEach(function (b) {
       b.onclick = function () { App.navigate(b.dataset.go); };
     });
+    var mt = UI.el('menu-tour');
+    if (mt) mt.onclick = function () { dd.classList.add('hide'); if (global.Tour) Tour.start(); };
     UI.el('menu-logout').onclick = function () {
       Store.logout(); UI.toast('로그아웃되었습니다', 'ok'); App.navigate('#/');
     };
@@ -284,6 +287,9 @@
     document.title = pageTitle
       ? pageTitle + ' · 내 아이 설명서'
       : '내 아이 설명서 · Stellar Connect (S:CON)';
+
+    // 첫 방문 셀프 온보딩 — 대시보드에서 1회 자동 안내
+    if (r.view === 'dashboard' && global.Tour) global.Tour.maybeAuto();
   }
 
   /* ---------- App 전역 ---------- */
