@@ -1453,6 +1453,43 @@ table.tbl td.actions { white-space: nowrap; }
   .closing-band p { font-size: .96rem; }
 }
 
+/* ---------- 26-0. 가치 5카드 + 감성 필 (2차 양육자 리뷰 — 친근하고 편안하게) ---------- */
+.gentle-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1020px) { .gentle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .gentle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gentle-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 22px; padding: 24px 16px 20px; text-align: center;
+  box-shadow: 0 4px 18px rgba(27, 42, 92, .06);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.gentle-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(27, 42, 92, .10); }
+.gentle-card .g-ico {
+  width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.gentle-card h3 { font-size: 1.02rem; margin-bottom: 6px; color: var(--primary-deep); }
+.gentle-card p { font-size: .86rem; color: var(--text-muted); line-height: 1.6; }
+
+.hero-pill, .soft-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--brand-understand-soft); color: #45408f;
+  border: 1px solid #d9d4f8; border-radius: 999px;
+  padding: 10px 18px; font-size: .9rem; font-weight: 700; line-height: 1.45;
+}
+.hero-pill { margin: 2px 0 22px; position: relative; z-index: 2; }
+.soft-pill {
+  margin-top: 18px;
+  background: var(--primary-soft); color: var(--primary-dark);
+  border-color: var(--primary-100);
+}
+@media (max-width: 600px) {
+  .hero-pill, .soft-pill { font-size: .82rem; padding: 9px 14px; }
+}
+
 /* ---------- 26. 브랜드 가치 섹션 (랜딩 — 신뢰·이해·연결·성장) ---------- */
 .value-grid {
   display: grid; gap: 16px;

@@ -22,9 +22,10 @@
     problem: { label: '도전적 행동 및 대응', icon: 'shield', color: 'var(--c-problem)', bg: 'var(--c-problem-bg)',
                desc: '행동 유형 · 유발 요인 · 대응 방법' },
     comm:    { label: '의사소통 방법', icon: 'message', color: 'var(--c-comm)',    bg: 'var(--c-comm-bg)',
-               desc: '아이와 더 잘 통하는 방법', ph: '예) 짧고 명확한 문장으로 말해 주세요' },
+               desc: '의사소통 수준 · 표현 방법 · 감정 표현 — 아이와 더 잘 통하는 방법',
+               ph: '예) 짧고 명확한 문장으로 말해 주세요' },
     routine: { label: '생활 루틴',     icon: 'clock',   color: 'var(--c-routine)', bg: 'var(--c-routine-bg)',
-               desc: '평소 일과의 흐름 — 학습·식사·잠자기 등',
+               desc: '하루 일과 · 자조활동 · 일정 — 평소 생활의 흐름',
                ph: '예) 저녁 8시 목욕 후 책 한 권 읽고 9시에 잠자리에 들어요' },
     safety:  { label: '안전 주의사항', icon: 'lock',    color: 'var(--c-safety)',  bg: 'var(--c-safety-bg)',
                desc: '안전을 위해 꼭 지켜야 할 것 — 외출·위험 요소 등',
@@ -144,21 +145,24 @@
         { i: 'user',     t: '전문가와 연결', d: '치료사·상담사 협업',      c: 'var(--primary)' },
         { i: 'info',     t: '정보와 연결',   d: '맞춤 콘텐츠 제공',        c: 'var(--brand-understand)' }
       ];
+      /* 2차 양육자 리뷰에서 나온 목소리 — 슬픔이 아니라 희망·따뜻함으로 */
       var quotes = [
-        '아이마다 반응이 달라, 기록이 꼭 필요해요.',
-        '부모가 없으면 아이를 설명할 수가 없어요.',
-        '정보는 있지만, 정리된 구조가 없어요.'
+        '그래도 우리 아이는 너무 귀하고 사랑스러워요.',
+        '완벽해서가 아니라, 세상에서 하나뿐인 소중한 존재예요.',
+        '지금은 누구보다 든든한 짝꿍처럼 함께 살아가고 있어요.'
       ];
-      /* 브랜드 컬러 4색 — 신뢰 · 이해 · 연결 · 성장 */
+      /* 가치 5 — 2차 양육자 리뷰·인트로 시안 반영 (기록·이해·공유·안심·함께 성장) */
       var values = [
-        { c: 'var(--brand-trust)', tag: '#신뢰', t: '믿고 맡기는 안전함',
-          d: '보호자 인증과 공개 범위 설정으로, 아이의 정보는 허락된 사람에게만 전해집니다.' },
-        { c: 'var(--brand-understand)', tag: '#이해', t: '아이를 깊이 아는 기록',
-          d: '좋아하는 것·힘들어하는 것·대처 방법까지, 처음 만나는 사람도 바로 이해하도록.' },
-        { c: 'var(--brand-connect)', tag: '#연결', t: '돌봄의 모든 주체를 잇다',
-          d: '가족·학교·병원·치료실이 같은 정보로 연결되어 아이를 함께 돌봅니다.' },
-        { c: 'var(--brand-grow)', tag: '#성장', t: '기록이 데이터가 되다',
-          d: '꾸준히 쌓인 기록 속에서 아이의 작은 변화와 성장을 함께 발견합니다.' }
+        { i: 'note',   c: 'var(--c-comm)',             b: 'var(--c-comm-bg)',             t: '기록',
+          d: '우리 아이의 일상을 소중하게 기록해요.' },
+        { i: 'heart',  c: 'var(--brand-understand)',   b: 'var(--brand-understand-soft)', t: '이해',
+          d: '아이의 특성과 마음을 더 깊이 이해해요.' },
+        { i: 'share',  c: 'var(--brand-connect)',      b: 'var(--brand-connect-soft)',    t: '공유',
+          d: '필요한 사람과 안전하게 정보를 공유해요.' },
+        { i: 'shield', c: 'var(--primary-dark)',       b: 'var(--primary-soft)',          t: '안심',
+          d: '언제 어디서나 아이를 안심하고 맡겨요.' },
+        { i: 'sprout', c: 'var(--brand-grow)',         b: 'var(--brand-grow-soft)',       t: '함께 성장',
+          d: '지금의 기록이 아이의 내일이 됩니다.' }
       ];
       var steps = [
         { t: '회원가입 후 아이를 등록해요', d: '기본정보·장애 특성·약물·알레르기·응급 대응 정보를 입력합니다.' },
@@ -207,12 +211,15 @@
           spark('8%', '24%', 16) + spark('21%', '68%', 11) + spark('86%', '58%', 20) +
           spark('72%', '20%', 13) +
           '<div class="hero-inner">' +
-            '<div class="eyebrow">' + icon('sparkle', 14) +
-            '발달장애 아이를 한 장으로 설명하는 서비스</div>' +
-            '<h1>우리 아이를,<br><span class="em">누구나 이해하도록</span></h1>' +
-            '<p>좋아하는 것, 의사소통 방법, 감각 특성, 도전적 행동과 지원 방법까지 — ' +
-            '흩어진 우리 아이의 이야기를 모아 <b>「내 아이 설명서」</b> 한 부로. ' +
-            '학교·병원·치료실, 누구를 만나도 다시 설명할 필요 없이 전하세요.</p>' +
+            '<div class="eyebrow">' + icon('heart', 14) +
+            '우리 아이를 이해하는 모든 연결의 시작</div>' +
+            '<h1>너는 너답게,<br>나는 <span class="em">너의 편</span></h1>' +
+            '<p><b>우리 아이는 세상에서 하나뿐인 소중한 존재입니다.</b> ' +
+            '좋아하는 것, 통하는 방법, 도전적 행동과 지원 방법까지 ' +
+            '<b>「내 아이 설명서」</b> 한 장에 담아 — 아이를 이해하고 함께 성장해 가는 여정, ' +
+            'Stellar Connect가 함께할게요.</p>' +
+            '<div class="hero-pill">' + icon('heart', 15) +
+            '우리 아이를 더 깊이 이해하면, 더 따뜻한 연결이 시작됩니다.</div>' +
             '<div class="cta">' +
               '<button class="btn btn-accent btn-lg" onclick="App.navigate(\'#/signup\')">' +
                 icon('sparkle', 18) + '무료로 시작하기</button>' +
@@ -244,29 +251,25 @@
           '</div>' +
         '</section>' +
 
-        /* OUR PROMISE — 신뢰 · 이해 · 연결 · 성장 */
+        /* OUR VALUE — 기록 · 이해 · 공유 · 안심 · 함께 성장 (2차 리뷰 시안) */
         '<section class="section glow-sec">' +
           '<div class="lp-section">' +
             '<div class="section-head">' +
-              '<div class="eyebrow">OUR PROMISE</div>' +
-              '<h2>아이 곁에서 지키는 네 가지 약속</h2>' +
-              '<p><b style="color:var(--brand-trust)">신뢰</b> · ' +
-              '<b style="color:var(--brand-understand)">이해</b> · ' +
-              '<b style="color:var(--brand-connect)">연결</b> · ' +
-              '<b style="color:var(--brand-grow)">성장</b> — ' +
-              'Stellar Connect가 아이와 가족 곁에서 지키는 약속입니다.</p>' +
+              '<div class="eyebrow">OUR VALUE</div>' +
+              '<h2>Stellar Connect는 이런 가치를 전합니다</h2>' +
+              '<p>완벽한 기록을 위해서가 아니라, 아이를 향한 따뜻한 이해를 위해.</p>' +
             '</div>' +
-            '<div class="value-grid">' + values.map(function (v) {
-              return '<div class="value-card" style="--vc:' + v.c + '">' +
-                '<div class="value-dot"></div>' +
-                '<div class="value-tag">' + esc(v.tag) + '</div>' +
+            '<div class="gentle-grid">' + values.map(function (v) {
+              return '<div class="gentle-card">' +
+                '<div class="g-ico" style="background:' + v.b + ';color:' + v.c + '">' +
+                  icon(v.i, 24) + '</div>' +
                 '<h3>' + esc(v.t) + '</h3>' +
                 '<p>' + esc(v.d) + '</p></div>';
             }).join('') + '</div>' +
           '</div>' +
         '</section>' +
 
-        /* WHY — 손 사진 + 양육자 목소리 (2단 구성) */
+        /* 함께 걸어가요 — 위로와 희망 (2차 양육자 리뷰: 기능 설명보다 공감을 먼저) */
         '<section class="section why-sec">' +
           spark('5%', '12%', 11) + spark('94%', '84%', 13) +
           '<div class="lp-section">' +
@@ -275,20 +278,22 @@
                 '<img src="assets/img/star-hands.jpg" ' +
                   'alt="두 손 위에서 따뜻하게 빛나는 별" loading="lazy" ' +
                   'width="880" height="704">' +
-                '<p class="star-quote">“아이마다 다른 빛,<br>우리는 연결되어 더 빛납니다.”</p>' +
+                '<p class="star-quote">“완벽해서가 아니라,<br>세상에서 하나뿐인 소중한 존재”</p>' +
               '</div>' +
               '<div class="why-content">' +
                 '<div class="section-head">' +
-                  '<div class="eyebrow">WHY</div>' +
-                  '<h2>경험은 있지만,<br>기록되지 않습니다</h2>' +
-                  '<p>발달장애 자녀를 키우는 가족에게는 누구보다 깊은 경험이 쌓여 있습니다. ' +
-                  '하지만 그 경험은 부모의 기억 속에만 머무릅니다.</p>' +
+                  '<div class="eyebrow">함께 걸어가요</div>' +
+                  '<h2>완벽하지 않아도 괜찮아요.<br>우리는 함께 걸어가고 있어요.</h2>' +
+                  '<p>처음엔 막막하고 힘들었던 시간도 있었죠. 그래도 우리 아이는 매일 조금씩 성장하고, ' +
+                  '우리도 부모로서 함께 성장하고 있어요. Stellar Connect는 그 여정을 응원합니다.</p>' +
                 '</div>' +
                 '<div class="quote-stack">' + quotes.map(function (q) {
                   return '<div class="quote-card"><div class="qmark">“</div>' +
                     '<p>' + esc(q) + '</p>' +
-                    '<div class="who">— 발달장애 자녀 양육자 인터뷰 중</div></div>';
+                    '<div class="who">— 양육자 프로토타입 리뷰 중에서</div></div>';
                 }).join('') + '</div>' +
+                '<div class="soft-pill">' + icon('lock', 15) +
+                  '소중한 정보는 안전하게 보호됩니다.</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -301,7 +306,9 @@
               '<div class="eyebrow">WHY 내 아이 설명서</div>' +
               '<h2>기록하는 앱이 아니라,<br>이해하게 만드는 서비스</h2>' +
               '<p>매일 일기를 쌓는 것이 목적이 아닙니다. 우리 아이를 처음 만나는 사람도 ' +
-              '바로 이해하도록 — 그리고 그 결과물을 손에 쥐어 드립니다.</p>' +
+              '바로 이해하도록 — 그리고 그 결과물을 손에 쥐어 드립니다. ' +
+              '양육자분들은 이 서비스를 <b>“부모를 대신하여 우리 아이를 이해해 주는 플랫폼”</b>이라 ' +
+              '불러 주셨습니다.</p>' +
             '</div>' +
             '<div class="grid grid-4">' + [
               { i: 'heart',  t: '이해 중심',     d: '좋아함·의사소통·감각·도전적 행동과 지원 방법을 체계적으로 정리' },
@@ -416,9 +423,9 @@
             '<div class="closing-band">' +
               spark('8%', '22%', 14) + spark('86%', '28%', 16) + spark('14%', '76%', 11) +
               spark('72%', '78%', 13) + spark('48%', '12%', 10) +
-              '<h2>한 아이를 이해하는 일이,<br>세상을 <span class="em">연결</span>하는 시작입니다.</h2>' +
-              '<p>Stellar Connect는 아이와 가족, 그리고 사회가 함께 성장하는 ' +
-              '따뜻한 연결을 만들어갑니다. 우리 아이의 첫 페이지를 지금 시작하세요.</p>' +
+              '<h2>지금, 우리 아이의 <span class="em">이야기</span>를<br>시작해 볼까요?</h2>' +
+              '<p>한 줄이면 충분해요. 오늘의 작은 기록이, ' +
+              '우리 아이를 이해하는 따뜻한 연결이 됩니다.</p>' +
               '<div class="cta">' +
                 '<button class="btn btn-accent btn-lg" onclick="App.navigate(\'#/signup\')">' +
                   icon('sparkle', 18) + '무료로 시작하기</button>' +

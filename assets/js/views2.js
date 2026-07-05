@@ -51,11 +51,25 @@
           }).join('') + '</select>';
       }
       return '<input class="input" data-f="' + f.k + '" placeholder="' + esc(f.ph || '') +
-        '" value="' + esc(vals[f.k] || '') + '" style="' + flex + '">';
+        '" value="' + esc(vals[f.k] || '') + '" style="' + flex + ';min-width:120px">';
     }).join('');
-    return '<div class="dyn-row" style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start">' +
+    return '<div class="dyn-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:flex-start">' +
       inner + '<button type="button" class="btn-icon dyn-del" style="flex:none">' +
       icon('x', 16) + '</button></div>';
+  }
+
+  /* 약물 입력 필드 — 2차 양육자 리뷰: 용량·복용시간·시작/종료일·보호자 메모 */
+  var MED_FIELDS = [
+    { k: 'name', ph: '약 이름', flex: 1.2 },
+    { k: 'dose', ph: '용량 (예: 5mg 1정)' },
+    { k: 'time', ph: '복용 시간 (예: 아침·저녁 식후)' },
+    { k: 'period', ph: '기간 (예: 3/2 ~ 계속)' },
+    { k: 'note', ph: '보호자 메모', flex: 1.4 }
+  ];
+  /* 약 정보 검색 링크 — 약학정보원 등에서 상세 확인 (2차 리뷰 요청) */
+  function drugInfoURL(name) {
+    return 'https://search.naver.com/search.naver?query=' +
+      encodeURIComponent((name || '') + ' 의약품 정보');
   }
 
   /* ---------- 빠른 입력 프리셋 (6/10 회의 반영 — 직접 쓰지 않아도 탭 한 번으로) ---------- */
@@ -79,12 +93,17 @@
     comm: [
       '짧고 명확한 문장으로 말해 주세요', '그림 카드(AAC)로 소통해요',
       '손짓·몸짓을 함께 보여 주세요', '두 가지 중에서 고르게 해 주세요',
-      '시각적 일정표가 도움이 돼요', '대답할 시간을 충분히 기다려 주세요'
+      '시각적 일정표가 도움이 돼요', '대답할 시간을 충분히 기다려 주세요',
+      /* 2차 양육자 리뷰 — 의사소통 수준·표현 방법·감정 표현 */
+      '단어와 짧은 문장(2~3어절)으로 표현해요', '불편하면 말 대신 몸짓·행동으로 먼저 표현해요',
+      '기쁘면 크게 웃고, 속상하면 조용해져요'
     ],
     routine: [
       '아침 7시에 일어나 세수하고 옷을 입어요', '등교 전 좋아하는 음악을 들어요',
       '하교 후 간식을 먹고 30분 쉬어요', '주 2회 치료실 수업이 있어요',
-      '저녁 8시 목욕 후 책을 한 권 읽어요', '밤 9시 30분에 잠자리에 들어요'
+      '저녁 8시 목욕 후 책을 한 권 읽어요', '밤 9시 30분에 잠자리에 들어요',
+      /* 2차 양육자 리뷰 — 자조활동·하루 일정 */
+      '세수·양치는 순서표가 있으면 스스로 해요', '그림 시간표로 하루 일정을 확인하면 안정돼요'
     ],
     safety: [
       '찻길·주차장에서는 꼭 손을 잡아 주세요', '잠깐이라도 혼자 두지 말아 주세요',
@@ -198,8 +217,14 @@
             return '<div class="item-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
               '<div class="txt"><b>' + esc(m.name) + '</b> ' + esc(m.dose || '') +
               (m.time ? ' · ' + esc(m.time) : '') +
-              (m.note ? '<div class="resp">' + esc(m.note) + '</div>' : '') + '</div></div>';
-          }).join('')
+              (m.period ? ' · ' + esc(m.period) : '') +
+              ' <a href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
+                'class="badge" style="text-decoration:none;color:var(--primary);cursor:pointer">' +
+                '정보 검색</a>' +
+              (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div></div>';
+          }).join('') +
+          '<p class="faint" style="font-size:.78rem;margin-top:8px">‘정보 검색’은 약학정보원 등 ' +
+            '공개 의약품 정보를 새 창으로 찾아 드려요.</p>'
         : '<p class="muted" style="font-size:.9rem">등록된 약물이 없습니다.</p>';
 
       var allg = child.allergies.length
@@ -514,12 +539,7 @@
 
       var d = child.disability;
       var medRows = child.medications.length
-        ? child.medications.map(function (m) {
-            return dynRow([
-              { k: 'name', ph: '약 이름', flex: 1.2 }, { k: 'dose', ph: '용량' },
-              { k: 'time', ph: '복용 시간' }, { k: 'note', ph: '메모', flex: 1.4 }
-            ], m);
-          }).join('')
+        ? child.medications.map(function (m) { return dynRow(MED_FIELDS, m); }).join('')
         : '';
       var allgRows = child.allergies.length
         ? child.allergies.map(function (a) {
@@ -620,6 +640,10 @@
           '<div id="med-rows">' + medRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-med">' +
             icon('plus', 15) + '약물 추가</button>' +
+          '<p class="faint" style="font-size:.8rem;margin-top:10px">약 이름·용량이 정확하지 않다면 ' +
+            '<a href="https://www.health.kr" target="_blank" rel="noopener" ' +
+            'style="color:var(--primary);font-weight:700">약학정보원</a>에서 확인할 수 있어요. ' +
+            '저장 후 프로필에서 약별 정보 검색도 지원됩니다.</p>' +
         '</div></div>' +
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
@@ -673,10 +697,7 @@
           UI.el(rowsId).insertAdjacentHTML('beforeend', dynRow(fields, {}));
         };
       }
-      bindAdd('add-med', 'med-rows', [
-        { k: 'name', ph: '약 이름', flex: 1.2 }, { k: 'dose', ph: '용량' },
-        { k: 'time', ph: '복용 시간' }, { k: 'note', ph: '메모', flex: 1.4 }
-      ]);
+      bindAdd('add-med', 'med-rows', MED_FIELDS);
       bindAdd('add-allg', 'allg-rows', [
         { k: 'name', ph: '알레르기 항목', flex: 1.2 },
         { k: 'reaction', ph: '증상/반응', flex: 1.6 },
@@ -715,7 +736,7 @@
           type: f.dtype || '자폐 스펙트럼 장애', diagnosedAt: f.ddate,
           summary: f.dsummary, sensory: joinSensory(picked, f.dsensoryMemo)
         };
-        base.medications = readRows(UI.el('med-rows'), ['name', 'dose', 'time', 'note']);
+        base.medications = readRows(UI.el('med-rows'), ['name', 'dose', 'time', 'period', 'note']);
         base.allergies = readRows(UI.el('allg-rows'), ['name', 'reaction', 'severity']);
         base.emergency = {
           protocol: f.eprotocol, hospital: f.ehospital, doctor: f.edoctor,
@@ -1206,23 +1227,29 @@
      같은 데이터를 대상에 맞는 섹션만 골라 한 장으로 — 반복 설명 부담 해소 */
   /* 대상별 우선순위·순서는 양육자 자문회의 확정안(기관별 구성항목 표)을 따른다.
      intro = 기관별 '핵심 질문'(자문안) + 목적. */
+  /* 블록 순서 = 2차 양육자 리뷰 확정 — “가장 먼저 보여야 하는 정보”부터
+     (알레르기·응급정보는 모든 설명서 최상단 응급 블록에 항상 고정) */
   var AUDIENCES = {
     school: { label: '학교용', short: '학교', icon: 'school', color: 'var(--brand-connect)',
       purpose: '학교 적응 및 학습 지원',
       intro: '“선생님이 우리 아이를 가장 빨리 이해하려면?” — 학교 적응·학습 지원을 위한 안내입니다.',
-      blocks: ['comm', 'sensory', 'likeDislike', 'problem', 'canDo', 'needHelp', 'health'] },
+      /* 우선: 의사소통 · 도움 필요 · 생활루틴 · 도전적 행동 대응 */
+      blocks: ['comm', 'needHelp', 'routine', 'problem', 'sensory', 'likeDislike', 'canDo', 'health'] },
     hospital: { label: '병원용', short: '병원', icon: 'hospital', color: 'var(--brand-grow)',
       purpose: '진료 및 건강관리 지원',
       intro: '“의사가 진료 전에 무엇을 알면 좋을까?” — 진료·건강관리 지원을 위한 안내입니다.',
+      /* 우선: 진단정보 · 약물 · 복약이력 (알레르기·응급은 최상단 고정) */
       blocks: ['diagnosis', 'meds', 'history', 'problem', 'comm', 'parentNote'] },
     support: { label: '활동지원사용', short: '활동지원', icon: 'user', color: 'var(--brand-understand)',
       purpose: '일상생활 지원',
       intro: '“활동지원사가 처음 만났을 때 무엇을 알아야 할까?” — 일상생활 지원을 위한 안내입니다.',
-      blocks: ['comm', 'problem', 'routine', 'safety', 'sensory', 'needHelp', 'handover'] },
+      /* 우선: 생활루틴 · 의사소통 · 도전적 행동 대응 */
+      blocks: ['routine', 'comm', 'problem', 'safety', 'sensory', 'needHelp', 'handover'] },
     care: { label: '돌봄기관용', short: '돌봄기관', icon: 'users', color: 'var(--primary)',
       purpose: '프로그램 참여 지원',
       intro: '“복지관·주간보호센터 담당자가 시행착오 없이 지원하려면?” — 프로그램 참여 지원을 위한 안내입니다.',
-      blocks: ['likeDislike', 'comm', 'sensory', 'problem', 'canDo', 'health', 'parentNote'] }
+      /* 우선: 자조활동·생활루틴 · 생활정보 · 약물정보 */
+      blocks: ['routine', 'likeDislike', 'canDo', 'health', 'comm', 'sensory', 'problem', 'parentNote'] }
   };
   V._AUDIENCES = AUDIENCES;
 
@@ -1232,7 +1259,8 @@
       '<span class="dot" style="background:var(--c-comm)"></span>복용 약물</div><ul>';
     child.medications.forEach(function (m) {
       med += '<li>' + esc(m.name) + ' ' + esc(m.dose || '') +
-        (m.time ? ' · ' + esc(m.time) : '') + (m.note ? ' — ' + esc(m.note) : '') + '</li>';
+        (m.time ? ' · ' + esc(m.time) : '') + (m.period ? ' · ' + esc(m.period) : '') +
+        (m.note ? ' — ' + esc(m.note) : '') + '</li>';
     });
     return med + '</ul></div>';
   }
@@ -1263,7 +1291,7 @@
       (e.doctor ? ' · ' + esc(e.doctor) : '') + '</li>';
     (child.medications || []).forEach(function (m) {
       li += '<li><b>복약</b> · ' + esc(m.name) + ' ' + esc(m.dose || '') +
-        (m.time ? ' · ' + esc(m.time) : '') + '</li>';
+        (m.time ? ' · ' + esc(m.time) : '') + (m.period ? ' · ' + esc(m.period) : '') + '</li>';
     });
     if (!li) return '';
     return '<div class="summary-block"><div class="blk-title">' +
