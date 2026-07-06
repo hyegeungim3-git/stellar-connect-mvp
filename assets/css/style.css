@@ -456,9 +456,11 @@ b, strong { font-weight: 700; }
 
 .hero {
   position: relative; overflow: hidden;
-  /* 드리미 파스텔 — 페리윙클 그라데이션 + 이해(퍼플)·성장(틸) 빛 번짐 */
+  /* 드리미 파스텔 — 페리윙클 그라데이션 + 이해(퍼플)·성장(틸) 빛 번짐
+     + 우측 웜 크림 글로우 (아이들 일러스트가 자연스럽게 앉는 자리) */
   background:
-    radial-gradient(950px 520px at 86% 6%, rgba(108,99,221,.20), transparent 62%),
+    radial-gradient(680px 520px at 82% 46%, rgba(255,247,230,.92), transparent 68%),
+    radial-gradient(950px 520px at 86% 6%, rgba(108,99,221,.16), transparent 62%),
     radial-gradient(760px 460px at 6% 96%, rgba(45,161,149,.16), transparent 60%),
     radial-gradient(1200px 640px at 50% -28%, rgba(255,255,255,.72), transparent 62%),
     linear-gradient(163deg, #e7edfc 0%, #ccd8f7 44%, #b3c2ef 78%, #a8b5e9 100%);
@@ -495,17 +497,22 @@ b, strong { font-weight: 700; }
 .hero .trust {
   margin-top: 30px; display: flex; gap: 20px; flex-wrap: wrap;
   font-size: .85rem; font-weight: 600; color: #44518e;
+  max-width: 560px;   /* 우측 일러스트와 겹치지 않게 */
 }
 .hero .trust span { display: flex; align-items: center; gap: 7px; }
 .hero .trust svg { width: 16px; height: 16px; color: #1f8d81; }
 .hero-spark { position: absolute; color: rgba(255,255,255,.85); z-index: 1;
   filter: drop-shadow(0 0 6px rgba(124,134,220,.6)); }
-.hero-card {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 3;
-  width: 318px; background: rgba(255,255,255,.92); border-radius: var(--radius-lg);
-  border: 1px solid #fff;
-  box-shadow: 0 24px 60px rgba(31,42,92,.18); padding: 20px; color: var(--text);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+.hero-spark.hs-heart { color: #f2a9c4; filter: drop-shadow(0 0 6px rgba(242,169,196,.6)); }
+/* 인트로 시안 일러스트 — 풀밭 위 두 아이 (가장자리는 페더 마스크로 배경에 녹임) */
+.hero-illust {
+  position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+  width: min(500px, 40vw); z-index: 1; pointer-events: none;
+}
+.hero-illust img {
+  width: 100%; height: auto; display: block;
+  -webkit-mask-image: radial-gradient(70% 72% at 50% 54%, #000 42%, transparent 88%);
+  mask-image: radial-gradient(70% 72% at 50% 54%, #000 42%, transparent 88%);
 }
 
 .section { padding: 76px 0; }
@@ -954,6 +961,8 @@ table.tbl td.actions { white-space: nowrap; }
 /* ---------- 중간 데스크톱: 그리드 약간 축소 ---------- */
 @media (max-width: 1120px) {
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 태블릿 가로 — 히어로 일러스트를 줄여 텍스트와 겹치지 않게 */
+  .hero-illust { width: min(430px, 34vw); }
 }
 
 /* ---------- 앱 모드 (태블릿·모바일 공통, ≤ 960px) ---------- */
@@ -1009,9 +1018,12 @@ table.tbl td.actions { white-space: nowrap; }
   .modal-foot { padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px)); }
   .drawer { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
 
-  /* 랜딩 */
-  .hero-card { display: none; }
-  .hero-inner { padding: 56px 20px 60px; }
+  /* 랜딩 — 일러스트는 모바일에서 텍스트 아래로 (감성 핵심이라 숨기지 않음) */
+  .hero-illust {
+    position: static; transform: none;
+    width: min(430px, 92vw); margin: 22px auto -18px;
+  }
+  .hero-inner { padding: 56px 20px 60px; display: flex; flex-direction: column; }
   .hero h1 { font-size: 2rem; }
   .section { padding: 56px 0; }
   .mission { padding: 40px 28px; }
@@ -1212,16 +1224,15 @@ table.tbl td.actions { white-space: nowrap; }
   gap: 56px; align-items: center;
 }
 .why-visual { text-align: center; position: relative; }
+/* 손+별 일러스트 — 밤하늘 라운드 카드 (인트로 시안) */
 .why-visual img {
-  position: relative; width: min(360px, 78vw); height: auto;
-  aspect-ratio: 1; object-fit: cover; display: inline-block;
-  border-radius: 50%;
+  position: relative; width: min(440px, 86vw); height: auto;
+  display: inline-block;
+  border-radius: 26px;
   border: 6px solid rgba(255,255,255,.95);
-  /* 동심원 링 — 이미지에 직접 붙어 절대 어긋나지 않음 */
   box-shadow:
-    0 0 0 14px rgba(124,134,220,.12),
-    0 0 0 30px rgba(124,134,220,.05),
-    0 26px 52px -18px rgba(31,42,92,.30);
+    0 0 0 12px rgba(124,134,220,.10),
+    0 26px 52px -18px rgba(31,42,92,.28);
 }
 .star-quote {
   margin-top: 18px; font-style: italic; font-weight: 700;
@@ -1242,7 +1253,7 @@ table.tbl td.actions { white-space: nowrap; }
 @media (max-width: 880px) {
   .why-grid { grid-template-columns: 1fr; gap: 34px; }
   .why-content .section-head { text-align: center; }
-  .why-visual img { width: min(300px, 74vw); }
+  .why-visual img { width: min(380px, 86vw); }
   .star-quote { font-size: 1.02rem; }
 }
 

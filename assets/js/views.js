@@ -183,14 +183,6 @@
         var c = STEP_C[i % STEP_C.length];
         return '--sn1:' + c[0] + ';--sn2:' + c[1];
       }
-      var miniRow = function (color, label, txt) {
-        return '<div style="display:flex;gap:8px;align-items:center;font-size:.82rem">' +
-          '<span style="width:9px;height:9px;border-radius:3px;background:' + color + ';flex:none"></span>' +
-          '<b style="flex:none">' + label + '</b>' +
-          '<span class="faint" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-          txt + '</span></div>';
-      };
-
       return '<div class="landing">' +
         /* 상단 바 */
         '<div class="lp-bar">' +
@@ -231,23 +223,13 @@
               '<span>' + icon('print', 16) + '학교·병원용 대상별 설명서로 바로 출력</span>' +
               '<span>' + icon('shield', 16) + '보호자 인증·안심번호 기반 안전한 공유</span>' +
             '</div>' +
-            '<div class="hero-card">' +
-              '<div class="row gap-sm" style="margin-bottom:14px">' +
-                '<div class="avatar" style="width:42px;height:42px;border-radius:13px">' +
-                  '<img src="assets/img/child-junho.jpg" alt=""></div>' +
-                '<div><div style="font-weight:800;font-size:.96rem">이준호 설명서</div>' +
-                '<div class="faint" style="font-size:.74rem">만 7세 · 자폐 스펙트럼</div></div>' +
-                '<span class="badge ok dot" style="margin-left:auto">인증</span>' +
-              '</div>' +
-              '<div style="display:flex;flex-direction:column;gap:9px">' +
-                miniRow('var(--c-cando)', '할 수 있어요', '혼자 옷을 입어요') +
-                miniRow('var(--c-like)', '좋아해요', '기차, 파란색, 퍼즐') +
-                miniRow('var(--c-comm)', '의사소통', '짧고 명확한 문장으로') +
-              '</div>' +
-              '<div style="margin-top:14px;padding-top:13px;border-top:1px solid var(--border);' +
-                'display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--primary-dark);font-weight:700">' +
-                icon('print', 14) + '학교·병원용 설명서로 공유 준비 완료</div>' +
+            /* 인트로 시안 일러스트 — 풀밭 위 두 아이 (따뜻한 수채화 톤) */
+            '<div class="hero-illust" aria-hidden="true">' +
+              '<img src="assets/img/intro-kids.jpg" alt="" loading="eager" ' +
+                'width="554" height="430">' +
             '</div>' +
+            '<span class="hero-spark hs-heart" style="left:56%;top:16%">' + icon('heart', 15) + '</span>' +
+            '<span class="hero-spark hs-heart" style="left:88%;top:74%">' + icon('heart', 12) + '</span>' +
           '</div>' +
         '</section>' +
 
@@ -275,9 +257,9 @@
           '<div class="lp-section">' +
             '<div class="why-grid">' +
               '<div class="why-visual">' +
-                '<img src="assets/img/star-hands.jpg" ' +
-                  'alt="두 손 위에서 따뜻하게 빛나는 별" loading="lazy" ' +
-                  'width="880" height="704">' +
+                '<img src="assets/img/intro-hands-star.jpg" ' +
+                  'alt="두 손 위에서 웃고 있는 별 일러스트" loading="lazy" ' +
+                  'width="500" height="325">' +
                 '<p class="star-quote">“완벽해서가 아니라,<br>세상에서 하나뿐인 소중한 존재”</p>' +
               '</div>' +
               '<div class="why-content">' +
