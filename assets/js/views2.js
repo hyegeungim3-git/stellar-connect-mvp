@@ -1248,8 +1248,8 @@
     care: { label: '돌봄기관용', short: '돌봄기관', icon: 'users', color: 'var(--primary)',
       purpose: '프로그램 참여 지원',
       intro: '“복지관·주간보호센터 담당자가 시행착오 없이 지원하려면?” — 프로그램 참여 지원을 위한 안내입니다.',
-      /* 우선: 자조활동·생활루틴 · 생활정보 · 약물정보 */
-      blocks: ['routine', 'likeDislike', 'canDo', 'health', 'comm', 'sensory', 'problem', 'parentNote'] }
+      /* 우선(2차 리뷰 §4): 자조활동 · 생활정보 · 약물정보 */
+      blocks: ['canDo', 'routine', 'likeDislike', 'health', 'comm', 'sensory', 'problem', 'parentNote'] }
   };
   V._AUDIENCES = AUDIENCES;
 
