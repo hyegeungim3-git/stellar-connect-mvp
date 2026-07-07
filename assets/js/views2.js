@@ -50,6 +50,13 @@
             return '<option' + (vals[f.k] === o ? ' selected' : '') + '>' + esc(o) + '</option>';
           }).join('') + '</select>';
       }
+      if (f.type === 'date') {
+        /* 날짜 입력은 placeholder가 안 보이므로 라벨을 위에 표기 */
+        return '<label class="dyn-date" style="' + flex + ';min-width:130px">' +
+          '<span class="dyn-lbl">' + esc(f.label || '') + '</span>' +
+          '<input class="input" type="date" data-f="' + f.k + '" ' +
+          'value="' + esc(vals[f.k] || '') + '"></label>';
+      }
       return '<input class="input" data-f="' + f.k + '" placeholder="' + esc(f.ph || '') +
         '" value="' + esc(vals[f.k] || '') + '" style="' + flex + ';min-width:120px">';
     }).join('');
@@ -58,14 +65,26 @@
       icon('x', 16) + '</button></div>';
   }
 
-  /* 약물 입력 필드 — 2차 양육자 리뷰: 용량·복용시간·시작/종료일·보호자 메모 */
+  /* 약물 입력 필드 — 2차 양육자 리뷰: 용량·복용시간·시작/종료일(달력)·보호자 메모 */
   var MED_FIELDS = [
     { k: 'name', ph: '약 이름', flex: 1.2 },
     { k: 'dose', ph: '용량 (예: 5mg 1정)' },
     { k: 'time', ph: '복용 시간 (예: 아침·저녁 식후)' },
-    { k: 'period', ph: '기간 (예: 3/2 ~ 계속)' },
+    { k: 'startDate', label: '시작일', type: 'date', flex: .9 },
+    { k: 'endDate', label: '종료일 (계속 복용이면 비워두세요)', type: 'date', flex: .9 },
     { k: 'note', ph: '보호자 메모', flex: 1.4 }
   ];
+  var MED_KEYS = MED_FIELDS.map(function (f) { return f.k; });
+  /* 복용 기간 표시 — 시작일~종료일(달력)에서 생성, 없으면 레거시 period 텍스트 호환 */
+  function medPeriod(m) {
+    if (m.startDate) {
+      var s = m.startDate.replace(/-/g, '.');
+      var e = m.endDate ? m.endDate.replace(/-/g, '.') : '계속';
+      return s + ' ~ ' + e;
+    }
+    return m.period || '';
+  }
+  V._medPeriod = medPeriod;
   /* 약 정보 검색 링크 — 약학정보원 등에서 상세 확인 (2차 리뷰 요청) */
   function drugInfoURL(name) {
     return 'https://search.naver.com/search.naver?query=' +
@@ -217,7 +236,7 @@
             return '<div class="item-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
               '<div class="txt"><b>' + esc(m.name) + '</b> ' + esc(m.dose || '') +
               (m.time ? ' · ' + esc(m.time) : '') +
-              (m.period ? ' · ' + esc(m.period) : '') +
+              (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
               ' <a href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
                 'class="badge" style="text-decoration:none;color:var(--primary);cursor:pointer">' +
                 '정보 검색</a>' +
@@ -736,7 +755,7 @@
           type: f.dtype || '자폐 스펙트럼 장애', diagnosedAt: f.ddate,
           summary: f.dsummary, sensory: joinSensory(picked, f.dsensoryMemo)
         };
-        base.medications = readRows(UI.el('med-rows'), ['name', 'dose', 'time', 'period', 'note']);
+        base.medications = readRows(UI.el('med-rows'), MED_KEYS);
         base.allergies = readRows(UI.el('allg-rows'), ['name', 'reaction', 'severity']);
         base.emergency = {
           protocol: f.eprotocol, hospital: f.ehospital, doctor: f.edoctor,
@@ -1259,7 +1278,7 @@
       '<span class="dot" style="background:var(--c-comm)"></span>복용 약물</div><ul>';
     child.medications.forEach(function (m) {
       med += '<li>' + esc(m.name) + ' ' + esc(m.dose || '') +
-        (m.time ? ' · ' + esc(m.time) : '') + (m.period ? ' · ' + esc(m.period) : '') +
+        (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
         (m.note ? ' — ' + esc(m.note) : '') + '</li>';
     });
     return med + '</ul></div>';
@@ -1291,7 +1310,7 @@
       (e.doctor ? ' · ' + esc(e.doctor) : '') + '</li>';
     (child.medications || []).forEach(function (m) {
       li += '<li><b>복약</b> · ' + esc(m.name) + ' ' + esc(m.dose || '') +
-        (m.time ? ' · ' + esc(m.time) : '') + (m.period ? ' · ' + esc(m.period) : '') + '</li>';
+        (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') + '</li>';
     });
     if (!li) return '';
     return '<div class="summary-block"><div class="blk-title">' +

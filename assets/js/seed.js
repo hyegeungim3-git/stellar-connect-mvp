@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 9;   // 데모 데이터 변경 시 이 숫자를 올린다
+  var SEED_VERSION = 10;   // 데모 데이터 변경 시 이 숫자를 올린다
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -77,7 +77,7 @@
         sensory: '청각 과민(큰 소리·예고 없는 소음에 강하게 반응) / 촉각 예민(끈적한 질감 회피) / 시각 — 밝은 형광등 불편'
       },
       medications: [
-        { name: '멜라토닌', dose: '3mg', time: '취침 30분 전', note: '수면 패턴 보조. 주치의 처방.' }
+        { name: '멜라토닌', dose: '3mg', time: '취침 30분 전', startDate: '2026-03-02', endDate: '', note: '수면 패턴 보조. 주치의 처방.' }
       ],
       allergies: [
         { name: '땅콩', reaction: '두드러기·호흡곤란', severity: '중증' },

@@ -119,8 +119,8 @@ body {
                'Malgun Gothic', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  font-size: 15.5px;
-  line-height: 1.62;
+  font-size: 16px;
+  line-height: 1.68;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   word-break: keep-all;
@@ -142,6 +142,15 @@ h2 { font-size: 1.26rem; }
 h3 { font-size: 1.05rem; }
 small { font-size: .82rem; }
 b, strong { font-weight: 700; }
+
+/* 가독성(2차 리뷰 §3-④) — 읽기 영역 줄 간격·간격 여유, 정보 밀집 시 시각 구분 */
+.summary-block ul li,
+.item-row .txt,
+.kv-card p,
+p.muted { line-height: 1.72; }
+.summary-block ul li { padding: 3px 0; }
+.summary-block ul li + li { border-top: 1px solid var(--border); margin-top: 2px; padding-top: 7px; }
+.field + .field { margin-top: 14px; }
 
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -368,6 +377,10 @@ b, strong { font-weight: 700; }
 }
 .field-row { display: flex; gap: 14px; }
 .field-row > * { flex: 1; }
+/* 동적 입력 행의 날짜 필드 — 위에 작은 라벨(달력 입력은 placeholder 미표시) */
+.dyn-date { display: flex; flex-direction: column; gap: 3px; }
+.dyn-date .dyn-lbl { font-size: .72rem; font-weight: 700; color: var(--text-muted); padding-left: 2px; }
+.dyn-date input[type="date"] { min-width: 0; }
 .checkline { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
 .checkline input { width: 19px; height: 19px; accent-color: var(--primary); flex: none; }
 .seg {

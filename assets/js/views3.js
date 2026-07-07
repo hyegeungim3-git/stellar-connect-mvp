@@ -111,6 +111,11 @@
             esc(rec.content) + '</textarea>' +
             '<button type="button" class="btn btn-icon voice-btn" data-voice-id="rec-content" ' +
             'aria-label="음성 입력">' + icon('mic', 17) + '</button>' +
+          '</div>' +
+          '<div class="row gap-sm" style="margin-top:8px;flex-wrap:wrap">' +
+            '<button type="button" class="btn btn-soft btn-sm" id="rec-pull-meds">' +
+              icon('pill', 15) + '프로필 약물 불러오기</button>' +
+            '<span class="faint" style="font-size:.78rem">프로필에 등록한 약물을 기록 내용에 넣어요</span>' +
           '</div></div>' +
         '<div class="field"><label>태그 <span class="faint">(쉼표로 구분)</span></label>' +
           '<input class="input" name="tags" value="' + esc((rec.tags || []).join(', ')) +
@@ -140,6 +145,25 @@
         var vContent = root.querySelector('[data-voice-id="rec-content"]');
         if (vTitle && titleEl) UI.attachVoiceInput(vTitle, titleEl);
         if (vContent && contentEl) UI.attachVoiceInput(vContent, contentEl);
+
+        /* --- 프로필 약물 불러오기 — 등록된 약물을 기록 내용에 삽입 --- */
+        var pullBtn = root.querySelector('#rec-pull-meds');
+        if (pullBtn) pullBtn.onclick = function () {
+          var ch = Store.getChild(childId);
+          var meds = (ch && ch.medications) || [];
+          if (!meds.length) { toast('프로필에 등록된 약물이 없어요', 'err'); return; }
+          var lines = meds.map(function (m) {
+            var p = V._medPeriod ? V._medPeriod(m) : (m.period || '');
+            return '· ' + m.name + (m.dose ? ' ' + m.dose : '') +
+              (m.time ? ' · ' + m.time : '') + (p ? ' · ' + p : '') +
+              (m.note ? ' (' + m.note + ')' : '');
+          });
+          var block = '[복약 정보]\n' + lines.join('\n');
+          var cur = (contentEl.value || '').trim();
+          contentEl.value = cur ? (cur + '\n\n' + block) : block;
+          contentEl.focus();
+          toast('약물 정보를 불러왔어요', 'ok');
+        };
 
         /* --- 제목 추천 칩 — 유형에 맞춰 갱신, 탭하면 입력 --- */
         var typeSel = root.querySelector('[name="type"]');
