@@ -423,6 +423,19 @@ p.muted { line-height: 1.72; }
 }
 .chip:hover { color: var(--text); border-color: var(--border-strong); }
 .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.chip.sm { padding: 4px 10px; font-size: .78rem; gap: 4px; }
+
+/* 약물 항목 = 입력 행 + 빠른 입력 줄 */
+.med-item { margin-bottom: 14px; }
+.med-item + .med-item { border-top: 1px dashed var(--border); padding-top: 12px; }
+.med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.med-quick .mq-lbl { font-size: .74rem; font-weight: 700; color: var(--text-faint); margin-right: 2px; }
+
+/* 빈 상태 안내 — 약물·알레르기·비상연락에 항목이 하나도 없을 때 */
+#med-rows:empty::before, #allg-rows:empty::before, #ct-rows:empty::before {
+  content: attr(data-empty); display: block;
+  color: var(--text-faint); font-size: .85rem; padding: 2px 2px 10px;
+}
 
 /* 아이 컨텍스트바 칩 스크롤러 — 스크롤바 숨김 + 터치 모멘텀 */
 .ctx-chips {

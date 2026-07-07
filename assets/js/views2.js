@@ -90,6 +90,29 @@
     return m.period || '';
   }
   V._medPeriod = medPeriod;
+  /* 오늘 날짜(로컬) YYYY-MM-DD */
+  function todayLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  /* 약물 행 아래 빠른 입력 줄 — 복용 시간 원탭 + 시작일 오늘 (자유 타이핑도 그대로 가능) */
+  var MED_TIMES = ['아침 식후', '점심 식후', '저녁 식후', '자기 전'];
+  function medQuickBar(vals) {
+    vals = vals || {};
+    var t = vals.time || '';
+    var chips = MED_TIMES.map(function (m) {
+      return '<button type="button" class="chip sm' + (t.indexOf(m) >= 0 ? ' on' : '') +
+        '" data-medtime="' + esc(m) + '">' + esc(m) + '</button>';
+    }).join('');
+    return '<div class="med-quick"><span class="mq-lbl">복용 시간</span>' + chips +
+      '<button type="button" class="chip sm" data-medtoday="1">' + icon('calendar', 13) +
+      ' 시작일 오늘로</button></div>';
+  }
+  /* 약물 한 항목 = 입력 행 + 빠른 입력 줄 */
+  function medRowFull(vals) {
+    return '<div class="med-item">' + dynRow(MED_FIELDS, vals) + medQuickBar(vals) + '</div>';
+  }
+  V._medRowFull = medRowFull;
   /* 약 정보 검색 링크 — 약학정보원 등에서 상세 확인 (2차 리뷰 요청) */
   function drugInfoURL(name) {
     return 'https://search.naver.com/search.naver?query=' +
@@ -563,8 +586,8 @@
 
       var d = child.disability;
       var medRows = child.medications.length
-        ? child.medications.map(function (m) { return dynRow(MED_FIELDS, m); }).join('')
-        : '';
+        ? child.medications.map(function (m) { return medRowFull(m); }).join('')
+        : medRowFull({});   /* 빈 상태여도 첫 입력 행을 미리 보여줘 진입장벽 낮춤 */
       var allgRows = child.allergies.length
         ? child.allergies.map(function (a) {
             return dynRow([
@@ -661,7 +684,8 @@
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
           icon('pill', 18) + '</span><h3>약물 정보</h3></div><div class="card-body">' +
-          '<div id="med-rows">' + medRows + '</div>' +
+          '<div id="med-rows" data-empty="아직 등록된 약물이 없어요. ‘약물 추가’로 등록해 주세요.">' +
+            medRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-med">' +
             icon('plus', 15) + '약물 추가</button>' +
           '<p class="faint" style="font-size:.8rem;margin-top:10px">종료일을 비워 두면 ‘계속 복용’으로 표시돼요. ' +
@@ -673,7 +697,8 @@
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
           icon('alert', 18) + '</span><h3>알레르기</h3></div><div class="card-body">' +
-          '<div id="allg-rows">' + allgRows + '</div>' +
+          '<div id="allg-rows" data-empty="아직 등록된 알레르기가 없어요. ‘알레르기 추가’로 등록해 주세요.">' +
+            allgRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-allg">' +
             icon('plus', 15) + '알레르기 추가</button>' +
         '</div></div>' +
@@ -690,7 +715,8 @@
               '<input class="input" name="edoctor" value="' + esc(child.emergency.doctor) + '"></div>' +
           '</div>' +
           '<label class="field-label">비상 연락망</label>' +
-          '<div id="ct-rows">' + ctRows + '</div>' +
+          '<div id="ct-rows" data-empty="아직 등록된 비상 연락처가 없어요. ‘연락처 추가’로 등록해 주세요.">' +
+            ctRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-ct">' +
             icon('plus', 15) + '연락처 추가</button>' +
         '</div></div>' +
@@ -722,7 +748,9 @@
           UI.el(rowsId).insertAdjacentHTML('beforeend', dynRow(fields, {}));
         };
       }
-      bindAdd('add-med', 'med-rows', MED_FIELDS);
+      UI.el('add-med').onclick = function () {
+        UI.el('med-rows').insertAdjacentHTML('beforeend', medRowFull({}));
+      };
       bindAdd('add-allg', 'allg-rows', [
         { k: 'name', ph: '알레르기 항목', flex: 1.2 },
         { k: 'reaction', ph: '증상/반응', flex: 1.6 },
@@ -734,10 +762,33 @@
       ]);
       document.getElementById('child-form').addEventListener('click', function (e) {
         var del = e.target.closest('.dyn-del');
-        if (del) del.closest('.dyn-row').remove();
-        // 감각 특성 칩 토글
+        if (del) { (del.closest('.med-item') || del.closest('.dyn-row')).remove(); return; }
+        // 감각 특성 빠른 선택 토글
         var sens = e.target.closest('[data-sens]');
-        if (sens) sens.classList.toggle('on');
+        if (sens) { sens.classList.toggle('on'); return; }
+        // 복용 시간 빠른 입력 — 해당 약물 행의 시간 입력에 토글로 채움
+        var mt = e.target.closest('[data-medtime]');
+        if (mt) {
+          var item = mt.closest('.med-item');
+          var inp = item && item.querySelector('[data-f="time"]');
+          if (inp) {
+            var phrase = mt.dataset.medtime;
+            var parts = (inp.value || '').split('·').map(function (s) { return s.trim(); })
+              .filter(Boolean);
+            var i = parts.indexOf(phrase);
+            if (i >= 0) parts.splice(i, 1); else parts.push(phrase);
+            inp.value = parts.join(' · ');
+            mt.classList.toggle('on', parts.indexOf(phrase) >= 0);
+          }
+          return;
+        }
+        // 시작일 오늘로
+        var td = e.target.closest('[data-medtoday]');
+        if (td) {
+          var item2 = td.closest('.med-item');
+          var ds = item2 && item2.querySelector('[data-f="startDate"]');
+          if (ds) { ds.value = todayLocal(); }
+        }
       });
 
       UI.el('btn-cancel').onclick = function () {
