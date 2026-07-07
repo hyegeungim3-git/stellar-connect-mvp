@@ -43,36 +43,41 @@
   function dynRow(fields, vals) {
     vals = vals || {};
     var inner = fields.map(function (f) {
-      var flex = 'flex:' + (f.flex || 1);
+      var labeled = !!f.label;
+      /* 라벨 있는 필드(약물 등)는 컬럼 셀로 정렬 — 라벨 없는 필드는 인라인 입력 */
+      var inlineStyle = labeled ? '' : ' style="flex:' + (f.flex || 1) + ';min-width:118px"';
+      var val = esc(vals[f.k] || '');
+      var ctrl;
       if (f.type === 'select') {
-        return '<select class="select" data-f="' + f.k + '" style="' + flex + '">' +
+        ctrl = '<select class="select" data-f="' + f.k + '"' + inlineStyle + '>' +
           f.opts.map(function (o) {
             return '<option' + (vals[f.k] === o ? ' selected' : '') + '>' + esc(o) + '</option>';
           }).join('') + '</select>';
+      } else if (f.type === 'date') {
+        ctrl = '<input class="input" type="date" data-f="' + f.k + '" value="' + val + '"' + inlineStyle + '>';
+      } else {
+        ctrl = '<input class="input" data-f="' + f.k + '" placeholder="' + esc(f.ph || '') +
+          '" value="' + val + '"' + inlineStyle + '>';
       }
-      if (f.type === 'date') {
-        /* 날짜 입력은 placeholder가 안 보이므로 라벨을 위에 표기 */
-        return '<label class="dyn-date" style="' + flex + ';min-width:130px">' +
-          '<span class="dyn-lbl">' + esc(f.label || '') + '</span>' +
-          '<input class="input" type="date" data-f="' + f.k + '" ' +
-          'value="' + esc(vals[f.k] || '') + '"></label>';
+      if (labeled) {
+        return '<label class="dyn-cell" style="flex:' + (f.flex || 1) + '">' +
+          '<span class="dyn-lbl">' + esc(f.label) + '</span>' + ctrl + '</label>';
       }
-      return '<input class="input" data-f="' + f.k + '" placeholder="' + esc(f.ph || '') +
-        '" value="' + esc(vals[f.k] || '') + '" style="' + flex + ';min-width:120px">';
+      return ctrl;
     }).join('');
-    return '<div class="dyn-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:flex-start">' +
-      inner + '<button type="button" class="btn-icon dyn-del" style="flex:none">' +
+    return '<div class="dyn-row">' + inner +
+      '<button type="button" class="btn-icon dyn-del" aria-label="이 항목 삭제">' +
       icon('x', 16) + '</button></div>';
   }
 
   /* 약물 입력 필드 — 2차 양육자 리뷰: 용량·복용시간·시작/종료일(달력)·보호자 메모 */
   var MED_FIELDS = [
-    { k: 'name', ph: '약 이름', flex: 1.2 },
-    { k: 'dose', ph: '용량 (예: 5mg 1정)' },
-    { k: 'time', ph: '복용 시간 (예: 아침·저녁 식후)' },
+    { k: 'name', label: '약 이름', ph: '예) 멜라토닌', flex: 1.3 },
+    { k: 'dose', label: '용량', ph: '예) 5mg 1정', flex: 1 },
+    { k: 'time', label: '복용 시간', ph: '예) 아침·저녁 식후', flex: 1.3 },
     { k: 'startDate', label: '시작일', type: 'date', flex: .9 },
-    { k: 'endDate', label: '종료일 (계속 복용이면 비워두세요)', type: 'date', flex: .9 },
-    { k: 'note', ph: '보호자 메모', flex: 1.4 }
+    { k: 'endDate', label: '종료일 (선택)', type: 'date', flex: .9 },
+    { k: 'note', label: '보호자 메모', ph: '메모 (선택)', flex: 1.4 }
   ];
   var MED_KEYS = MED_FIELDS.map(function (f) { return f.k; });
   /* 복용 기간 표시 — 시작일~종료일(달력)에서 생성, 없으면 레거시 period 텍스트 호환 */
@@ -659,7 +664,8 @@
           '<div id="med-rows">' + medRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-med">' +
             icon('plus', 15) + '약물 추가</button>' +
-          '<p class="faint" style="font-size:.8rem;margin-top:10px">약 이름·용량이 정확하지 않다면 ' +
+          '<p class="faint" style="font-size:.8rem;margin-top:10px">종료일을 비워 두면 ‘계속 복용’으로 표시돼요. ' +
+            '약 이름·용량이 정확하지 않다면 ' +
             '<a href="https://www.health.kr" target="_blank" rel="noopener" ' +
             'style="color:var(--primary);font-weight:700">약학정보원</a>에서 확인할 수 있어요. ' +
             '저장 후 프로필에서 약별 정보 검색도 지원됩니다.</p>' +

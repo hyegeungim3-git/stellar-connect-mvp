@@ -377,10 +377,13 @@ p.muted { line-height: 1.72; }
 }
 .field-row { display: flex; gap: 14px; }
 .field-row > * { flex: 1; }
-/* 동적 입력 행의 날짜 필드 — 위에 작은 라벨(달력 입력은 placeholder 미표시) */
-.dyn-date { display: flex; flex-direction: column; gap: 3px; }
-.dyn-date .dyn-lbl { font-size: .72rem; font-weight: 700; color: var(--text-muted); padding-left: 2px; }
-.dyn-date input[type="date"] { min-width: 0; }
+/* 동적 입력 행 — 라벨 있는 필드는 컬럼 셀로 정렬(행렬 유지), 없는 필드는 인라인 */
+.dyn-row { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-bottom: 10px; align-items: flex-end; }
+.dyn-cell { display: flex; flex-direction: column; gap: 4px; min-width: 118px; }
+.dyn-cell .dyn-lbl { font-size: .72rem; font-weight: 700; color: var(--text-muted); padding-left: 2px; white-space: nowrap; }
+.dyn-cell .input, .dyn-cell .select { width: 100%; }
+.dyn-cell .input[type="date"] { min-width: 150px; }
+.dyn-del { flex: none; align-self: flex-end; }
 .checkline { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
 .checkline input { width: 19px; height: 19px; accent-color: var(--primary); flex: none; }
 .seg {
