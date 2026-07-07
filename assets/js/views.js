@@ -259,7 +259,7 @@
               '<div class="why-visual">' +
                 '<img src="assets/img/intro-hands-star.jpg" ' +
                   'alt="두 손 위에서 웃고 있는 별 일러스트" loading="lazy" ' +
-                  'width="500" height="290">' +
+                  'width="500" height="325">' +
                 '<p class="star-quote">“완벽해서가 아니라,<br>세상에서 하나뿐인 소중한 존재”</p>' +
               '</div>' +
               '<div class="why-content">' +

@@ -1212,7 +1212,6 @@ table.tbl td.actions { white-space: nowrap; }
   position: relative; overflow: hidden;
   background:
     radial-gradient(620px 360px at 16% 34%, rgba(255,224,150,.16), transparent 62%),
-    radial-gradient(600px 320px at 92% 88%, rgba(108,99,221,.09), transparent 60%),
     linear-gradient(180deg, #dde3f7 0%, #f0f3fc 46%, #ffffff 100%);
 }
 .why-sec .hero-spark {
