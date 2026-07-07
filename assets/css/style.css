@@ -1224,14 +1224,21 @@ table.tbl td.actions { white-space: nowrap; }
 }
 .why-visual { text-align: center; position: relative; }
 /* 손+별 일러스트 — 밤하늘 라운드 카드 (인트로 시안) */
-.why-visual img {
-  position: relative; width: min(440px, 86vw); height: auto;
-  display: inline-block;
+.why-photo {
+  position: relative; display: inline-block;
+  width: min(440px, 86vw);
   border-radius: 26px;
   border: 6px solid rgba(255,255,255,.95);
   box-shadow:
     0 0 0 12px rgba(124,134,220,.10),
     0 26px 52px -18px rgba(31,42,92,.28);
+  overflow: hidden;
+}
+.why-photo img { display: block; width: 100%; height: auto; }
+/* 가장자리에서 손 모양이 액자 테두리에 뚝 잘려 보이지 않도록 안쪽으로 은은하게 흐림 처리 */
+.why-photo::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 34px 10px rgba(255,255,255,.65);
 }
 .star-quote {
   margin-top: 18px; font-style: italic; font-weight: 700;
@@ -1252,7 +1259,7 @@ table.tbl td.actions { white-space: nowrap; }
 @media (max-width: 880px) {
   .why-grid { grid-template-columns: 1fr; gap: 34px; }
   .why-content .section-head { text-align: center; }
-  .why-visual img { width: min(380px, 86vw); }
+  .why-photo { width: min(380px, 86vw); }
   .star-quote { font-size: 1.02rem; }
 }
 
