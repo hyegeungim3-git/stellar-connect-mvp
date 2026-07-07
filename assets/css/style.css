@@ -364,6 +364,8 @@ p.muted { line-height: 1.72; }
   border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
   background: var(--surface); transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
+/* 단일 행 컨트롤(텍스트·숫자·날짜·셀렉트)은 높이를 통일 — native 기본 높이 차이 제거, 터치 타깃 44px+ */
+.input, .select { min-height: 46px; }
 .input::placeholder, .textarea::placeholder { color: var(--text-faint); }
 .input:focus, .textarea:focus, .select:focus {
   border-color: var(--primary); box-shadow: var(--ring); outline: none;
