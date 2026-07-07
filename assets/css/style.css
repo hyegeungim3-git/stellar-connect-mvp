@@ -150,7 +150,6 @@ b, strong { font-weight: 700; }
 p.muted { line-height: 1.72; }
 .summary-block ul li { padding: 3px 0; }
 .summary-block ul li + li { border-top: 1px solid var(--border); margin-top: 2px; padding-top: 7px; }
-.field + .field { margin-top: 14px; }
 
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
