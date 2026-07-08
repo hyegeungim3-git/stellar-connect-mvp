@@ -35,6 +35,12 @@
   src: url('../fonts/NanumSquareNeo-eHv.ttf') format('truetype');
   font-weight: 900; font-style: normal; font-display: swap;
 }
+/* 나눔스퀘어라운드 — 랜딩 히어로 헤드라인용 둥근 고딕 (인트로 시안 톤) */
+@font-face {
+  font-family: 'NanumSquareRound';
+  src: url('../fonts/NanumSquareRound-EB.ttf') format('truetype');
+  font-weight: 700 900; font-style: normal; font-display: swap;
+}
 
 /* ---------- 1. 디자인 토큰 ---------- */
 :root {
@@ -507,8 +513,9 @@ p.muted { line-height: 1.72; }
   box-shadow: 0 4px 16px rgba(31,42,92,.08);
 }
 .hero h1 {
-  color: var(--brand-trust); font-size: 2.7rem; line-height: 1.24;
-  margin: 22px 0 18px; max-width: 660px; letter-spacing: -.03em;
+  font-family: 'NanumSquareRound', 'NanumSquareNeo', sans-serif;
+  color: var(--brand-trust); font-size: 2.7rem; line-height: 1.26;
+  margin: 22px 0 18px; max-width: 660px; letter-spacing: -.02em;
 }
 .hero h1 .em {
   background: linear-gradient(92deg, var(--brand-understand) 4%, var(--primary) 48%, var(--brand-grow) 96%);
