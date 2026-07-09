@@ -113,10 +113,10 @@
     return '<div class="med-item">' + dynRow(MED_FIELDS, vals) + medQuickBar(vals) + '</div>';
   }
   V._medRowFull = medRowFull;
-  /* 약 정보 검색 링크 — 약학정보원 등에서 상세 확인 (2차 리뷰 요청) */
+  /* 약 정보 검색 링크 — 약학정보원 통합검색으로 바로 연결 (2차 리뷰 요청) */
   function drugInfoURL(name) {
-    return 'https://search.naver.com/search.naver?query=' +
-      encodeURIComponent((name || '') + ' 의약품 정보');
+    return 'https://www.health.kr/searchDrug/search_total_result.asp?search_word=' +
+      encodeURIComponent(name || '') + '&search_flag=all';
   }
 
   /* ---------- 빠른 입력 프리셋 (6/10 회의 반영 — 직접 쓰지 않아도 탭 한 번으로) ---------- */
@@ -270,8 +270,8 @@
                 '정보 검색</a>' +
               (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div></div>';
           }).join('') +
-          '<p class="faint" style="font-size:.78rem;margin-top:8px">‘정보 검색’은 약학정보원 등 ' +
-            '공개 의약품 정보를 새 창으로 찾아 드려요.</p>'
+          '<p class="faint" style="font-size:.78rem;margin-top:8px">‘정보 검색’을 누르면 ' +
+            '약학정보원 통합검색 결과를 새 창으로 바로 보여 드려요.</p>'
         : '<p class="muted" style="font-size:.9rem">등록된 약물이 없습니다.</p>';
 
       var allg = child.allergies.length
