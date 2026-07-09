@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 12;   // 데모 데이터 변경 시 이 숫자를 올린다 (v12: 약물 구분·단위·복용정보 필드)
+  var SEED_VERSION = 13;   // 데모 데이터 변경 시 이 숫자를 올린다 (v13: 약물 기록 카테고리·기록 시간)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -241,12 +241,16 @@
 
     /* ---------- 기록 (행동 / 치료 / 변화) ---------- */
     db.records.push(
-      { id: 'rec-1', childId: child1.id, type: 'change', date: '2026-05-17',
+      { id: 'rec-1', childId: child1.id, type: 'change', date: '2026-05-17', time: '15:20',
         title: '처음으로 친구에게 먼저 인사했어요', mood: 5,
         content: '놀이치료실에서 또래에게 먼저 "안녕"이라고 말함. 작은 목소리였지만 스스로 시도한 첫 사례.',
         tags: ['사회성', '의사소통'], photo: 'assets/img/child-junho.jpg',
         createdAt: '2026-05-17T08:00:00.000Z' },
-      { id: 'rec-2', childId: child1.id, type: 'treatment', date: '2026-05-14',
+      { id: 'rec-8', childId: child1.id, type: 'medication', date: '2026-05-16', time: '21:30',
+        title: '취침 전 멜라토닌 복용', mood: 4,
+        content: '[복약 정보]\n· [처방약] 멜라토닌 3mg · 취침 30분 전 · 취침 30분 전, 물과 함께 복용\n\n복용 30분 뒤 큰 뒤척임 없이 잠듦. 아침 기상도 순조로웠어요.',
+        tags: ['수면', '복약'], photo: null, createdAt: '2026-05-16T12:30:00.000Z' },
+      { id: 'rec-2', childId: child1.id, type: 'treatment', date: '2026-05-14', time: '10:00',
         title: '언어치료 24회기', mood: 4,
         content: '주 2회 언어치료 진행. 2어절 문장 따라 말하기 안정적. 다음 목표는 요구하기 표현 확장.',
         tags: ['언어치료'], photo: null, createdAt: '2026-05-14T07:00:00.000Z' },

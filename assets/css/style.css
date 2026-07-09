@@ -436,6 +436,15 @@ p.muted { line-height: 1.72; }
 .med-item + .med-item { border-top: 1px dashed var(--border); padding-top: 12px; }
 .med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
 .med-quick .mq-lbl { font-size: .74rem; font-weight: 700; color: var(--text-faint); margin-right: 2px; }
+/* 기록 추가 — 프로필 약물 선택 삽입 패널 */
+.med-picker { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-3); }
+.med-picker .mp-list { display: flex; flex-direction: column; gap: 2px; }
+.med-picker .badge { margin-right: 2px; }
+/* 휘발성 QR — 자동 갱신 주기 선택 + 카운트다운 */
+.qr-rotate { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; background: var(--surface-3); }
+.qr-rotate-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qr-rotate-lbl { font-size: .82rem; font-weight: 700; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.qr-countdown { margin-left: auto; font-size: .8rem; font-weight: 700; color: var(--primary-dark); }
 
 /* 빈 상태 안내 — 약물·알레르기·비상연락에 항목이 하나도 없을 때 */
 #med-rows:empty::before, #allg-rows:empty::before, #ct-rows:empty::before {

@@ -623,7 +623,7 @@
       var ctRows = child.emergency.contacts.length
         ? child.emergency.contacts.map(function (c) {
             return dynRow([
-              { k: 'name', ph: '이름' }, { k: 'relation', ph: '관계' },
+              { k: 'name', ph: '이름' }, { k: 'relation', type: 'select', opts: V._REL_OPTS },
               { k: 'phone', ph: '연락처', flex: 1.4 }
             ], c);
           }).join('')
@@ -781,7 +781,7 @@
         { k: 'severity', type: 'select', opts: ['경증', '중등도', '중증'] }
       ]);
       bindAdd('add-ct', 'ct-rows', [
-        { k: 'name', ph: '이름' }, { k: 'relation', ph: '관계' },
+        { k: 'name', ph: '이름' }, { k: 'relation', type: 'select', opts: V._REL_OPTS },
         { k: 'phone', ph: '연락처', flex: 1.4 }
       ]);
       document.getElementById('child-form').addEventListener('click', function (e) {

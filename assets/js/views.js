@@ -38,11 +38,16 @@
   ];
   var RT = {
     behavior:   { label: '행동 기록', color: 'var(--c-help)',  icon: 'note' },
-    treatment:  { label: '치료 기록', color: 'var(--c-comm)',  icon: 'pill' },
+    treatment:  { label: '치료 기록', color: 'var(--c-comm)',  icon: 'heart' },
+    /* 약물 기록 — 복약 사실·시간을 남겨 약효/컨디션 변화와 함께 보도록 (2차 리뷰 요청) */
+    medication: { label: '약물 기록', color: 'var(--brand-grow)', icon: 'pill' },
     change:     { label: '변화 기록', color: 'var(--accent)',  icon: 'sparkle' },
     /* 검사·평가 — 여러 기관의 검사 결과를 한곳에 (링크아이 벤치마킹: 재공유 불필요) */
     assessment: { label: '검사·평가', color: 'var(--brand-understand)', icon: 'chart' }
   };
+  /* 관계 드롭다운 공용 옵션 — 비상연락처·돌봄 인계 등 (2차 리뷰 요청) */
+  var REL_OPTS = ['', '모', '부', '조모', '조부', '외조모', '외조부', '배우자',
+    '형제', '자매', '이모', '고모', '삼촌', '외삼촌', '위탁모', '위탁부', '활동지원사', '기타'];
 
   /* ---------- 공용 헬퍼 ---------- */
   function readForm(scope) {
@@ -333,8 +338,8 @@
                     return '<div class="pm-tile"><span class="pm-ico" style="background:' +
                       t.b + ';color:' + t.c + '">' + icon(t.i, 16) + '</span>' + t.t + '</div>';
                   }).join('') + '</div>' +
-                  '<div class="pm-card"><b>오늘의 체크인</b>' +
-                    '<span>😊 기분 좋음 · 😴 잘 잤어요 · ✅ 복약 완료</span></div>' +
+                  '<div class="pm-card"><b>오늘의 기록</b>' +
+                    '<span>💊 아침 약 복용 · 😊 기분 좋음</span></div>' +
                   '<div class="pm-card pm-note"><span>“밝은 표정으로 먼저 인사했어요”</span>' +
                     '<span class="pm-plus">+</span></div>' +
                   '<div class="pm-nav">' + [
@@ -523,12 +528,6 @@
             '</div>' +
             '<button class="btn btn-primary btn-block btn-lg" type="submit">가입하기</button>' +
           '</form>' +
-          '<div class="divider"></div>' +
-          '<p class="center muted" style="font-size:.86rem;margin-bottom:10px">SNS 간편 가입</p>' +
-          '<div class="row gap-sm" style="justify-content:center">' +
-            '<button class="btn btn-ghost btn-sm" onclick="Views._sns(\'kakao\')">카카오로 시작</button>' +
-            '<button class="btn btn-ghost btn-sm" onclick="Views._sns(\'naver\')">네이버로 시작</button>' +
-          '</div>' +
           '<p class="center muted" style="margin-top:18px;font-size:.9rem">이미 계정이 있으신가요? ' +
             '<a href="#/login" style="color:var(--primary);font-weight:700">로그인</a></p>' +
         '</div>' +
@@ -623,48 +622,7 @@
           '</div></div>';
       }
 
-      // 오늘의 체크인 — 기분·수면·식사 + 복약 (건강·일상 관리 기본, 자문회의 100% 우선순위)
-      var todayLocal = (function () {
-        var d = new Date();
-        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
-          '-' + ('0' + d.getDate()).slice(-2);
-      })();
-      var DAILY = [
-        { f: 'mood',  label: '기분', opts: ['😣 힘듦', '😐 보통', '😊 좋음'] },
-        { f: 'sleep', label: '수면', opts: ['설쳤어요', '보통', '푹 잤어요'] },
-        { f: 'meal',  label: '식사', opts: ['적게 먹음', '보통', '잘 먹음'] }
-      ];
-      html += '<div class="card mb-3"><div class="card-head">' +
-        '<span style="color:var(--accent)">' + icon('check', 18) + '</span>' +
-        '<h3>오늘의 체크인</h3>' +
-        '<span class="faint" style="font-size:.78rem">탭 한 번이면 충분해요</span>' +
-        '<span class="badge" id="med-progress" style="margin-left:auto"></span></div>' +
-        '<div class="card-body" id="med-check-body" style="padding-top:14px;padding-bottom:14px">';
-      kids.forEach(function (c) {
-        var dc = Store.dailyCheckFor(c.id, todayLocal);
-        var taken = Store.medChecksFor(c.id, todayLocal);
-        html += '<div class="med-kid"><b>' + esc(c.name) + '</b>';
-        DAILY.forEach(function (row) {
-          html += '<div class="daily-row"><span class="lbl">' + row.label + '</span>' +
-            '<span class="chip-group">' + row.opts.map(function (o) {
-              return '<button type="button" class="chip pick sm' +
-                (dc[row.f] === o ? ' on' : '') + '" data-daily="' + row.f +
-                '" data-daily-val="' + esc(o) + '" data-daily-child="' + c.id + '">' +
-                esc(o) + '</button>';
-            }).join('') + '</span></div>';
-        });
-        (c.medications || []).forEach(function (m) {
-          var key = m.name + (m.time ? '@' + m.time : '');
-          var on = taken.indexOf(key) >= 0;
-          html += '<label class="checkline"><input type="checkbox" data-med="' + esc(key) +
-            '" data-med-child="' + c.id + '"' + (on ? ' checked' : '') + '>' +
-            '<span>' + icon('pill', 13) + ' ' + esc(m.name) + ' ' +
-            esc(global.Views && global.Views._medDose ? global.Views._medDose(m) : (m.dose || '')) +
-            (m.time ? ' · ' + esc(m.time) : '') + '</span></label>';
-        });
-        html += '</div>';
-      });
-      html += '</div></div>';
+      // (오늘의 체크인 카드는 2차 리뷰 요청으로 제거됨 — 복약 체크는 약물 기록으로 대체)
 
       // 최근 기록 — 행동·치료·변화·검사 (기록은 기본 기능)
       var allRecords = [];
@@ -708,51 +666,12 @@
       return html;
     },
     mount: function () {
-      // 오늘의 체크인 — 새로고침 없이 바로 저장 + 진행률 갱신
-      var todayLocal = (function () {
-        var d = new Date();
-        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
-          '-' + ('0' + d.getDate()).slice(-2);
-      })();
-      var boxes = document.querySelectorAll('[data-med]');
-      var chips = document.querySelectorAll('[data-daily]');
-      if (!boxes.length && !chips.length) return;
-      function paintProgress() {
-        var total = boxes.length + (chips.length ? document.querySelectorAll('.daily-row').length : 0);
-        var done = [].filter.call(boxes, function (b) { return b.checked; }).length;
-        document.querySelectorAll('.daily-row').forEach(function (row) {
-          if (row.querySelector('.chip.on')) done++;
-        });
-        var el = UI.el('med-progress');
-        if (!el) return;
-        el.textContent = done + '/' + total + ' 완료';
-        el.className = 'badge' + (total && done === total ? ' ok' : '');
-      }
-      boxes.forEach(function (b) {
-        b.addEventListener('change', function () {
-          Store.toggleMedCheck(b.dataset.medChild, todayLocal, b.dataset.med);
-          paintProgress();
-        });
-      });
-      // 기분·수면·식사 칩 — 같은 행에서 하나만 선택, 다시 탭하면 해제
-      chips.forEach(function (ch) {
-        ch.addEventListener('click', function () {
-          var wasOn = ch.classList.contains('on');
-          ch.closest('.daily-row').querySelectorAll('.chip').forEach(function (x) {
-            x.classList.remove('on');
-          });
-          if (!wasOn) ch.classList.add('on');
-          Store.setDailyCheck(ch.dataset.dailyChild, todayLocal,
-            ch.dataset.daily, ch.dataset.dailyVal);
-          paintProgress();
-        });
-      });
-      paintProgress();
+      // 오늘의 체크인 카드 제거로 대시보드 mount에 바인딩할 항목 없음
     }
   };
 
   global.Views = {
-    _S: S, _MSEC: MSEC, _MTABS: MTABS, _RT: RT,
+    _S: S, _MSEC: MSEC, _MTABS: MTABS, _RT: RT, _REL_OPTS: REL_OPTS,
     _readForm: readForm, _readRows: readRows, _ownedChild: ownedChild,
     _notFound: notFound, _manualCount: manualCount,
     _childContextBar: childContextBar, _pageHead: pageHead,
@@ -764,16 +683,6 @@
     _demoAdmin: function () {
       Store.login('admin@ichild.kr', 'admin123'); App.navigate('#/admin');
       toast('관리자 체험 계정으로 로그인했습니다', 'ok');
-    },
-    _sns: function (provider) {
-      var email = provider + '.user@example.com';
-      if (!Store.findUserByEmail(email)) {
-        Store.signup({ name: provider === 'kakao' ? '카카오회원' : '네이버회원',
-          email: email, password: 'sns', phone: '', verified: true, provider: provider });
-      }
-      Store.login(email, 'sns');
-      toast(provider + ' 계정으로 시작합니다', 'ok');
-      App.navigate(Store.childrenOf(Store.currentUser().id).length ? '#/dashboard' : '#/child/new');
     },
     _info: function (key) {
       var c = Store.listContents().filter(function (x) { return x.key === key; })[0];

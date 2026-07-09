@@ -11,6 +11,11 @@
   var childContextBar = V._childContextBar, pageHead = V._pageHead;
 
   function todayStr() { return new Date().toISOString().slice(0, 10); }
+  /* 현재 시각 HH:MM (로컬) — 기록 시간 기본값 */
+  function nowHM() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
   function dynRow(fields, vals) {
     vals = vals || {};
     var inner = fields.map(function (f) {
@@ -23,6 +28,13 @@
   function shareURL(token) {
     return location.origin + location.pathname + '#/v/' + token;
   }
+  /* 휘발성 QR — 주기마다 nonce가 바뀌어 QR 이미지가 갱신됨.
+     ?k= 쿼리는 SPA(해시 라우팅)가 무시하므로 링크는 그대로 열람 가능(데모: 실서비스는 서버에서 이전 QR 만료). */
+  function rotatingShareURL(token, nonce) {
+    return location.origin + location.pathname + '?k=' + nonce + '#/v/' + token;
+  }
+  /* QR 갱신 주기 옵션 (초). 0 = 고정(갱신 안 함) */
+  var QR_PERIODS = [[30, '30초'], [60, '1분'], [300, '5분'], [0, '고정']];
 
   /* =====================================================================
    * 기록 (행동 / 치료 / 변화)
@@ -50,6 +62,9 @@
     treatment: [
       '언어치료 수업', '감각통합 치료', '놀이치료 수업', '병원 정기 진료'
     ],
+    medication: [
+      '아침 약 복용', '저녁 약 복용', '취침 전 약 복용', '약 복용 후 컨디션'
+    ],
     change: [
       '처음으로 혼자 해냈어요', '새로운 단어를 말했어요',
       '눈맞춤이 길어졌어요', '낯선 곳에서도 편안해 보였어요'
@@ -63,7 +78,7 @@
   function recordModal(childId, rec, opts) {
     opts = opts || {};
     var isNew = !rec;
-    rec = rec || { childId: childId, type: 'behavior', date: todayStr(),
+    rec = rec || { childId: childId, type: 'behavior', date: todayStr(), time: nowHM(),
                    title: '', content: '', tags: [], mood: 3, photo: null };
     if (isNew) { rec.id = Store.uid('rec'); rec.createdAt = Store.nowISO(); }
     var photoData = rec.photo || null;
@@ -91,6 +106,8 @@
             '<select class="select" name="type">' + typeOpts + '</select></div>' +
           '<div class="field"><label>날짜</label>' +
             '<input class="input" name="date" type="date" value="' + esc(rec.date) + '"></div>' +
+          '<div class="field"><label>시간 <span class="faint">복약·컨디션 연결</span></label>' +
+            '<input class="input" name="time" type="time" value="' + esc(rec.time || '') + '"></div>' +
         '</div>' +
         '<div class="field"><label>' + icon('camera', 14) +
           ' 짧은 영상 (릴스) <span class="faint">최대 30초 · 세로 영상 권장</span></label>' +
@@ -115,12 +132,13 @@
           '<div class="row gap-sm" style="margin-top:8px;flex-wrap:wrap">' +
             '<button type="button" class="btn btn-soft btn-sm" id="rec-pull-meds">' +
               icon('pill', 15) + '프로필 약물 불러오기</button>' +
-            '<span class="faint" style="font-size:.78rem">프로필에 등록한 약물을 기록 내용에 넣어요</span>' +
-          '</div></div>' +
+            '<span class="faint" style="font-size:.78rem">불러올 약물을 골라 기록 내용에 넣어요</span>' +
+          '</div>' +
+          '<div id="rec-med-picker" class="med-picker" hidden></div></div>' +
         '<div class="field"><label>태그 <span class="faint">(쉼표로 구분)</span></label>' +
           '<input class="input" name="tags" value="' + esc((rec.tags || []).join(', ')) +
           '" placeholder="예) 사회성, 의사소통"></div>' +
-        '<div class="field"><label>그날의 컨디션</label>' +
+        '<div class="field"><label>컨디션</label>' +
           '<div id="mood-pick" style="display:flex;gap:6px">' +
             [1, 2, 3, 4, 5].map(function (i) {
               return '<button type="button" class="btn btn-ghost" data-mood="' + i + '" ' +
@@ -146,25 +164,47 @@
         if (vTitle && titleEl) UI.attachVoiceInput(vTitle, titleEl);
         if (vContent && contentEl) UI.attachVoiceInput(vContent, contentEl);
 
-        /* --- 프로필 약물 불러오기 — 등록된 약물을 기록 내용에 삽입 --- */
+        /* --- 프로필 약물 불러오기 — 리스트에서 골라 기록 내용에 삽입 --- */
         var pullBtn = root.querySelector('#rec-pull-meds');
+        var picker = root.querySelector('#rec-med-picker');
+        function medLine(m) {
+          var p = V._medPeriod ? V._medPeriod(m) : (m.period || '');
+          var dose = V._medDose ? V._medDose(m) : (m.dose || '');
+          return '· ' + (m.kind ? '[' + m.kind + '] ' : '') + m.name + (dose ? ' ' + dose : '') +
+            (m.time ? ' · ' + m.time : '') + (p ? ' · ' + p : '') +
+            (m.dosing ? ' · ' + m.dosing : '') +
+            (m.note ? ' (' + m.note + ')' : '');
+        }
         if (pullBtn) pullBtn.onclick = function () {
           var ch = Store.getChild(childId);
           var meds = (ch && ch.medications) || [];
           if (!meds.length) { toast('프로필에 등록된 약물이 없어요', 'err'); return; }
-          var lines = meds.map(function (m) {
-            var p = V._medPeriod ? V._medPeriod(m) : (m.period || '');
-            var dose = V._medDose ? V._medDose(m) : (m.dose || '');
-            return '· ' + (m.kind ? '[' + m.kind + '] ' : '') + m.name + (dose ? ' ' + dose : '') +
-              (m.time ? ' · ' + m.time : '') + (p ? ' · ' + p : '') +
-              (m.dosing ? ' · ' + m.dosing : '') +
-              (m.note ? ' (' + m.note + ')' : '');
-          });
-          var block = '[복약 정보]\n' + lines.join('\n');
-          var cur = (contentEl.value || '').trim();
-          contentEl.value = cur ? (cur + '\n\n' + block) : block;
-          contentEl.focus();
-          toast('약물 정보를 불러왔어요', 'ok');
+          if (!picker.hidden) { picker.hidden = true; return; }   // 토글로 닫기
+          picker.innerHTML =
+            '<div class="mp-list">' + meds.map(function (m, i) {
+              return '<label class="checkline"><input type="checkbox" class="mp-cb" data-i="' + i +
+                '" checked><span>' + (V._medKindBadge ? V._medKindBadge(m.kind) : '') +
+                '<b>' + esc(m.name) + '</b> ' + esc(V._medDose ? V._medDose(m) : (m.dose || '')) +
+                (m.time ? ' · ' + esc(m.time) : '') + '</span></label>';
+            }).join('') + '</div>' +
+            '<div class="row gap-sm" style="margin-top:8px">' +
+              '<button type="button" class="btn btn-primary btn-sm" id="mp-insert">' +
+                icon('check', 14) + '선택한 약물 삽입</button>' +
+              '<button type="button" class="btn btn-ghost btn-sm" id="mp-cancel">닫기</button>' +
+            '</div>';
+          picker.hidden = false;
+          picker.querySelector('#mp-cancel').onclick = function () { picker.hidden = true; };
+          picker.querySelector('#mp-insert').onclick = function () {
+            var chosen = [].filter.call(picker.querySelectorAll('.mp-cb'), function (cb) { return cb.checked; })
+              .map(function (cb) { return meds[parseInt(cb.dataset.i, 10)]; });
+            if (!chosen.length) { toast('삽입할 약물을 선택해 주세요', 'err'); return; }
+            var block = '[복약 정보]\n' + chosen.map(medLine).join('\n');
+            var cur = (contentEl.value || '').trim();
+            contentEl.value = cur ? (cur + '\n\n' + block) : block;
+            picker.hidden = true;
+            contentEl.focus();
+            toast(chosen.length + '개 약물을 불러왔어요', 'ok');
+          };
         };
 
         /* --- 제목 추천 칩 — 유형에 맞춰 갱신, 탭하면 입력 --- */
@@ -404,7 +444,7 @@
         if (CL.recording) { toast('녹화를 먼저 정지해 주세요', 'err'); return 'keep'; }
         var f = readForm(root);
         if (!f.title) { toast('제목을 입력해 주세요', 'err'); return 'keep'; }
-        rec.type = f.type; rec.date = f.date || todayStr();
+        rec.type = f.type; rec.date = f.date || todayStr(); rec.time = f.time || '';
         rec.title = f.title; rec.content = f.content;
         rec.tags = f.tags ? f.tags.split(',').map(function (t) { return t.trim(); })
           .filter(Boolean) : [];
@@ -449,7 +489,7 @@
 
       var seg = '<div class="seg no-print">' +
         [['all', '전체'], ['behavior', '행동'], ['treatment', '치료'],
-         ['change', '변화'], ['assessment', '검사']]
+         ['medication', '약물'], ['change', '변화'], ['assessment', '검사']]
           .map(function (o) {
             return '<button class="' + (S.recFilter === o[0] ? 'on' : '') +
               '" data-f="' + o[0] + '">' + o[1] + '</button>';
@@ -472,7 +512,8 @@
                     esc(meta.label) + '</span>' +
                   (r.hasClip ? '<span class="badge brand">' + icon('camera', 11) + ' 영상</span>' : '') +
                   UI.moodStars(r.mood) +
-                  '<span class="rec-date">' + UI.fmtDate(r.date) + '</span>' +
+                  '<span class="rec-date">' + UI.fmtDate(r.date) +
+                    (r.time ? ' ' + esc(r.time) : '') + '</span>' +
                 '</div>' +
                 '<div class="rec-title">' + esc(r.title) + '</div>' +
                 (r.content ? '<div class="rec-content">' + esc(r.content) + '</div>' : '') +
@@ -530,7 +571,8 @@
             body: '<div class="row mb-2"><span class="badge" style="background:' + meta.color +
               '22;color:' + meta.color + '">' + esc(meta.label) + '</span>' +
               UI.moodStars(r.mood) +
-              '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) + '</span></div>' +
+              '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) +
+                (r.time ? ' ' + esc(r.time) : '') + '</span></div>' +
               '<h3 class="mb-1">' + esc(r.title) + '</h3>' +
               (r.content ? '<p class="muted" style="line-height:1.6">' + nl2br(r.content) + '</p>' : '') +
               (r.hasClip ? '<div id="rec-clip-host" class="mt-2"><p class="faint" ' +
@@ -1060,26 +1102,76 @@
       document.querySelectorAll('[data-qr]').forEach(function (b) {
         b.onclick = function () {
           var token = b.dataset.qr, code = b.dataset.qrCode, name = b.dataset.qrName;
-          var qrSvg = QR.svg(shareURL(token), { cell: 4, margin: 3, width: 196 });
+          var period = 60;                 // 기본 갱신 주기 60초
+          var nonce = Date.now();
+          var remain = period;
+          var timer = null;
+          function renderQRInto(host) {
+            var url = period ? rotatingShareURL(token, nonce) : shareURL(token);
+            var svg = QR.svg(url, { cell: 4, margin: 3, width: 196 });
+            host.innerHTML = svg || '<p class="muted">링크가 너무 길어 QR을 만들 수 없어요.</p>';
+          }
           Modal.open({
             title: 'QR 코드 · 키링 카드', icon: 'grid',
             body:
               '<div style="text-align:center">' +
-                '<div style="display:inline-block;padding:10px;border:1px solid var(--border);' +
-                  'border-radius:14px;background:#fff">' +
-                  (qrSvg || '<p class="muted">링크가 너무 길어 QR을 만들 수 없어요.</p>') + '</div>' +
+                '<div id="qr-box" style="display:inline-block;padding:10px;border:1px solid var(--border);' +
+                  'border-radius:14px;background:#fff"></div>' +
                 '<div class="mt-1"><span class="faint" style="font-size:.8rem">인증번호</span> ' +
                   '<b style="letter-spacing:.15em;color:var(--primary-dark)">' + esc(code) + '</b></div>' +
               '</div>' +
+              '<div class="qr-rotate mt-2">' +
+                '<div class="qr-rotate-row">' +
+                  '<label class="qr-rotate-lbl">' + icon('clock', 14) + ' 자동 갱신</label>' +
+                  '<select class="select" id="qr-period" style="max-width:130px">' +
+                    QR_PERIODS.map(function (o) {
+                      return '<option value="' + o[0] + '"' + (o[0] === period ? ' selected' : '') +
+                        '>' + o[1] + '</option>';
+                    }).join('') + '</select>' +
+                  '<span class="qr-countdown" id="qr-count"></span>' +
+                '</div>' +
+              '</div>' +
               '<div class="pill-info mt-2">' + icon('info', 16) +
-                '<div>인쇄해서 <b>아이 가방·키링</b>에 달아 두세요. 위급 상황에서 주변 어른이 ' +
-                'QR을 스캔하면 비상연락처와 응급 정보를 바로 확인할 수 있습니다. ' +
-                '공개 수준은 공유 설정(응급 카드 권장)을 따릅니다.</div></div>',
+                '<div>보안을 위해 QR을 <b>주기적으로 새로 고칩니다</b>. 인쇄해 <b>가방·키링</b>에 다는 ' +
+                '안심 카드는 고정 QR로 만들어져요. <span class="faint">(데모: 갱신 시 이전 QR도 ' +
+                '열람됩니다. 실서비스에서는 서버에서 이전 QR이 만료됩니다.)</span></div></div>',
             buttons: [
               { label: '닫기', value: 'cancel', variant: 'ghost' },
               { label: '키링 카드 인쇄', value: 'print', variant: 'primary' }
             ],
+            onMount: function (root) {
+              var box = root.querySelector('#qr-box');
+              var countEl = root.querySelector('#qr-count');
+              var sel = root.querySelector('#qr-period');
+              function paintCount() {
+                if (!period) { countEl.textContent = '갱신 안 함'; return; }
+                countEl.textContent = remain + '초 후 갱신';
+              }
+              function tick() {
+                if (!period) return;
+                remain--;
+                if (remain <= 0) { nonce = Date.now(); renderQRInto(box); remain = period; }
+                paintCount();
+              }
+              function restart() {
+                if (timer) { clearInterval(timer); timer = null; }
+                nonce = Date.now(); renderQRInto(box); remain = period; paintCount();
+                if (period) timer = setInterval(tick, 1000);
+              }
+              sel.addEventListener('change', function () {
+                period = parseInt(sel.value, 10); restart();
+              });
+              restart();
+              // 모달 닫힘 시 타이머 정리
+              var host = UI.el('modal-host');
+              var xb = host.querySelector('[data-mclose]');
+              var bd = host.querySelector('[data-mbackdrop]');
+              function stop() { if (timer) { clearInterval(timer); timer = null; } }
+              if (xb) { var ox = xb.onclick; xb.onclick = function () { stop(); if (ox) ox(); }; }
+              if (bd) { var ob = bd.onclick; bd.onclick = function (e) { if (e.target === e.currentTarget) stop(); if (ob) ob(e); }; }
+            },
             onButton: function (v) {
+              if (timer) { clearInterval(timer); timer = null; }
               if (v !== 'print') return;
               var holder = document.createElement('div');
               holder.className = 'print-area keyring-print';
@@ -1257,7 +1349,7 @@
       var u = Store.currentUser();
       var ctRows = u.emergencyContacts.length
         ? u.emergencyContacts.map(function (c) {
-            return dynRow([{ k: 'name', ph: '이름' }, { k: 'relation', ph: '관계' },
+            return dynRow([{ k: 'name', ph: '이름' }, { k: 'relation', type: 'select', opts: V._REL_OPTS },
               { k: 'phone', ph: '연락처', flex: 1.4 }], c);
           }).join('')
         : '';
@@ -1324,7 +1416,7 @@
       var u = Store.currentUser();
       UI.el('cg-add-ct').onclick = function () {
         UI.el('cg-ct').insertAdjacentHTML('beforeend',
-          dynRow([{ k: 'name', ph: '이름' }, { k: 'relation', ph: '관계' },
+          dynRow([{ k: 'name', ph: '이름' }, { k: 'relation', type: 'select', opts: V._REL_OPTS },
             { k: 'phone', ph: '연락처', flex: 1.4 }], {}));
       };
       UI.el('cg-form').addEventListener('click', function (e) {
