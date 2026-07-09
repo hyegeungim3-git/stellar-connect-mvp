@@ -154,8 +154,10 @@
           if (!meds.length) { toast('프로필에 등록된 약물이 없어요', 'err'); return; }
           var lines = meds.map(function (m) {
             var p = V._medPeriod ? V._medPeriod(m) : (m.period || '');
-            return '· ' + m.name + (m.dose ? ' ' + m.dose : '') +
+            var dose = V._medDose ? V._medDose(m) : (m.dose || '');
+            return '· ' + (m.kind ? '[' + m.kind + '] ' : '') + m.name + (dose ? ' ' + dose : '') +
               (m.time ? ' · ' + m.time : '') + (p ? ' · ' + p : '') +
+              (m.dosing ? ' · ' + m.dosing : '') +
               (m.note ? ' (' + m.note + ')' : '');
           });
           var block = '[복약 정보]\n' + lines.join('\n');

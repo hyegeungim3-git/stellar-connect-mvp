@@ -70,16 +70,36 @@
       icon('x', 16) + '</button></div>';
   }
 
-  /* 약물 입력 필드 — 2차 양육자 리뷰: 용량·복용시간·시작/종료일(달력)·보호자 메모 */
+  /* 약물 입력 필드 — 2차 리뷰: 처방약/영양제 구분·용량+단위(드롭다운)·복용 정보와 보호자 메모 분리 */
+  var MED_UNITS = ['mg', 'mcg', 'g', 'mL', 'IU', '정', '캡슐', '포', '방울', '스푼', '%'];
+  var MED_KINDS = ['처방약', '영양제', '일반약'];
   var MED_FIELDS = [
+    { k: 'kind', label: '구분', type: 'select', opts: MED_KINDS, flex: .8 },
     { k: 'name', label: '약 이름', ph: '예) 멜라토닌', flex: 1.3 },
-    { k: 'dose', label: '용량', ph: '예) 5mg 1정', flex: 1 },
-    { k: 'time', label: '복용 시간', ph: '예) 아침·저녁 식후', flex: 1.3 },
+    { k: 'dose', label: '용량', ph: '예) 3', flex: .7 },
+    { k: 'doseUnit', label: '단위', type: 'select', opts: [''].concat(MED_UNITS), flex: .7 },
+    { k: 'time', label: '복용 시간', ph: '예) 아침·저녁 식후', flex: 1.2 },
     { k: 'startDate', label: '시작일', type: 'date', flex: .9 },
     { k: 'endDate', label: '종료일 (선택)', type: 'date', flex: .9 },
-    { k: 'note', label: '보호자 메모', ph: '메모 (선택)', flex: 1.4 }
+    { k: 'dosing', label: '복용 정보', ph: '예) 식후 30분, 물과 함께', flex: 1.3 },
+    { k: 'note', label: '보호자 메모', ph: '예) 냉장 보관 (선택)', flex: 1.3 }
   ];
   var MED_KEYS = MED_FIELDS.map(function (f) { return f.k; });
+  /* 용량 표시 — 용량 값 + 단위 결합 (레거시: dose에 단위가 붙어 있으면 그대로 노출) */
+  function medDose(m) {
+    var d = (m.dose || '').trim();
+    var u = (m.doseUnit || '').trim();
+    if (!d) return u;
+    return u ? d + u : d;
+  }
+  V._medDose = medDose;
+  /* 구분 배지 — 처방약(파랑)·영양제(초록)·일반약(회색) */
+  function medKindBadge(kind) {
+    var k = kind || '처방약';
+    var cls = k === '영양제' ? 'ok' : k === '일반약' ? '' : 'brand';
+    return '<span class="badge ' + cls + '" style="margin-right:2px">' + esc(k) + '</span>';
+  }
+  V._medKindBadge = medKindBadge;
   /* 복용 기간 표시 — 시작일~종료일(달력)에서 생성, 없으면 레거시 period 텍스트 호환 */
   function medPeriod(m) {
     if (m.startDate) {
@@ -106,7 +126,9 @@
     }).join('');
     return '<div class="med-quick"><span class="mq-lbl">복용 시간</span>' + chips +
       '<button type="button" class="chip sm" data-medtoday="1">' + icon('calendar', 13) +
-      ' 시작일 오늘로</button></div>';
+      ' 시작일 오늘로</button>' +
+      '<button type="button" class="chip sm" data-medsearch="1">' + icon('search', 13) +
+      ' 약학정보원 검색</button></div>';
   }
   /* 약물 한 항목 = 입력 행 + 빠른 입력 줄 */
   function medRowFull(vals) {
@@ -262,12 +284,13 @@
       var meds = child.medications.length
         ? child.medications.map(function (m) {
             return '<div class="item-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
-              '<div class="txt"><b>' + esc(m.name) + '</b> ' + esc(m.dose || '') +
+              '<div class="txt">' + medKindBadge(m.kind) + '<b>' + esc(m.name) + '</b> ' + esc(medDose(m)) +
               (m.time ? ' · ' + esc(m.time) : '') +
               (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
               ' <a href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
                 'class="badge" style="text-decoration:none;color:var(--primary);cursor:pointer">' +
                 '정보 검색</a>' +
+              (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
               (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div></div>';
           }).join('') +
           '<p class="faint" style="font-size:.78rem;margin-top:8px">‘정보 검색’을 누르면 ' +
@@ -688,11 +711,12 @@
             medRows + '</div>' +
           '<button type="button" class="btn btn-soft btn-sm" id="add-med">' +
             icon('plus', 15) + '약물 추가</button>' +
-          '<p class="faint" style="font-size:.8rem;margin-top:10px">종료일을 비워 두면 ‘계속 복용’으로 표시돼요. ' +
-            '약 이름·용량이 정확하지 않다면 ' +
+          '<p class="faint" style="font-size:.8rem;margin-top:10px">처방약·영양제를 구분해 등록하고, ' +
+            '용량은 숫자와 단위를 따로 골라 주세요. 종료일을 비워 두면 ‘계속 복용’으로 표시돼요. ' +
+            '약 이름·용량이 정확하지 않다면 각 약물 행의 ' +
+            '<b style="color:var(--primary)">약학정보원 검색</b> 버튼으로 ' +
             '<a href="https://www.health.kr" target="_blank" rel="noopener" ' +
-            'style="color:var(--primary);font-weight:700">약학정보원</a>에서 확인할 수 있어요. ' +
-            '저장 후 프로필에서 약별 정보 검색도 지원됩니다.</p>' +
+            'style="color:var(--primary);font-weight:700">약학정보원</a>에서 바로 확인할 수 있어요.</p>' +
         '</div></div>' +
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
@@ -788,6 +812,16 @@
           var item2 = td.closest('.med-item');
           var ds = item2 && item2.querySelector('[data-f="startDate"]');
           if (ds) { ds.value = todayLocal(); }
+          return;
+        }
+        // 약학정보원에서 이 약 바로 검색 (입력한 약 이름 사용)
+        var ms = e.target.closest('[data-medsearch]');
+        if (ms) {
+          var item3 = ms.closest('.med-item');
+          var nm = item3 && item3.querySelector('[data-f="name"]');
+          var q = nm && nm.value.trim();
+          if (!q) { toast('약 이름을 먼저 입력해 주세요', 'err'); return; }
+          window.open(drugInfoURL(q), '_blank', 'noopener');
         }
       });
 
@@ -1334,8 +1368,9 @@
     var med = '<div class="summary-block"><div class="blk-title">' +
       '<span class="dot" style="background:var(--c-comm)"></span>복용 약물</div><ul>';
     child.medications.forEach(function (m) {
-      med += '<li>' + esc(m.name) + ' ' + esc(m.dose || '') +
+      med += '<li>' + (m.kind ? '[' + esc(m.kind) + '] ' : '') + esc(m.name) + ' ' + esc(medDose(m)) +
         (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
+        (m.dosing ? ' · ' + esc(m.dosing) : '') +
         (m.note ? ' — ' + esc(m.note) : '') + '</li>';
     });
     return med + '</ul></div>';
@@ -1366,7 +1401,7 @@
     if (e.hospital) li += '<li><b>주치 병원</b> · ' + esc(e.hospital) +
       (e.doctor ? ' · ' + esc(e.doctor) : '') + '</li>';
     (child.medications || []).forEach(function (m) {
-      li += '<li><b>복약</b> · ' + esc(m.name) + ' ' + esc(m.dose || '') +
+      li += '<li><b>복약</b> · ' + (m.kind ? '[' + esc(m.kind) + '] ' : '') + esc(m.name) + ' ' + esc(medDose(m)) +
         (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') + '</li>';
     });
     if (!li) return '';

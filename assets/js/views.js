@@ -658,7 +658,8 @@
           var on = taken.indexOf(key) >= 0;
           html += '<label class="checkline"><input type="checkbox" data-med="' + esc(key) +
             '" data-med-child="' + c.id + '"' + (on ? ' checked' : '') + '>' +
-            '<span>' + icon('pill', 13) + ' ' + esc(m.name) + ' ' + esc(m.dose || '') +
+            '<span>' + icon('pill', 13) + ' ' + esc(m.name) + ' ' +
+            esc(global.Views && global.Views._medDose ? global.Views._medDose(m) : (m.dose || '')) +
             (m.time ? ' · ' + esc(m.time) : '') + '</span></label>';
         });
         html += '</div>';

@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 11;   // 데모 데이터 변경 시 이 숫자를 올린다 (v11: MVP·프로토타입 표현 제거)
+  var SEED_VERSION = 12;   // 데모 데이터 변경 시 이 숫자를 올린다 (v12: 약물 구분·단위·복용정보 필드)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -77,7 +77,12 @@
         sensory: '청각 과민(큰 소리·예고 없는 소음에 강하게 반응) / 촉각 예민(끈적한 질감 회피) / 시각 — 밝은 형광등 불편'
       },
       medications: [
-        { name: '멜라토닌', dose: '3mg', time: '취침 30분 전', startDate: '2026-03-02', endDate: '', note: '수면 패턴 보조. 주치의 처방.' }
+        { kind: '처방약', name: '멜라토닌', dose: '3', doseUnit: 'mg', time: '취침 30분 전',
+          startDate: '2026-03-02', endDate: '', dosing: '취침 30분 전, 물과 함께 복용',
+          note: '수면 패턴 보조. 주치의 처방.' },
+        { kind: '영양제', name: '비타민D', dose: '1000', doseUnit: 'IU', time: '아침 식후',
+          startDate: '2026-01-15', endDate: '', dosing: '아침 식사 직후 1정',
+          note: '실내 활동이 많아 보충 중.' }
       ],
       allergies: [
         { name: '땅콩', reaction: '두드러기·호흡곤란', severity: '중증' },
