@@ -334,8 +334,12 @@ p.muted { line-height: 1.72; }
   width: 38px; height: 38px; padding: 0; border-radius: 10px;
   background: var(--surface-2); color: var(--text-muted);
   transition: .14s var(--ease);
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .btn-icon:hover { background: var(--primary-soft); color: var(--primary); }
+/* 인라인 아이콘 baseline 정렬 — SVG가 텍스트 중심에 오도록 (아이콘 높이 어긋남 방지) */
+svg { vertical-align: middle; }
+.btn svg, .btn-icon svg { display: block; }
 
 /* ---------- 6. 카드 ---------- */
 .card {
@@ -348,6 +352,8 @@ p.muted { line-height: 1.72; }
   display: flex; align-items: center; gap: 11px;
 }
 .card-head h3 { flex: 1; }
+/* 카드 헤더 아이콘 — 인라인 span을 아이콘에 딱 맞춰 h3와 수직 중앙 정렬 */
+.card-head > span { display: inline-flex; align-items: center; flex: none; }
 .card-body { padding: 22px; }
 /* minmax(0,1fr): 자식의 min-content(특히 nowrap 텍스트)가 트랙을 밀어내
    가로 오버플로를 일으키지 않도록 — 모바일 레이아웃 뷰포트 확장 방지 */
@@ -390,7 +396,8 @@ p.muted { line-height: 1.72; }
 .dyn-cell .dyn-lbl { font-size: .72rem; font-weight: 700; color: var(--text-muted); padding-left: 2px; white-space: nowrap; }
 .dyn-cell .input, .dyn-cell .select { width: 100%; }
 .dyn-cell .input[type="date"] { min-width: 150px; }
-.dyn-del { flex: none; align-self: flex-end; }
+/* 삭제 버튼 — 옆 입력창(46px)과 높이를 맞춰 수직 정렬 (약물·알레르기·연락처 공통) */
+.dyn-del { flex: none; align-self: flex-end; width: 46px; height: 46px; }
 .checkline { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
 .checkline input { width: 19px; height: 19px; accent-color: var(--primary); flex: none; }
 .seg {
@@ -450,7 +457,8 @@ p.muted { line-height: 1.72; }
 .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 4; }   /* 종료일 */
 .med-item .dyn-row > .dyn-cell:nth-child(8) { grid-column: span 6; }   /* 복용 정보 */
 .med-item .dyn-row > .dyn-cell:nth-child(9) { grid-column: span 6; }   /* 보호자 메모 */
-.med-item .dyn-row .dyn-del { position: absolute; top: 21px; right: 0; }
+/* 삭제 버튼 — 1행 입력창(라벨 아래 46px)과 높이·수직 위치를 정확히 맞춤 */
+.med-item .dyn-row .dyn-del { position: absolute; top: 23px; right: 0; width: 46px; height: 46px; }
 @media (max-width: 640px) {
   .med-item .dyn-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }  /* 약 이름 */
