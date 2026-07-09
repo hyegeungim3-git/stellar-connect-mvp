@@ -981,6 +981,8 @@
                 App.refresh();
               }
             });
+            // 같은 modal-host에 발급 모달을 새로 띄웠으므로 'keep' — 바깥 close()가 지우지 않게
+            return 'keep';
           }
         });
       };
@@ -1054,6 +1056,8 @@
                 App.refresh();
               }
             });
+            // 같은 modal-host에 발급 모달을 새로 띄웠으므로 'keep' — 바깥 close()가 지우지 않게
+            return 'keep';
           }
         });
       };
