@@ -39,9 +39,11 @@
   }
   V._openPreview = openPreview;
 
-  /* ---------- 동적 입력 행 ---------- */
-  function dynRow(fields, vals) {
+  /* ---------- 동적 입력 행 ----------
+     opts.noDel: 행 끝 삭제 버튼 생략 (약물 카드처럼 헤더에 삭제가 있는 경우) */
+  function dynRow(fields, vals, opts) {
     vals = vals || {};
+    opts = opts || {};
     var inner = fields.map(function (f) {
       var labeled = !!f.label;
       /* 라벨 있는 필드(약물 등)는 컬럼 셀로 정렬 — 라벨 없는 필드는 인라인 입력 */
@@ -66,8 +68,9 @@
       return ctrl;
     }).join('');
     return '<div class="dyn-row">' + inner +
-      '<button type="button" class="btn-icon dyn-del" aria-label="이 항목 삭제">' +
-      icon('x', 16) + '</button></div>';
+      (opts.noDel ? '' :
+        '<button type="button" class="btn-icon dyn-del" aria-label="이 항목 삭제">' +
+        icon('x', 16) + '</button>') + '</div>';
   }
 
   /* 약물 입력 필드 — 2차 리뷰: 처방약/영양제 구분·용량+단위(드롭다운)·복용 정보와 보호자 메모 분리 */
@@ -130,9 +133,16 @@
       '<button type="button" class="chip sm" data-medsearch="1">' + icon('search', 13) +
       ' 약학정보원 검색</button></div>';
   }
-  /* 약물 한 항목 = 입력 행 + 빠른 입력 줄 */
+  /* 약물 한 항목 = 카드형 서브블록: 헤더(번호+삭제) / 필드 3줄 / 빠른 입력 푸터
+     — 삭제는 헤더 오른쪽(이 카드 전체 삭제가 명확), 번호는 CSS counter로 자동 매김 */
   function medRowFull(vals) {
-    return '<div class="med-item">' + dynRow(MED_FIELDS, vals) + medQuickBar(vals) + '</div>';
+    return '<div class="med-item">' +
+      '<div class="med-item-head">' +
+        '<span class="med-num">' + icon('pill', 14) + '약물</span>' +
+        '<button type="button" class="med-del dyn-del" aria-label="이 약물 삭제">' +
+          icon('x', 14) + '삭제</button>' +
+      '</div>' +
+      dynRow(MED_FIELDS, vals, { noDel: true }) + medQuickBar(vals) + '</div>';
   }
   V._medRowFull = medRowFull;
   /* 약 정보 검색 링크 — 약학정보원 통합검색으로 바로 연결 (2차 리뷰 요청) */

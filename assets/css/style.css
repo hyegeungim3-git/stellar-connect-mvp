@@ -439,11 +439,33 @@ svg { vertical-align: middle; }
 .chip.sm { padding: 4px 10px; font-size: .78rem; gap: 4px; }
 
 /* 약물 항목 = 입력 행 + 빠른 입력 줄 */
-.med-item { margin-bottom: 14px; }
-.med-item + .med-item { border-top: 1px dashed var(--border); padding-top: 12px; }
-/* 약물 행 — 9필드를 3줄 그리드로 정리: ①구분·이름·용량·단위 ②복용시간·시작일·종료일 ③복용정보·메모
-   (한 줄 flex로는 날짜·메모가 잘림. 삭제 버튼은 1행 오른쪽 고정) */
-.med-item .dyn-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 10px; position: relative; padding-right: 50px; align-items: end; }
+/* ---------- 약물 항목 = 카드형 서브블록 ----------
+   헤더(번호+삭제) / 필드 3줄 그리드 / 빠른 입력 푸터.
+   삭제는 헤더 오른쪽 — '이 카드 전체 삭제'가 명확. 번호는 counter로 자동(삭제 시 재번호) */
+#med-rows { counter-reset: med; }
+.med-item {
+  counter-increment: med;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface-3); padding: 12px 14px 12px; margin-bottom: 12px;
+}
+.med-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.med-num {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .8rem; font-weight: 800; color: var(--primary-dark);
+}
+.med-num::after { content: ' ' counter(med); }
+.med-del {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  width: auto; height: 34px;                       /* .dyn-del의 46×46 고정 크기 무효화 */
+  font-size: .78rem; font-weight: 700; color: var(--text-muted);
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 0 12px;
+  transition: .14s var(--ease);
+}
+.med-del:hover { color: var(--danger); border-color: var(--danger); background: #fbe9e7; }
+.med-del:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* 필드 3줄 그리드: ①구분·약이름·용량·단위 ②복용시간·시작일·종료일 ③복용정보·메모 */
+.med-item .dyn-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 10px; align-items: end; }
 .med-item .dyn-row .dyn-cell { min-width: 0; }
 .med-item .dyn-row .dyn-cell .dyn-lbl { overflow: hidden; text-overflow: ellipsis; }
 .med-item .dyn-row .dyn-cell .input, .med-item .dyn-row .dyn-cell .select { width: 100%; min-width: 0; }
@@ -457,25 +479,16 @@ svg { vertical-align: middle; }
 .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 4; }   /* 종료일 */
 .med-item .dyn-row > .dyn-cell:nth-child(8) { grid-column: span 6; }   /* 복용 정보 */
 .med-item .dyn-row > .dyn-cell:nth-child(9) { grid-column: span 6; }   /* 보호자 메모 */
-/* 삭제 버튼 — 약물 블록(3줄) 전체 오른쪽에 세로 정중앙 정렬 (한 항목을 통째로 삭제).
-   항상 또렷이 보이도록 테두리+배경, 호버 시 삭제색(danger) 강조 */
-.med-item .dyn-row .dyn-del {
-  position: absolute; top: 50%; transform: translateY(-50%); right: 0;
-  width: 42px; height: 42px; border-radius: 11px;
-  background: var(--surface); color: var(--text-muted);
-  border: 1px solid var(--border-strong);
-}
-.med-item .dyn-row .dyn-del:hover {
-  background: #fbe9e7; color: var(--danger); border-color: var(--danger);
-}
 @media (max-width: 640px) {
   .med-item .dyn-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }  /* 약 이름 */
   .med-item .dyn-row > .dyn-cell:nth-child(5) { grid-column: span 6; }  /* 복용 시간 */
   .med-item .dyn-row > .dyn-cell:nth-child(6) { grid-column: span 3; }  /* 시작일 */
   .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 3; }  /* 종료일 */
+  .med-del { height: 42px; }   /* 모바일 터치 타깃 */
 }
-.med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+/* 빠른 입력 푸터 — 필드와 점선으로 구분 */
+.med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .med-quick .mq-lbl { font-size: .74rem; font-weight: 700; color: var(--text-faint); margin-right: 2px; }
 /* 기록 추가 — 프로필 약물 선택 삽입 패널 */
 .med-picker { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-3); }
