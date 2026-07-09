@@ -457,13 +457,17 @@ svg { vertical-align: middle; }
 .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 4; }   /* 종료일 */
 .med-item .dyn-row > .dyn-cell:nth-child(8) { grid-column: span 6; }   /* 복용 정보 */
 .med-item .dyn-row > .dyn-cell:nth-child(9) { grid-column: span 6; }   /* 보호자 메모 */
-/* 삭제 버튼 — 약물 블록(3줄) 전체 오른쪽에 세로 중앙 정렬 (한 항목을 통째로 삭제하는 의미).
-   기본은 가볍게, 호버 시 강조 */
+/* 삭제 버튼 — 약물 블록(3줄) 전체 오른쪽에 세로 정중앙 정렬 (한 항목을 통째로 삭제).
+   항상 또렷이 보이도록 테두리+배경, 호버 시 삭제색(danger) 강조 */
 .med-item .dyn-row .dyn-del {
   position: absolute; top: 50%; transform: translateY(-50%); right: 0;
-  width: 40px; height: 40px; background: transparent; color: var(--text-faint);
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--surface); color: var(--text-muted);
+  border: 1px solid var(--border-strong);
 }
-.med-item .dyn-row .dyn-del:hover { background: var(--surface-2); color: var(--danger); }
+.med-item .dyn-row .dyn-del:hover {
+  background: #fbe9e7; color: var(--danger); border-color: var(--danger);
+}
 @media (max-width: 640px) {
   .med-item .dyn-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }  /* 약 이름 */
