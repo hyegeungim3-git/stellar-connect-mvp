@@ -139,8 +139,7 @@
         '</aside>' +
         '<main class="app-main">' +
           '<div class="container" id="view-root"></div>' +
-          '<div class="app-foot">내 아이 설명서 · Stellar Connect (S:CON) by <b>ASTROGEN</b> · ' +
-          '1차 MVP 프로토타입</div>' +
+          '<div class="app-foot">내 아이 설명서 · Stellar Connect (S:CON) by <b>ASTROGEN</b></div>' +
         '</main>' +
       '</div>' + bottom + '</div>';
   }

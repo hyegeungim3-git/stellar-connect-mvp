@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 10;   // 데모 데이터 변경 시 이 숫자를 올린다
+  var SEED_VERSION = 11;   // 데모 데이터 변경 시 이 숫자를 올린다 (v11: MVP·프로토타입 표현 제거)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -302,17 +302,17 @@
       { id: 'cnt-about', key: 'about', title: '서비스 소개',
         body: '「내 아이 설명서」(Stellar Connect, S:CON)는 발달장애 아이를 누구나 이해할 수 있도록 돕는 서비스입니다. 좋아하는 것·의사소통 방법·감각 특성·도전적 행동과 지원 방법을 체계적으로 정리하고, 학교용·병원용·활동지원사용·돌봄기관용 설명서로 만들어 공유합니다. 기록을 쌓는 것이 아니라, 부모를 대신해 우리 아이를 설명해 주는 것을 목표로 합니다.' },
       { id: 'cnt-terms', key: 'terms', title: '이용약관',
-        body: '제1조(목적) 본 약관은 Stellar Connect(S:CON) 서비스 이용에 관한 사항을 규정합니다. (1차 MVP 데모용 약관)' },
+        body: '제1조(목적) 본 약관은 Stellar Connect(S:CON) 서비스 이용에 관한 사항을 규정합니다.' },
       { id: 'cnt-privacy', key: 'privacy', title: '개인정보처리방침',
-        body: '본 서비스는 아동 및 보호자의 민감정보를 다루며, 수집 최소화·목적 외 사용 금지 원칙을 준수합니다. (1차 MVP 데모용)' },
+        body: '본 서비스는 아동 및 보호자의 민감정보를 다루며, 수집 최소화·목적 외 사용 금지 원칙을 준수합니다.' },
       { id: 'cnt-faq', key: 'faq', title: '자주 묻는 질문',
         body: 'Q. 설명서는 어떻게 공유하나요?\nA. 설명서 보기 화면에서 공유 링크와 4자리 인증번호를 발급할 수 있습니다.' }
     );
 
     /* ---------- 백오피스: 팝업 ---------- */
     db.popups.push({
-      id: 'pop-1', title: '1차 MVP 오픈 안내',
-      body: '「내 아이 설명서」 1차 서비스가 열렸습니다. 우리 아이를 이해하는 항목을 채우고, 학교·병원용 설명서로 공유해 보세요.',
+      id: 'pop-1', title: '「내 아이 설명서」 오픈 안내',
+      body: '「내 아이 설명서」 서비스가 열렸습니다. 우리 아이를 이해하는 항목을 채우고, 학교·병원용 설명서로 공유해 보세요.',
       active: true, createdAt: '2026-05-20T00:00:00.000Z'
     });
 

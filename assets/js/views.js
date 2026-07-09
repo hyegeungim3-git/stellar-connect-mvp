@@ -272,7 +272,7 @@
                 '<div class="quote-stack">' + quotes.map(function (q) {
                   return '<div class="quote-card"><div class="qmark">“</div>' +
                     '<p>' + esc(q) + '</p>' +
-                    '<div class="who">— 양육자 프로토타입 리뷰 중에서</div></div>';
+                    '<div class="who">— 양육자 인터뷰 중에서</div></div>';
                 }).join('') + '</div>' +
                 '<div class="soft-pill">' + icon('lock', 15) +
                   '소중한 정보는 안전하게 보호됩니다.</div>' +
@@ -345,7 +345,7 @@
                       icon(n[0], 15) + n[1] + '</span>';
                   }).join('') + '</div>' +
                 '</div></div>' +
-                '<div class="pm-caption">1차 MVP 실제 화면 구성 — 체험 계정으로 직접 만져 보세요</div>';
+                '<div class="pm-caption">실제 서비스 화면 — 체험 계정으로 직접 만져 보세요</div>';
               })() + '</div>' +
               '<div class="connect-path">' + connections.map(function (c, ci) {
                 return '<div class="connect-node' + (ci % 2 ? ' flip' : '') +
@@ -437,7 +437,7 @@
           '<div class="copyright">' +
             '© 2026 ASTROGEN. Stellar Connect(S:CON)는 아스트로젠의 디지털 헬스케어 서비스입니다. ' +
             'Every Child, Every Connection, Every Possibility.<br>' +
-            '본 화면은 1차 MVP 프로토타입입니다. (기획: 아스트로젠 · 개발: 오큐브)' +
+            '기획: 아스트로젠 · 개발: 오큐브' +
           '</div>' +
         '</div></footer>' +
       '</div>';
