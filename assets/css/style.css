@@ -790,6 +790,9 @@ svg { vertical-align: middle; }
 .item-row .txt .resp { color: var(--text-muted); font-size: .9rem; margin-top: 3px; }
 .item-actions { display: flex; gap: 4px; opacity: 0; transition: .14s var(--ease); }
 .item-row:hover .item-actions { opacity: 1; }
+/* 터치 기기(hover 불가)·키보드 포커스에서도 편집/삭제 접근 가능하게 — hover 의존 금지 */
+@media (hover: none) { .item-actions { opacity: 1; } }
+.item-row:focus-within .item-actions { opacity: 1; }
 
 .add-item { display: flex; gap: 9px; margin-top: 14px; align-items: flex-start; }
 .add-item .input, .add-item .textarea { flex: 1; }
@@ -1878,6 +1881,14 @@ table.tbl td.actions { white-space: nowrap; }
 .aud-intro b { color: var(--text); }
 .summary-sheet .sheet-top[style*="--aud"] {
   background: linear-gradient(135deg, var(--aud), color-mix(in srgb, var(--aud) 55%, #1b2a5c)) !important;
+}
+
+/* 좁은 화면 — 항목 행(미래 준비 상태 세그 등)이 넘치면 컨트롤을 다음 줄로 랩
+   (375에서 '준비/진행 중/완료'+삭제가 10px 넘쳐 가로 스크롤 발생하던 결함) */
+@media (max-width: 640px) {
+  .item-row { flex-wrap: wrap; }
+  .item-row .txt { flex: 1 1 180px; min-width: 0; }
+  .item-row .seg button { padding: 5px 8px; font-size: .74rem; }
 }
 
 /* 접근성: 모션 최소화 */

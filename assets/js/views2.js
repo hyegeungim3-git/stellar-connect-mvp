@@ -756,7 +756,7 @@
         '</div></div>' +
 
         '<div class="row" style="justify-content:flex-end;gap:10px;margin-top:18px">' +
-          '<button type="button" class="btn btn-ghost" id="btn-cancel">취소</button>' +
+          '<button type="button" class="btn btn-ghost btn-lg" id="btn-cancel">취소</button>' +
           '<button type="submit" class="btn btn-primary btn-lg">' + icon('check', 17) +
             (isNew ? '아이 등록' : '저장') + '</button>' +
         '</div>' +
