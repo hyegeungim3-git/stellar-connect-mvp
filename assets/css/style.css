@@ -434,6 +434,30 @@ p.muted { line-height: 1.72; }
 /* 약물 항목 = 입력 행 + 빠른 입력 줄 */
 .med-item { margin-bottom: 14px; }
 .med-item + .med-item { border-top: 1px dashed var(--border); padding-top: 12px; }
+/* 약물 행 — 9필드를 3줄 그리드로 정리: ①구분·이름·용량·단위 ②복용시간·시작일·종료일 ③복용정보·메모
+   (한 줄 flex로는 날짜·메모가 잘림. 삭제 버튼은 1행 오른쪽 고정) */
+.med-item .dyn-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 10px; position: relative; padding-right: 42px; align-items: end; }
+.med-item .dyn-row .dyn-cell { min-width: 0; }
+.med-item .dyn-row .dyn-cell .dyn-lbl { overflow: hidden; text-overflow: ellipsis; }
+.med-item .dyn-row .dyn-cell .input, .med-item .dyn-row .dyn-cell .select { width: 100%; min-width: 0; }
+.med-item .dyn-row .dyn-cell .input[type="date"] { min-width: 0; }
+.med-item .dyn-row > .dyn-cell:nth-child(1) { grid-column: span 2; }   /* 구분 */
+.med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }   /* 약 이름 */
+.med-item .dyn-row > .dyn-cell:nth-child(3) { grid-column: span 3; }   /* 용량 */
+.med-item .dyn-row > .dyn-cell:nth-child(4) { grid-column: span 3; }   /* 단위 */
+.med-item .dyn-row > .dyn-cell:nth-child(5) { grid-column: span 4; }   /* 복용 시간 */
+.med-item .dyn-row > .dyn-cell:nth-child(6) { grid-column: span 4; }   /* 시작일 */
+.med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 4; }   /* 종료일 */
+.med-item .dyn-row > .dyn-cell:nth-child(8) { grid-column: span 6; }   /* 복용 정보 */
+.med-item .dyn-row > .dyn-cell:nth-child(9) { grid-column: span 6; }   /* 보호자 메모 */
+.med-item .dyn-row .dyn-del { position: absolute; top: 21px; right: 0; }
+@media (max-width: 640px) {
+  .med-item .dyn-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }  /* 약 이름 */
+  .med-item .dyn-row > .dyn-cell:nth-child(5) { grid-column: span 6; }  /* 복용 시간 */
+  .med-item .dyn-row > .dyn-cell:nth-child(6) { grid-column: span 3; }  /* 시작일 */
+  .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 3; }  /* 종료일 */
+}
 .med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
 .med-quick .mq-lbl { font-size: .74rem; font-weight: 700; color: var(--text-faint); margin-right: 2px; }
 /* 기록 추가 — 프로필 약물 선택 삽입 패널 */
