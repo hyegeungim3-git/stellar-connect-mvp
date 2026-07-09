@@ -443,7 +443,7 @@ svg { vertical-align: middle; }
 .med-item + .med-item { border-top: 1px dashed var(--border); padding-top: 12px; }
 /* 약물 행 — 9필드를 3줄 그리드로 정리: ①구분·이름·용량·단위 ②복용시간·시작일·종료일 ③복용정보·메모
    (한 줄 flex로는 날짜·메모가 잘림. 삭제 버튼은 1행 오른쪽 고정) */
-.med-item .dyn-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 10px; position: relative; padding-right: 42px; align-items: end; }
+.med-item .dyn-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 10px; position: relative; padding-right: 50px; align-items: end; }
 .med-item .dyn-row .dyn-cell { min-width: 0; }
 .med-item .dyn-row .dyn-cell .dyn-lbl { overflow: hidden; text-overflow: ellipsis; }
 .med-item .dyn-row .dyn-cell .input, .med-item .dyn-row .dyn-cell .select { width: 100%; min-width: 0; }
@@ -457,8 +457,13 @@ svg { vertical-align: middle; }
 .med-item .dyn-row > .dyn-cell:nth-child(7) { grid-column: span 4; }   /* 종료일 */
 .med-item .dyn-row > .dyn-cell:nth-child(8) { grid-column: span 6; }   /* 복용 정보 */
 .med-item .dyn-row > .dyn-cell:nth-child(9) { grid-column: span 6; }   /* 보호자 메모 */
-/* 삭제 버튼 — 1행 입력창(라벨 아래 46px)과 높이·수직 위치를 정확히 맞춤 */
-.med-item .dyn-row .dyn-del { position: absolute; top: 23px; right: 0; width: 46px; height: 46px; }
+/* 삭제 버튼 — 약물 블록(3줄) 전체 오른쪽에 세로 중앙 정렬 (한 항목을 통째로 삭제하는 의미).
+   기본은 가볍게, 호버 시 강조 */
+.med-item .dyn-row .dyn-del {
+  position: absolute; top: 50%; transform: translateY(-50%); right: 0;
+  width: 40px; height: 40px; background: transparent; color: var(--text-faint);
+}
+.med-item .dyn-row .dyn-del:hover { background: var(--surface-2); color: var(--danger); }
 @media (max-width: 640px) {
   .med-item .dyn-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .med-item .dyn-row > .dyn-cell:nth-child(2) { grid-column: span 4; }  /* 약 이름 */
