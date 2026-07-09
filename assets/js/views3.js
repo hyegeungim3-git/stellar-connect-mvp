@@ -561,7 +561,9 @@
               { label: '수정', value: 'edit', variant: 'primary' }
             ],
             onButton: function (v) {
-              if (v === 'edit') { recordModal(child.id, r); return; }
+              // '수정'·'삭제'는 같은 modal-host에 새 모달(편집/확인)을 띄우므로
+              // 'keep'을 반환해 상세 모달의 자동 close()가 새 모달을 지우지 않게 한다.
+              if (v === 'edit') { recordModal(child.id, r); return 'keep'; }
               if (v === 'del') {
                 Modal.confirm({ title: '기록 삭제', message: '이 기록을 삭제할까요?',
                   okLabel: '삭제', danger: true }).then(function (ok) {
@@ -572,6 +574,7 @@
                   Store.deleteRecord(r.id);
                   toast('삭제되었습니다', 'ok'); App.refresh();
                 });
+                return 'keep';
               }
             }
           });
