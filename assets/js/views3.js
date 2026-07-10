@@ -220,7 +220,7 @@
           '</div>' +
           '<div class="row gap-sm" style="margin-top:8px;flex-wrap:wrap">' +
             '<button type="button" class="btn btn-soft btn-sm" id="rec-pull-meds">' +
-              icon('pill', 15) + '프로필 약물 불러오기</button>' +
+              icon('pill', 15) + '등록한 약물 불러오기</button>' +
             '<span class="faint" style="font-size:.78rem">불러올 약물을 골라 기록 내용에 넣어요</span>' +
           '</div>' +
           '<div id="rec-med-picker" class="med-picker" hidden></div></div>' +
@@ -267,7 +267,7 @@
         if (pullBtn) pullBtn.onclick = function () {
           var ch = Store.getChild(childId);
           var meds = (ch && ch.medications) || [];
-          if (!meds.length) { toast('프로필에 등록된 약물이 없어요', 'err'); return; }
+          if (!meds.length) { toast('약물 관리에 등록된 약물이 없어요', 'err'); return; }
           if (!picker.hidden) { picker.hidden = true; return; }   // 토글로 닫기
           picker.innerHTML =
             '<div class="mp-list">' + meds.map(function (m, i) {

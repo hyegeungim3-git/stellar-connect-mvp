@@ -133,23 +133,84 @@
       '<button type="button" class="chip sm" data-medsearch="1">' + icon('search', 13) +
       ' 약학정보원 검색</button></div>';
   }
-  /* 약물 한 항목 = 카드형 서브블록: 헤더(번호+삭제) / 필드 3줄 / 빠른 입력 푸터
-     — 삭제는 헤더 오른쪽(이 카드 전체 삭제가 명확), 번호는 CSS counter로 자동 매김 */
-  function medRowFull(vals) {
-    return '<div class="med-item">' +
-      '<div class="med-item-head">' +
-        '<span class="med-num">' + icon('pill', 14) + '약물</span>' +
-        '<button type="button" class="med-del dyn-del" aria-label="이 약물 삭제">' +
-          icon('x', 14) + '삭제</button>' +
-      '</div>' +
-      dynRow(MED_FIELDS, vals, { noDel: true }) + medQuickBar(vals) + '</div>';
-  }
-  V._medRowFull = medRowFull;
   /* 약 정보 검색 링크 — 약학정보원 통합검색으로 바로 연결 (2차 리뷰 요청) */
   function drugInfoURL(name) {
     return 'https://www.health.kr/searchDrug/search_total_result.asp?search_word=' +
       encodeURIComponent(name || '') + '&search_flag=all';
   }
+
+  /* 약물 등록·수정 모달 — 약물 관리 화면에서 사용 (아이 정보 폼에서 분리, 사용자 요청)
+     기존 카드형 필드 3줄 + 빠른 입력 줄을 그대로 재사용 */
+  function openMedEditor(childId, idx) {
+    var child = Store.getChild(childId);
+    if (!child) return;
+    var isNew = idx == null;
+    var vals = isNew ? {} : (child.medications[idx] || {});
+    var root = null;
+    Modal.open({
+      title: isNew ? '약물 등록' : '약물 수정',
+      icon: 'pill', wide: true,
+      body: '<div class="med-item" style="margin:0">' +
+        dynRow(MED_FIELDS, vals, { noDel: true }) + medQuickBar(vals) + '</div>' +
+        '<p class="faint" style="font-size:.8rem;margin-top:10px">약 이름이나 용량이 확실하지 않다면 ' +
+        '<b style="color:var(--primary)">약학정보원 검색</b>으로 바로 확인할 수 있어요. ' +
+        '종료일을 비워 두면 ‘계속 복용’으로 표시돼요.</p>',
+      buttons: [
+        { label: '취소', value: 'cancel', variant: 'ghost' },
+        { label: isNew ? '등록' : '저장', value: 'save', variant: 'primary', icon: 'check' }
+      ],
+      onMount: function (r) {
+        root = r;
+        r.addEventListener('click', function (e) {
+          var mt = e.target.closest('[data-medtime]');
+          if (mt) {
+            var inp = r.querySelector('[data-f="time"]');
+            if (inp) {
+              var phrase = mt.dataset.medtime;
+              var parts = (inp.value || '').split('·').map(function (s) { return s.trim(); })
+                .filter(Boolean);
+              var i = parts.indexOf(phrase);
+              if (i >= 0) parts.splice(i, 1); else parts.push(phrase);
+              inp.value = parts.join(' · ');
+              mt.classList.toggle('on', parts.indexOf(phrase) >= 0);
+            }
+            return;
+          }
+          var td = e.target.closest('[data-medtoday]');
+          if (td) {
+            var ds = r.querySelector('[data-f="startDate"]');
+            if (ds) ds.value = todayLocal();
+            return;
+          }
+          var ms = e.target.closest('[data-medsearch]');
+          if (ms) {
+            var nm = r.querySelector('[data-f="name"]');
+            var q = nm && nm.value.trim();
+            if (!q) { toast('약 이름을 먼저 입력해 주세요', 'err'); return; }
+            window.open(drugInfoURL(q), '_blank', 'noopener');
+          }
+        });
+      },
+      onButton: function (v) {
+        if (v !== 'save') return;
+        var m = {};
+        MED_KEYS.forEach(function (k) {
+          var el = root && root.querySelector('[data-f="' + k + '"]');
+          m[k] = el ? el.value.trim() : '';
+        });
+        if (!m.name) { toast('약 이름을 입력해 주세요', 'err'); return 'keep'; }
+        var c = Store.getChild(childId);
+        if (!c) return;
+        c.medications = c.medications || [];
+        if (isNew) c.medications.push(m);
+        else c.medications[idx] = m;
+        Store.saveChild(c);
+        toast(isNew ? '약물을 등록했어요' : '약물 정보를 고쳤어요', 'ok');
+        App.refresh();
+      }
+    });
+  }
+  V._openMedEditor = openMedEditor;
 
   /* ---------- 빠른 입력 프리셋 (6/10 회의 반영 — 직접 쓰지 않아도 탭 한 번으로) ---------- */
   var QUICK = {
@@ -305,7 +366,9 @@
           }).join('') +
           '<p class="faint" style="font-size:.78rem;margin-top:8px">‘정보 검색’을 누르면 ' +
             '약학정보원 통합검색 결과를 새 창으로 바로 보여 드려요.</p>'
-        : '<p class="muted" style="font-size:.9rem">등록된 약물이 없습니다.</p>';
+        : '<p class="muted" style="font-size:.9rem">아직 등록된 약물이 없어요.</p>';
+      meds += '<div style="margin-top:10px"><a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '">' +
+        icon('pill', 14) + '약물 관리에서 등록·수정</a></div>';
 
       var allg = child.allergies.length
         ? child.allergies.map(function (a) {
@@ -618,9 +681,6 @@
       else { child = ownedChild(p.id); if (!child) return notFound('아이 정보를 찾을 수 없어요'); }
 
       var d = child.disability;
-      var medRows = child.medications.length
-        ? child.medications.map(function (m) { return medRowFull(m); }).join('')
-        : medRowFull({});   /* 빈 상태여도 첫 입력 행을 미리 보여줘 진입장벽 낮춤 */
       var allgRows = child.allergies.length
         ? child.allergies.map(function (a) {
             return dynRow([
@@ -716,17 +776,22 @@
         '</div></div>' +
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
-          icon('pill', 18) + '</span><h3>약물 정보</h3></div><div class="card-body">' +
-          '<div id="med-rows" data-empty="아직 등록된 약물이 없어요. ‘약물 추가’로 등록해 주세요.">' +
-            medRows + '</div>' +
-          '<button type="button" class="btn btn-soft btn-sm" id="add-med">' +
-            icon('plus', 15) + '약물 추가</button>' +
-          '<p class="faint" style="font-size:.8rem;margin-top:10px">처방약·영양제를 구분해 등록하고, ' +
-            '용량은 숫자와 단위를 따로 골라 주세요. 종료일을 비워 두면 ‘계속 복용’으로 표시돼요. ' +
-            '약 이름·용량이 정확하지 않다면 각 약물 행의 ' +
-            '<b style="color:var(--primary)">약학정보원 검색</b> 버튼으로 ' +
-            '<a href="https://www.health.kr" target="_blank" rel="noopener" ' +
-            'style="color:var(--primary);font-weight:700">약학정보원</a>에서 바로 확인할 수 있어요.</p>' +
+          icon('pill', 18) + '</span><h3>약물 정보</h3>' +
+          (!isNew
+            ? '<a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '" style="margin-left:auto">' +
+              icon('pill', 14) + '약물 관리로</a>'
+            : '') +
+        '</div><div class="card-body">' +
+          (isNew
+            ? '<p class="muted" style="font-size:.9rem">약물은 아이 등록을 마친 뒤 ' +
+              '<b>약물 관리</b> 메뉴에서 등록할 수 있어요.</p>'
+            : (child.medications.length
+                ? '<div class="row wrap gap-sm">' + child.medications.map(function (m) {
+                    return '<span class="badge">' + esc(m.kind || '처방약') + ' · ' + esc(m.name) + '</span>';
+                  }).join('') + '</div>'
+                : '<p class="muted" style="font-size:.9rem">아직 등록된 약물이 없어요.</p>') +
+              '<p class="faint" style="font-size:.8rem;margin-top:8px">약물의 등록·수정·삭제는 ' +
+              '<b>약물 관리</b> 메뉴에서 해요. 이 화면에서 저장해도 약물 정보는 바뀌지 않아요.</p>') +
         '</div></div>' +
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
@@ -782,9 +847,6 @@
           UI.el(rowsId).insertAdjacentHTML('beforeend', dynRow(fields, {}));
         };
       }
-      UI.el('add-med').onclick = function () {
-        UI.el('med-rows').insertAdjacentHTML('beforeend', medRowFull({}));
-      };
       bindAdd('add-allg', 'allg-rows', [
         { k: 'name', ph: '알레르기 항목', flex: 1.2 },
         { k: 'reaction', ph: '증상/반응', flex: 1.6 },
@@ -796,43 +858,10 @@
       ]);
       document.getElementById('child-form').addEventListener('click', function (e) {
         var del = e.target.closest('.dyn-del');
-        if (del) { (del.closest('.med-item') || del.closest('.dyn-row')).remove(); return; }
+        if (del) { del.closest('.dyn-row').remove(); return; }
         // 감각 특성 빠른 선택 토글
         var sens = e.target.closest('[data-sens]');
         if (sens) { sens.classList.toggle('on'); return; }
-        // 복용 시간 빠른 입력 — 해당 약물 행의 시간 입력에 토글로 채움
-        var mt = e.target.closest('[data-medtime]');
-        if (mt) {
-          var item = mt.closest('.med-item');
-          var inp = item && item.querySelector('[data-f="time"]');
-          if (inp) {
-            var phrase = mt.dataset.medtime;
-            var parts = (inp.value || '').split('·').map(function (s) { return s.trim(); })
-              .filter(Boolean);
-            var i = parts.indexOf(phrase);
-            if (i >= 0) parts.splice(i, 1); else parts.push(phrase);
-            inp.value = parts.join(' · ');
-            mt.classList.toggle('on', parts.indexOf(phrase) >= 0);
-          }
-          return;
-        }
-        // 시작일 오늘로
-        var td = e.target.closest('[data-medtoday]');
-        if (td) {
-          var item2 = td.closest('.med-item');
-          var ds = item2 && item2.querySelector('[data-f="startDate"]');
-          if (ds) { ds.value = todayLocal(); }
-          return;
-        }
-        // 약학정보원에서 이 약 바로 검색 (입력한 약 이름 사용)
-        var ms = e.target.closest('[data-medsearch]');
-        if (ms) {
-          var item3 = ms.closest('.med-item');
-          var nm = item3 && item3.querySelector('[data-f="name"]');
-          var q = nm && nm.value.trim();
-          if (!q) { toast('약 이름을 먼저 입력해 주세요', 'err'); return; }
-          window.open(drugInfoURL(q), '_blank', 'noopener');
-        }
       });
 
       UI.el('btn-cancel').onclick = function () {
@@ -856,7 +885,7 @@
           type: f.dtype || '자폐 스펙트럼 장애', diagnosedAt: f.ddate,
           summary: f.dsummary, sensory: joinSensory(picked, f.dsensoryMemo)
         };
-        base.medications = readRows(UI.el('med-rows'), MED_KEYS);
+        /* 약물은 약물 관리 메뉴에서 별도 관리 — 이 폼은 건드리지 않는다 */
         base.allergies = readRows(UI.el('allg-rows'), ['name', 'reaction', 'severity']);
         base.emergency = {
           protocol: f.eprotocol, hospital: f.ehospital, doctor: f.edoctor,
@@ -865,6 +894,100 @@
         Store.saveChild(base);
         toast(isNew ? '아이를 등록했어요' : '저장했어요', 'ok');
         App.navigate(isNew ? '#/manual/' + base.id : '#/child/' + base.id);
+      });
+    }
+  };
+
+  /* =====================================================================
+   * 약물 관리 — 등록·수정·삭제 전용 화면 (아이 정보 폼에서 분리, 사용자 요청)
+   * 매일의 복약 확인은 기록 화면의 '오늘의 복약'과 이어진다
+   * ===================================================================== */
+  V.meds = {
+    layout: 'app',
+    render: function (p) {
+      var child = ownedChild(p.childId);
+      if (!child) return notFound('아이 정보를 찾을 수 없어요');
+      var meds = child.medications || [];
+      var counts = { '처방약': 0, '영양제': 0, '일반약': 0 };
+      meds.forEach(function (m) {
+        var k = m.kind || '처방약';
+        counts[k] = (counts[k] || 0) + 1;
+      });
+      var summary = meds.length
+        ? '<div class="row wrap gap-sm">' +
+            '<span class="badge brand">전체 ' + meds.length + '개</span>' +
+            (counts['처방약'] ? '<span class="badge">처방약 ' + counts['처방약'] + '</span>' : '') +
+            (counts['영양제'] ? '<span class="badge ok">영양제 ' + counts['영양제'] + '</span>' : '') +
+            (counts['일반약'] ? '<span class="badge">일반약 ' + counts['일반약'] + '</span>' : '') +
+          '</div>'
+        : '';
+      var list = meds.length
+        ? meds.map(function (m, i) {
+            return '<div class="item-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
+              '<div class="txt">' + V._medKindBadge(m.kind) + '<b>' + esc(m.name) + '</b> ' +
+                esc(medDose(m)) +
+                (m.time ? ' · ' + esc(m.time) : '') +
+                (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
+                (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
+                (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
+              '<div class="item-actions">' +
+                '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
+                  'title="약학정보원 정보 검색" aria-label="약학정보원 정보 검색">' + icon('search', 15) + '</a>' +
+                '<button class="btn-icon" data-medit="' + i + '" title="수정" aria-label="약물 수정">' +
+                  icon('edit', 15) + '</button>' +
+                '<button class="btn-icon" data-mdel="' + i + '" title="삭제" aria-label="약물 삭제">' +
+                  icon('trash', 15) + '</button>' +
+              '</div></div>';
+          }).join('')
+        : '<p class="muted" style="font-size:.9rem;padding:6px 0">아직 등록된 약물이 없어요. ' +
+          '‘약물 등록’으로 시작해 보세요.</p>';
+
+      return pageHead('약물 관리', child.name + '의 약물 관리',
+          '복용 중인 약을 한곳에서 등록하고 고쳐요. 매일 먹였는지 확인은 기록 화면의 ‘오늘의 복약’과 이어져요.') +
+        '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
+          icon('pill', 18) + '</span><h3>복용 중인 약물</h3>' +
+          '<button class="btn btn-primary btn-sm" id="btn-med-add" style="margin-left:auto">' +
+            icon('plus', 15) + '약물 등록</button></div>' +
+          '<div class="card-body">' +
+          (summary ? summary + '<div class="divider"></div>' : '') +
+          list +
+          '<p class="faint" style="font-size:.78rem;margin-top:10px">처방약·영양제·일반약을 구분해 두면 ' +
+            '병원용 설명서와 돌봄 인수인계에 그대로 담겨요. ‘정보 검색’은 약학정보원 결과를 새 창으로 보여 드려요.</p>' +
+          '</div></div>' +
+        '<div class="card card-pad" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+          '<span style="color:var(--primary);flex:none">' + icon('note', 18) + '</span>' +
+          '<span class="muted" style="font-size:.89rem;flex:1;min-width:180px">오늘 먹였는지 체크는 ' +
+            '기록 화면의 <b>오늘의 복약</b>에서 시간대 버튼으로 해요.</span>' +
+          '<a class="btn btn-soft btn-sm" href="#/records/' + child.id + '">' +
+            icon('note', 14) + '기록으로 가기</a>' +
+        '</div>';
+    },
+    mount: function (p, root) {
+      var child = ownedChild(p.childId);
+      if (!child) return;
+      UI.el('btn-med-add').onclick = function () { openMedEditor(child.id, null); };
+      root.addEventListener('click', function (e) {
+        var ed = e.target.closest('[data-medit]');
+        if (ed) { openMedEditor(child.id, Number(ed.dataset.medit)); return; }
+        var del = e.target.closest('[data-mdel]');
+        if (del) {
+          var i = Number(del.dataset.mdel);
+          var c = Store.getChild(child.id);
+          var m = c && c.medications[i];
+          if (!m) return;
+          Modal.confirm({
+            title: '약물 삭제', danger: true, okLabel: '삭제',
+            message: '‘' + m.name + '’을(를) 목록에서 삭제할까요?\n지금까지의 복약 기록은 그대로 남아요.'
+          }).then(function (ok) {
+            if (!ok) return;
+            var cc = Store.getChild(child.id);
+            if (!cc) return;
+            cc.medications.splice(i, 1);
+            Store.saveChild(cc);
+            toast('약물을 삭제했어요', 'ok');
+            App.refresh();
+          });
+        }
       });
     }
   };
