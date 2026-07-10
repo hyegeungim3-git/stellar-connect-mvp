@@ -90,31 +90,9 @@
            (s.safety ? s.safety.length : 0);
   }
   function childContextBar(child, active) {
-    var u = Store.currentUser();
-    var age = UI.calcAge(child.birthDate);
-    var links = [
-      { k: 'profile', t: '프로필', h: '#/child/' + child.id },
-      { k: 'manual', t: '설명서 작성', h: '#/manual/' + child.id },
-      { k: 'records', t: '기록', h: '#/records/' + child.id },
-      { k: 'gallery', t: '갤러리', h: '#/gallery/' + child.id },
-      { k: 'plan', t: '미래 준비', h: '#/plan/' + child.id },
-      { k: 'share', t: '대상별 공유', h: '#/share/' + child.id }
-    ];
-    var chips = links.map(function (l) {
-      return '<a href="' + l.h + '" class="chip' + (l.k === active ? ' on' : '') + '">' + esc(l.t) + '</a>';
-    }).join('');
-    return '<div class="card card-pad mb-2" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
-      '<div class="avatar lg">' + (child.photo
-        ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
-      '<div style="flex:1;min-width:140px">' +
-        '<div style="font-weight:800;font-size:1.15rem">' + esc(child.name) + '</div>' +
-        '<div class="muted" style="font-size:.86rem">' +
-          (age != null ? '만 ' + age + '세 · ' : '') + esc(child.gender || '') +
-          (u.role === 'admin' && child.ownerId !== u.id ? ' · <span class="faint">타 회원</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="ctx-chips">' + chips + '</div>' +
-    '</div>';
+    /* 아이 컨텍스트 칩 바는 좌측 메뉴로 통합됨 — 좌측 메뉴와 중복돼 헷갈린다는 사용자 의견 반영.
+       (프로필·대상별 공유가 사이드바·더보기에 추가됨) 호출부 호환을 위해 빈 문자열 반환 */
+    return '';
   }
   function pageHead(eyebrow, title, desc, rightHTML) {
     return '<div class="page-head"><div class="page-head-row"><div>' +

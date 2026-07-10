@@ -41,10 +41,11 @@
     return { view: 'home', params: {} };
   }
 
-  /* ---------- 네비게이션 정의 ---------- */
+  /* ---------- 네비게이션 정의 ----------
+     아이 컨텍스트 칩 바를 좌측 메뉴로 통합(중복 혼란 제거) — 프로필·대상별 공유가 메뉴에 포함 */
   var NAV_MAP = {
-    dashboard: 'dashboard', childProfile: 'dashboard', childEdit: 'dashboard',
-    manual: 'manual', summary: 'manual', share: 'manual', records: 'records',
+    dashboard: 'dashboard', childProfile: 'profile', childEdit: 'profile',
+    manual: 'manual', summary: 'manual', share: 'share', records: 'records',
     gallery: 'gallery', plan: 'plan', caregiver: 'caregiver', admin: 'admin'
   };
 
@@ -61,13 +62,17 @@
     var c = cur || '';
     return [
       { key: 'dashboard', label: '홈',          icon: 'grid',  hash: '#/dashboard' },
+      { key: 'profile',   label: '아이 프로필', icon: 'smile', hash: cur ? '#/child/' + c : '#/dashboard' },
       { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
       { key: 'records',   label: '기록',        icon: 'note',  hash: cur ? '#/records/' + c : '#/dashboard' },
       { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: cur ? '#/gallery/' + c : '#/dashboard' },
       { key: 'plan',      label: '미래 준비',   icon: 'sprout', hash: cur ? '#/plan/' + c : '#/dashboard' },
+      { key: 'share',     label: '대상별 공유', icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' },
       { key: 'caregiver', label: '양육자',      icon: 'user',  hash: '#/caregiver' }
     ];
   }
+  /* 모바일 하단 탭 4개 고정 (나머지는 더보기) */
+  var BOTTOM_KEYS = ['dashboard', 'manual', 'records', 'gallery'];
 
   /* ---------- 앱 셸 ---------- */
   function shell(r) {
@@ -126,7 +131,7 @@
 
     // 하단 탭바 (모바일)
     var bottom = '<nav class="bottom-nav">' +
-      items.slice(0, 4).map(function (it) {
+      items.filter(function (it) { return BOTTOM_KEYS.indexOf(it.key) >= 0; }).map(function (it) {
         return '<a href="' + it.hash + '" class="' + (active === it.key ? 'active' : '') + '">' +
           icon(it.icon, 22) + '<span>' + esc(it.label) + '</span></a>';
       }).join('') +
@@ -213,7 +218,9 @@
     var u = Store.currentUser();
     var cur = currentChildId(r);
     var links = [
+      { t: '아이 프로필', i: 'smile', h: cur ? '#/child/' + cur : '#/dashboard' },
       { t: '미래 준비', i: 'sprout', h: cur ? '#/plan/' + cur : '#/dashboard' },
+      { t: '대상별 공유', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' },
       { t: '양육자 정보', i: 'user', h: '#/caregiver' }
     ];
     if (u.role === 'admin') links.push({ t: '백오피스', i: 'settings', h: '#/admin' });
