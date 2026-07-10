@@ -620,16 +620,26 @@
         }).join('') + '</div>';
       }
 
-      /* 오늘의 복약 퀵 패널 — 등록된 시간대 버튼으로 기록·취소 */
+      /* 오늘의 복약 퀵 패널 — 아코디언(약이 많아도 컴팩트) + 시간대 버튼 기록·취소 + 일괄 완료 */
       var medGrid = medSlotGrid(child);
       var flat = medStatusToday(child);
       var doneN = flat.filter(function (x) { return x.done; }).length;
+      var pendingN = flat.length - doneN;
+      /* 접힘 상태: 수동 토글(S.medAcc) 우선, 없으면 자동(미기록 있으면 펼침) */
+      var accOpen = (S.medAcc === undefined || S.medAcc === null) ? pendingN > 0 : S.medAcc;
       var medPanel = medGrid.length
-        ? '<div class="card mb-2" id="med-today"><div class="card-head">' +
+        ? '<div class="card mb-2" id="med-today"><div class="card-head med-acc-head" id="med-acc-head" ' +
+            'role="button" aria-expanded="' + accOpen + '" title="탭하면 펼치거나 접어요">' +
             '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3>오늘의 복약</h3>' +
-            '<span class="badge ' + (doneN === flat.length ? 'ok' : 'warn') +
-              '" style="margin-left:auto">' + doneN + '/' + flat.length + ' 기록됨</span></div>' +
-          '<div class="card-body" style="padding-top:8px;padding-bottom:12px">' +
+            '<span class="badge ' + (pendingN === 0 ? 'ok' : 'warn') + '">' +
+              doneN + '/' + flat.length + ' 기록됨</span>' +
+            (pendingN > 0
+              ? '<button class="btn btn-primary btn-sm" id="med-all" style="margin-left:auto">' +
+                  icon('check', 14) + '모두 완료</button>'
+              : '<span style="margin-left:auto"></span>') +
+            '<span class="acc-chev' + (accOpen ? ' open' : '') + '">' + icon('chevD', 17) + '</span></div>' +
+          '<div class="card-body" id="med-acc-body" style="padding-top:8px;padding-bottom:12px"' +
+            (accOpen ? '' : ' hidden') + '>' +
             medGrid.map(function (g, gi) {
               var m = g.med;
               var pending = g.slots.some(function (s) { return s.registered && !s.done; });
@@ -673,8 +683,34 @@
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
-      /* 오늘의 복약 — 시간대 탭=기록, 다시 탭=취소(확인 후), 메모=프리필 모달 */
+      /* 오늘의 복약 — 아코디언 토글 + 일괄 완료 + 시간대 탭=기록/취소 + 메모 */
       var medG = medSlotGrid(child);
+      var accHead = UI.el('med-acc-head');
+      if (accHead) accHead.onclick = function (e) {
+        if (e.target.closest('#med-all')) return;   // 일괄 버튼은 토글 제외
+        var body = UI.el('med-acc-body');
+        var chev = accHead.querySelector('.acc-chev');
+        var open = body.hidden;                      // 토글 후 상태
+        body.hidden = !open;
+        chev.classList.toggle('open', open);
+        accHead.setAttribute('aria-expanded', open);
+        S.medAcc = open;                             // 수동 토글은 자동 규칙보다 우선
+      };
+      var allBtn = UI.el('med-all');
+      if (allBtn) allBtn.onclick = function (e) {
+        e.stopPropagation();
+        var n = 0;
+        medG.forEach(function (g) {
+          g.slots.forEach(function (s) {
+            if (s.registered && !s.done) { quickMedRecord(child, g.med, s); n++; }
+          });
+        });
+        if (n) {
+          S.medAcc = undefined;                    // 모두 완료 → 자동 규칙으로 접힘
+          toast('복약 ' + n + '건을 모두 기록했어요', 'ok');
+          App.refresh();
+        }
+      };
       function slotAt(ref) {
         var p = ref.split(':');
         var g = medG[parseInt(p[0], 10)];
