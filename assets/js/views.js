@@ -566,9 +566,9 @@
               }).join(' · ') +
               (missedAll.length > 3 ? ' 외 ' + (missedAll.length - 3) + '건' : '') + '</span>' +
             '<button class="btn btn-primary btn-sm" ' +
-              'onclick="App.navigate(\'#/records/' + missedAll[0].child.id + '\')">' +
+              'onclick="App.navigate(\'#/meds/' + missedAll[0].child.id + '\')">' +
               icon('check', 14) + '바로 기록</button></div>' +
-          '<p class="faint" style="font-size:.78rem;margin-top:6px">기록 페이지의 ‘오늘의 복약’에서 ' +
+          '<p class="faint" style="font-size:.78rem;margin-top:6px">복용 관리의 ‘오늘의 복약’에서 ' +
             '탭 한 번으로 기록돼요. 실서비스에서는 복용 시간에 맞춰 앱 푸시로 알려드립니다.</p></div>';
       }
 

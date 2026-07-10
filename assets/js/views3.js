@@ -92,6 +92,120 @@
     Store.saveRecord(rec);
     return rec;
   }
+
+  /* ---------- 오늘의 복약 패널 — 복용 관리 화면에서 사용 ----------
+     등록·수정과 매일의 복용 체크를 한 메뉴에 모음(2026-07-10 사용자 요청, 기록 화면에서 이동).
+     아코디언(약이 많아도 컴팩트) + 시간대 버튼 기록·취소 + 일괄 완료. 체크하면 기록 타임라인에도 남는다. */
+  function medTodayPanel(child) {
+    var medGrid = medSlotGrid(child);
+    var flat = medStatusToday(child);
+    var doneN = flat.filter(function (x) { return x.done; }).length;
+    var pendingN = flat.length - doneN;
+    /* 접힘 상태: 수동 토글(S.medAcc) 우선, 없으면 자동(미기록 있으면 펼침) */
+    var accOpen = (S.medAcc === undefined || S.medAcc === null) ? pendingN > 0 : S.medAcc;
+    if (!medGrid.length) return '';
+    return '<div class="card mb-2" id="med-today"><div class="card-head med-acc-head" id="med-acc-head" ' +
+        'role="button" aria-expanded="' + accOpen + '" title="탭하면 펼치거나 접어요">' +
+        '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3>오늘의 복약</h3>' +
+        '<span class="badge ' + (pendingN === 0 ? 'ok' : 'warn') + '">' +
+          doneN + '/' + flat.length + ' 기록됨</span>' +
+        (pendingN > 0
+          ? '<button class="btn btn-primary btn-sm" id="med-all" style="margin-left:auto">' +
+              icon('check', 14) + '모두 완료</button>'
+          : '<span style="margin-left:auto"></span>') +
+        '<span class="acc-chev' + (accOpen ? ' open' : '') + '">' + icon('chevD', 17) + '</span></div>' +
+      '<div class="card-body" id="med-acc-body" style="padding-top:8px;padding-bottom:12px"' +
+        (accOpen ? '' : ' hidden') + '>' +
+        medGrid.map(function (g, gi) {
+          var m = g.med;
+          return '<div class="med-log-row">' +
+            (V._medKindBadge ? V._medKindBadge(m.kind) : '') +
+            '<div class="txt"><b>' + esc(m.name) + '</b> ' +
+              esc(V._medDose ? V._medDose(m) : (m.dose || '')) + '</div>' +
+            '<div class="slot-btns">' +
+              g.slots.map(function (s, si) {
+                if (!s.registered) {
+                  return '<button class="slot-chip off" disabled title="등록된 복용 시간이 아니에요">' +
+                    esc(s.label) + '</button>';
+                }
+                if (s.done) {
+                  return '<button class="slot-chip done" data-mslotcancel="' + gi + ':' + si +
+                    '" title="탭하면 기록을 취소해요">✓ ' + esc(s.label) +
+                    (s.done.time ? ' <span class="sc-time">' + esc(s.done.time) + '</span>' : '') + '</button>';
+                }
+                return '<button class="slot-chip todo" data-mslotlog="' + gi + ':' + si +
+                  '" title="' + esc(s.text || s.label) + ' 복용 기록">' + esc(s.label) + '</button>';
+              }).join('') +
+            '</div>' +
+            '</div>';
+        }).join('') +
+        '<p class="faint" style="font-size:.78rem;margin-top:8px">등록한 복용 시간의 버튼만 켜져요. ' +
+          '탭하면 기록되고, 다시 탭하면 취소할 수 있어요. 체크한 내용은 기록 타임라인에 복약 기록으로 함께 남아요. ' +
+          '실서비스에서는 복용 시간에 맞춰 앱 푸시 알림이 발송됩니다.</p>' +
+      '</div></div>';
+  }
+  function wireMedToday(child) {
+    var medG = medSlotGrid(child);
+    var accHead = UI.el('med-acc-head');
+    if (accHead) accHead.onclick = function (e) {
+      if (e.target.closest('#med-all')) return;   // 일괄 버튼은 토글 제외
+      var body = UI.el('med-acc-body');
+      var chev = accHead.querySelector('.acc-chev');
+      var open = body.hidden;                      // 토글 후 상태
+      body.hidden = !open;
+      chev.classList.toggle('open', open);
+      accHead.setAttribute('aria-expanded', open);
+      S.medAcc = open;                             // 수동 토글은 자동 규칙보다 우선
+    };
+    var allBtn = UI.el('med-all');
+    if (allBtn) allBtn.onclick = function (e) {
+      e.stopPropagation();
+      var n = 0;
+      medG.forEach(function (g) {
+        g.slots.forEach(function (s) {
+          if (s.registered && !s.done) { quickMedRecord(child, g.med, s); n++; }
+        });
+      });
+      if (n) {
+        S.medAcc = undefined;                    // 모두 완료 → 자동 규칙으로 접힘
+        toast('복약 ' + n + '건을 모두 기록했어요', 'ok');
+        App.refresh();
+      }
+    };
+    function slotAt(ref) {
+      var p = ref.split(':');
+      var g = medG[parseInt(p[0], 10)];
+      return g ? { med: g.med, slot: g.slots[parseInt(p[1], 10)] } : null;
+    }
+    document.querySelectorAll('[data-mslotlog]').forEach(function (b) {
+      b.onclick = function () {
+        var x = slotAt(b.dataset.mslotlog);
+        if (!x || !x.slot || x.slot.done) return;
+        quickMedRecord(child, x.med, x.slot);
+        toast(x.med.name + ' ' + x.slot.label + ' 복용을 기록했어요', 'ok');
+        App.refresh();
+      };
+    });
+    document.querySelectorAll('[data-mslotcancel]').forEach(function (b) {
+      b.onclick = function () {
+        var x = slotAt(b.dataset.mslotcancel);
+        if (!x || !x.slot || !x.slot.done) return;
+        Modal.confirm({
+          title: '복약 기록 취소',
+          message: x.med.name + ' (' + x.slot.label + ') 복용 기록을 지울까요?',
+          okLabel: '기록 취소', danger: true
+        }).then(function (ok) {
+          if (!ok) return;
+          Store.deleteRecord(x.slot.done.id);
+          toast('복약 기록을 취소했어요', 'ok');
+          App.refresh();
+        });
+      };
+    });
+  }
+  V._medTodayPanel = medTodayPanel;
+  V._wireMedToday = wireMedToday;
+
   function dynRow(fields, vals) {
     vals = vals || {};
     var inner = fields.map(function (f) {
@@ -157,19 +271,6 @@
     rec = rec || { childId: childId, type: 'behavior', date: todayStr(), time: nowHM(),
                    title: '', content: '', tags: [], mood: 3, photo: null };
     if (isNew) { rec.id = Store.uid('rec'); rec.createdAt = Store.nowISO(); }
-    /* 복약 프리필 — '오늘의 복약' 패널의 [메모]로 진입: 약물 유형·제목·복약 정보·medKey(시간대) 선입력 */
-    if (isNew && opts.medPreset) {
-      var pm = opts.medPreset.med;
-      var pslot = opts.medPreset.slot;
-      var pdose = V._medDose ? V._medDose(pm) : (pm.dose || '');
-      rec.type = 'medication';
-      rec.title = pm.name + ' 복용 (' + pslot.label + ')';
-      rec.medKey = pslot.key;
-      rec.content = '[복약 정보]\n· ' + (pm.kind ? '[' + pm.kind + '] ' : '') + pm.name +
-        (pdose ? ' ' + pdose : '') + (pslot.text ? ' · ' + pslot.text : '') +
-        (pm.dosing ? ' · ' + pm.dosing : '') + '\n\n';
-      rec.tags = ['복약'];
-    }
     var photoData = rec.photo || null;
     var mood = rec.mood || 3;
 
@@ -620,136 +721,16 @@
         }).join('') + '</div>';
       }
 
-      /* 오늘의 복약 퀵 패널 — 아코디언(약이 많아도 컴팩트) + 시간대 버튼 기록·취소 + 일괄 완료 */
-      var medGrid = medSlotGrid(child);
-      var flat = medStatusToday(child);
-      var doneN = flat.filter(function (x) { return x.done; }).length;
-      var pendingN = flat.length - doneN;
-      /* 접힘 상태: 수동 토글(S.medAcc) 우선, 없으면 자동(미기록 있으면 펼침) */
-      var accOpen = (S.medAcc === undefined || S.medAcc === null) ? pendingN > 0 : S.medAcc;
-      var medPanel = medGrid.length
-        ? '<div class="card mb-2" id="med-today"><div class="card-head med-acc-head" id="med-acc-head" ' +
-            'role="button" aria-expanded="' + accOpen + '" title="탭하면 펼치거나 접어요">' +
-            '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3>오늘의 복약</h3>' +
-            '<span class="badge ' + (pendingN === 0 ? 'ok' : 'warn') + '">' +
-              doneN + '/' + flat.length + ' 기록됨</span>' +
-            (pendingN > 0
-              ? '<button class="btn btn-primary btn-sm" id="med-all" style="margin-left:auto">' +
-                  icon('check', 14) + '모두 완료</button>'
-              : '<span style="margin-left:auto"></span>') +
-            '<span class="acc-chev' + (accOpen ? ' open' : '') + '">' + icon('chevD', 17) + '</span></div>' +
-          '<div class="card-body" id="med-acc-body" style="padding-top:8px;padding-bottom:12px"' +
-            (accOpen ? '' : ' hidden') + '>' +
-            medGrid.map(function (g, gi) {
-              var m = g.med;
-              var pending = g.slots.some(function (s) { return s.registered && !s.done; });
-              return '<div class="med-log-row">' +
-                (V._medKindBadge ? V._medKindBadge(m.kind) : '') +
-                '<div class="txt"><b>' + esc(m.name) + '</b> ' +
-                  esc(V._medDose ? V._medDose(m) : (m.dose || '')) + '</div>' +
-                '<div class="slot-btns">' +
-                  g.slots.map(function (s, si) {
-                    if (!s.registered) {
-                      return '<button class="slot-chip off" disabled title="등록된 복용 시간이 아니에요">' +
-                        esc(s.label) + '</button>';
-                    }
-                    if (s.done) {
-                      return '<button class="slot-chip done" data-mslotcancel="' + gi + ':' + si +
-                        '" title="탭하면 기록을 취소해요">✓ ' + esc(s.label) +
-                        (s.done.time ? ' <span class="sc-time">' + esc(s.done.time) + '</span>' : '') + '</button>';
-                    }
-                    return '<button class="slot-chip todo" data-mslotlog="' + gi + ':' + si +
-                      '" title="' + esc(s.text || s.label) + ' 복용 기록">' + esc(s.label) + '</button>';
-                  }).join('') +
-                '</div>' +
-                (pending
-                  ? '<button class="btn btn-ghost btn-sm" data-medmemo="' + gi + '">' +
-                      icon('edit', 14) + '메모</button>'
-                  : '') +
-                '</div>';
-            }).join('') +
-            '<p class="faint" style="font-size:.78rem;margin-top:8px">등록한 복용 시간의 버튼만 켜져요. ' +
-              '탭하면 기록되고, 다시 탭하면 취소할 수 있어요. 실서비스에서는 복용 시간에 맞춰 앱 푸시 알림이 발송됩니다.</p>' +
-          '</div></div>'
-        : '';
-
+      /* 오늘의 복약 패널은 복용 관리 메뉴로 이동됨 (2026-07-10 사용자 요청) */
       return childContextBar(child, 'records') +
         pageHead('기록', child.name + ' 기록',
           '행동·치료·변화의 순간을 짧은 영상(릴스)이나 글로 남깁니다.',
           '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
           '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록 추가</button>') +
-        medPanel +
         '<div class="mb-2">' + seg + '</div>' + body;
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
-      /* 오늘의 복약 — 아코디언 토글 + 일괄 완료 + 시간대 탭=기록/취소 + 메모 */
-      var medG = medSlotGrid(child);
-      var accHead = UI.el('med-acc-head');
-      if (accHead) accHead.onclick = function (e) {
-        if (e.target.closest('#med-all')) return;   // 일괄 버튼은 토글 제외
-        var body = UI.el('med-acc-body');
-        var chev = accHead.querySelector('.acc-chev');
-        var open = body.hidden;                      // 토글 후 상태
-        body.hidden = !open;
-        chev.classList.toggle('open', open);
-        accHead.setAttribute('aria-expanded', open);
-        S.medAcc = open;                             // 수동 토글은 자동 규칙보다 우선
-      };
-      var allBtn = UI.el('med-all');
-      if (allBtn) allBtn.onclick = function (e) {
-        e.stopPropagation();
-        var n = 0;
-        medG.forEach(function (g) {
-          g.slots.forEach(function (s) {
-            if (s.registered && !s.done) { quickMedRecord(child, g.med, s); n++; }
-          });
-        });
-        if (n) {
-          S.medAcc = undefined;                    // 모두 완료 → 자동 규칙으로 접힘
-          toast('복약 ' + n + '건을 모두 기록했어요', 'ok');
-          App.refresh();
-        }
-      };
-      function slotAt(ref) {
-        var p = ref.split(':');
-        var g = medG[parseInt(p[0], 10)];
-        return g ? { med: g.med, slot: g.slots[parseInt(p[1], 10)] } : null;
-      }
-      document.querySelectorAll('[data-mslotlog]').forEach(function (b) {
-        b.onclick = function () {
-          var x = slotAt(b.dataset.mslotlog);
-          if (!x || !x.slot || x.slot.done) return;
-          quickMedRecord(child, x.med, x.slot);
-          toast(x.med.name + ' ' + x.slot.label + ' 복용을 기록했어요', 'ok');
-          App.refresh();
-        };
-      });
-      document.querySelectorAll('[data-mslotcancel]').forEach(function (b) {
-        b.onclick = function () {
-          var x = slotAt(b.dataset.mslotcancel);
-          if (!x || !x.slot || !x.slot.done) return;
-          Modal.confirm({
-            title: '복약 기록 취소',
-            message: x.med.name + ' (' + x.slot.label + ') 복용 기록을 지울까요?\n메모를 남겼다면 함께 지워져요.',
-            okLabel: '기록 취소', danger: true
-          }).then(function (ok) {
-            if (!ok) return;
-            Store.deleteRecord(x.slot.done.id);
-            toast('복약 기록을 취소했어요', 'ok');
-            App.refresh();
-          });
-        };
-      });
-      document.querySelectorAll('[data-medmemo]').forEach(function (b) {
-        b.onclick = function () {
-          var g = medG[parseInt(b.dataset.medmemo, 10)];
-          if (!g) return;
-          var pending = null;
-          g.slots.forEach(function (s) { if (!pending && s.registered && !s.done) pending = s; });
-          if (pending) recordModal(child.id, null, { medPreset: { med: g.med, slot: pending } });
-        };
-      });
       var ba = UI.el('btn-add-rec');
       if (ba) ba.onclick = function () { recordModal(child.id, null); };
       var br = UI.el('btn-reels');

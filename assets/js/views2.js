@@ -1028,7 +1028,7 @@
 
   /* =====================================================================
    * 복용 관리 — 등록·수정·삭제 전용 화면 (아이 정보 폼에서 분리, 사용자 요청)
-   * 매일의 복약 확인은 기록 화면의 '오늘의 복약'과 이어진다
+   * 오늘의 복약(시간대 체크) + 약 등록·수정을 한 화면에서 처리한다
    * ===================================================================== */
   V.meds = {
     layout: 'app',
@@ -1073,7 +1073,8 @@
           '‘약물 등록’으로 시작해 보세요.</p>';
 
       return pageHead('복용 관리', child.name + '의 복용 관리',
-          '복용 중인 약을 한곳에서 등록하고 고쳐요. 매일 먹였는지 확인은 기록 화면의 ‘오늘의 복약’과 이어져요.') +
+          '약 등록·수정과 매일의 복용 체크를 한곳에서 해요. 체크한 내용은 기록 타임라인에도 함께 남아요.') +
+        (V._medTodayPanel ? V._medTodayPanel(child) : '') +
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
           icon('pill', 18) + '</span><h3>복용 중인 약물</h3>' +
           '<button class="btn btn-primary btn-sm" id="btn-med-add" style="margin-left:auto">' +
@@ -1087,15 +1088,16 @@
           '</div></div>' +
         '<div class="card card-pad" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
           '<span style="color:var(--primary);flex:none">' + icon('note', 18) + '</span>' +
-          '<span class="muted" style="font-size:.89rem;flex:1;min-width:180px">오늘 먹였는지 체크는 ' +
-            '기록 화면의 <b>오늘의 복약</b>에서 시간대 버튼으로 해요.</span>' +
+          '<span class="muted" style="font-size:.89rem;flex:1;min-width:180px">복용 체크는 ' +
+            '<b>기록 타임라인</b>에 복약 기록으로 함께 남아요 — 컨디션 변화와 나란히 볼 수 있어요.</span>' +
           '<a class="btn btn-soft btn-sm" href="#/records/' + child.id + '">' +
-            icon('note', 14) + '기록으로 가기</a>' +
+            icon('note', 14) + '기록 보러 가기</a>' +
         '</div>';
     },
     mount: function (p, root) {
       var child = ownedChild(p.childId);
       if (!child) return;
+      if (V._wireMedToday) V._wireMedToday(child);
       UI.el('btn-med-add').onclick = function () { openMedEditor(child.id, null); };
       root.addEventListener('click', function (e) {
         var ei = e.target.closest('[data-einfo]');
