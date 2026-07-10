@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 15;   // 데모 데이터 변경 시 이 숫자를 올린다 (v15: 복약 순서 — 마그밀 최상단)
+  var SEED_VERSION = 16;   // 데모 데이터 변경 시 이 숫자를 올린다 (v16: 텐텐 아침·저녁 2회 — 복수 시간대 예시)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -89,8 +89,8 @@
         { kind: '일반약', name: '지르텍', dose: '10', doseUnit: 'mg', time: '자기 전',
           startDate: '2026-05-20', endDate: '', dosing: '알레르기 증상(콧물·두드러기)이 있을 때 자기 전 1회',
           note: '졸릴 수 있어 저녁에 먹여요.' },
-        { kind: '영양제', name: '텐텐', dose: '2', doseUnit: '정', time: '아침 식후',
-          startDate: '2026-01-15', endDate: '', dosing: '아침 식후 2정, 잘 씹어서',
+        { kind: '영양제', name: '텐텐', dose: '1', doseUnit: '정', time: '아침 식후 · 저녁 식후',
+          startDate: '2026-01-15', endDate: '', dosing: '아침·저녁 식후 1정씩, 잘 씹어서',
           note: '편식이 있어 영양 보충 중이에요.' }
       ],
       allergies: [
