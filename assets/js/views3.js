@@ -16,6 +16,47 @@
     var d = new Date();
     return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
+
+  /* ---------- 주기 복용 약물의 오늘 복약 상태 (리마인더·원탭 기록의 근거) ----------
+     '주기 복용' = 복용 시간이 지정되고 기간이 활성인 약물.
+     기록 여부는 오늘 자 medication 기록의 medKey(약명@복용시간)로 판정한다. */
+  function medKeyOf(m) { return m.name + '@' + (m.time || ''); }
+  function medActive(m, day) {
+    if (m.startDate && day < m.startDate) return false;
+    if (m.endDate && day > m.endDate) return false;
+    return true;
+  }
+  function medStatusToday(child) {
+    var day = todayStr();
+    var meds = (child.medications || []).filter(function (m) {
+      return m.name && (m.time || '').trim() && medActive(m, day);
+    });
+    var recs = Store.recordsOf(child.id).filter(function (r) {
+      return r.type === 'medication' && r.date === day;
+    });
+    return meds.map(function (m) {
+      var key = medKeyOf(m);
+      var done = null;
+      recs.forEach(function (r) { if (r.medKey === key) done = r; });
+      return { med: m, key: key, done: done };
+    });
+  }
+  V._medStatusToday = medStatusToday;
+  /* 원탭 복약 기록 — 시간·복약 정보를 채운 medication 기록을 즉시 생성 */
+  function quickMedRecord(child, m) {
+    var dose = V._medDose ? V._medDose(m) : (m.dose || '');
+    var rec = {
+      id: Store.uid('rec'), childId: child.id, type: 'medication',
+      date: todayStr(), time: nowHM(),
+      title: m.name + ' 복용', medKey: medKeyOf(m),
+      content: '[복약 정보]\n· ' + (m.kind ? '[' + m.kind + '] ' : '') + m.name +
+        (dose ? ' ' + dose : '') + (m.time ? ' · ' + m.time : '') +
+        (m.dosing ? ' · ' + m.dosing : ''),
+      tags: ['복약'], mood: 3, photo: null, createdAt: Store.nowISO()
+    };
+    Store.saveRecord(rec);
+    return rec;
+  }
   function dynRow(fields, vals) {
     vals = vals || {};
     var inner = fields.map(function (f) {
@@ -81,6 +122,18 @@
     rec = rec || { childId: childId, type: 'behavior', date: todayStr(), time: nowHM(),
                    title: '', content: '', tags: [], mood: 3, photo: null };
     if (isNew) { rec.id = Store.uid('rec'); rec.createdAt = Store.nowISO(); }
+    /* 복약 프리필 — '오늘의 복약' 패널의 [메모]로 진입: 약물 유형·제목·복약 정보·medKey 선입력 */
+    if (isNew && opts.medPreset) {
+      var pm = opts.medPreset;
+      var pdose = V._medDose ? V._medDose(pm) : (pm.dose || '');
+      rec.type = 'medication';
+      rec.title = pm.name + ' 복용';
+      rec.medKey = medKeyOf(pm);
+      rec.content = '[복약 정보]\n· ' + (pm.kind ? '[' + pm.kind + '] ' : '') + pm.name +
+        (pdose ? ' ' + pdose : '') + (pm.time ? ' · ' + pm.time : '') +
+        (pm.dosing ? ' · ' + pm.dosing : '') + '\n\n';
+      rec.tags = ['복약'];
+    }
     var photoData = rec.photo || null;
     var mood = rec.mood || 3;
 
@@ -531,15 +584,62 @@
         }).join('') + '</div>';
       }
 
+      /* 오늘의 복약 퀵 패널 — 주기 복용 약물의 미기록 건을 원탭으로 기록 */
+      var medsToday = medStatusToday(child);
+      var doneN = medsToday.filter(function (x) { return x.done; }).length;
+      var medPanel = medsToday.length
+        ? '<div class="card mb-2" id="med-today"><div class="card-head">' +
+            '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3>오늘의 복약</h3>' +
+            '<span class="badge ' + (doneN === medsToday.length ? 'ok' : 'warn') +
+              '" style="margin-left:auto">' + doneN + '/' + medsToday.length + ' 기록됨</span></div>' +
+          '<div class="card-body" style="padding-top:8px;padding-bottom:12px">' +
+            medsToday.map(function (x, i) {
+              var m = x.med;
+              return '<div class="med-log-row">' +
+                (V._medKindBadge ? V._medKindBadge(m.kind) : '') +
+                '<div class="txt"><b>' + esc(m.name) + '</b> ' +
+                  esc(V._medDose ? V._medDose(m) : (m.dose || '')) +
+                  ' <span class="faint">· ' + esc(m.time) + '</span></div>' +
+                (x.done
+                  ? '<span class="badge ok dot">' + esc(x.done.time || '') + ' 기록됨</span>'
+                  : '<button class="btn btn-ghost btn-sm" data-medmemo="' + i + '">' +
+                      icon('edit', 14) + '메모</button>' +
+                    '<button class="btn btn-primary btn-sm" data-medlog="' + i + '">' +
+                      icon('check', 14) + '복용 완료</button>') +
+                '</div>';
+            }).join('') +
+            '<p class="faint" style="font-size:.78rem;margin-top:8px">기록이 없으면 홈에서 알려드려요. ' +
+              '실서비스에서는 복용 시간에 맞춰 앱 푸시 알림이 발송됩니다.</p>' +
+          '</div></div>'
+        : '';
+
       return childContextBar(child, 'records') +
         pageHead('기록', child.name + ' 기록',
           '행동·치료·변화의 순간을 짧은 영상(릴스)이나 글로 남깁니다.',
           '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
           '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록 추가</button>') +
+        medPanel +
         '<div class="mb-2">' + seg + '</div>' + body;
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
+      /* 오늘의 복약 — 원탭 기록 / 메모(프리필 모달) */
+      var medSt = medStatusToday(child);
+      document.querySelectorAll('[data-medlog]').forEach(function (b) {
+        b.onclick = function () {
+          var x = medSt[parseInt(b.dataset.medlog, 10)];
+          if (!x || x.done) return;
+          quickMedRecord(child, x.med);
+          toast(x.med.name + ' 복용을 기록했어요', 'ok');
+          App.refresh();
+        };
+      });
+      document.querySelectorAll('[data-medmemo]').forEach(function (b) {
+        b.onclick = function () {
+          var x = medSt[parseInt(b.dataset.medmemo, 10)];
+          if (x) recordModal(child.id, null, { medPreset: x.med });
+        };
+      });
       var ba = UI.el('btn-add-rec');
       if (ba) ba.onclick = function () { recordModal(child.id, null); };
       var br = UI.el('btn-reels');

@@ -571,6 +571,29 @@
           '<p style="color:#0d5b52;font-size:.9rem;margin-top:4px">' + esc(pop.body) + '</p></div>';
       }
 
+      // 복약 리마인더 — 주기 복용 약물 중 오늘 기록이 없는 건 (실서비스: 복용 시간 앱 푸시)
+      var missedAll = [];
+      kids.forEach(function (c) {
+        var st = global.Views._medStatusToday ? global.Views._medStatusToday(c) : [];
+        st.forEach(function (x) { if (!x.done) missedAll.push({ child: c, med: x.med }); });
+      });
+      if (missedAll.length) {
+        html += '<div class="card card-pad mb-2" id="med-remind" ' +
+          'style="border-left:4px solid var(--c-problem);background:var(--c-problem-bg)">' +
+          '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' +
+            '<b style="color:#9a6207">' + icon('pill', 15) + ' 오늘 복약 기록 전이에요</b>' +
+            '<span style="color:#9a6207;font-size:.9rem;flex:1;min-width:180px">' +
+              missedAll.slice(0, 3).map(function (x) {
+                return esc(x.med.name) + '(' + esc(x.med.time) + ')';
+              }).join(' · ') +
+              (missedAll.length > 3 ? ' 외 ' + (missedAll.length - 3) + '건' : '') + '</span>' +
+            '<button class="btn btn-primary btn-sm" ' +
+              'onclick="App.navigate(\'#/records/' + missedAll[0].child.id + '\')">' +
+              icon('check', 14) + '바로 기록</button></div>' +
+          '<p class="faint" style="font-size:.78rem;margin-top:6px">기록 페이지의 ‘오늘의 복약’에서 ' +
+            '탭 한 번으로 기록돼요. 실서비스에서는 복용 시간에 맞춰 앱 푸시로 알려드립니다.</p></div>';
+      }
+
       // 대부분 가정은 아이 1명 — 등록 후에는 '추가'를 낮은 톤(ghost)으로만 노출
       html += '<div class="page-head-row mb-2"><h2>우리 아이</h2>' +
         (kids.length
