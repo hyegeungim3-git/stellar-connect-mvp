@@ -575,7 +575,7 @@
       var missedAll = [];
       kids.forEach(function (c) {
         var st = global.Views._medStatusToday ? global.Views._medStatusToday(c) : [];
-        st.forEach(function (x) { if (!x.done) missedAll.push({ child: c, med: x.med }); });
+        st.forEach(function (x) { if (!x.done) missedAll.push({ child: c, med: x.med, slot: x.slot }); });
       });
       if (missedAll.length) {
         html += '<div class="card card-pad mb-2" id="med-remind" ' +
@@ -584,7 +584,7 @@
             '<b style="color:#9a6207">' + icon('pill', 15) + ' 오늘 복약 기록 전이에요</b>' +
             '<span style="color:#9a6207;font-size:.9rem;flex:1;min-width:180px">' +
               missedAll.slice(0, 3).map(function (x) {
-                return esc(x.med.name) + '(' + esc(x.med.time) + ')';
+                return esc(x.med.name) + '(' + esc(x.slot) + ')';
               }).join(' · ') +
               (missedAll.length > 3 ? ' 외 ' + (missedAll.length - 3) + '건' : '') + '</span>' +
             '<button class="btn btn-primary btn-sm" ' +

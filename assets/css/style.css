@@ -490,10 +490,22 @@ svg { vertical-align: middle; }
 /* 빠른 입력 푸터 — 필드와 점선으로 구분 */
 .med-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .med-quick .mq-lbl { font-size: .74rem; font-weight: 700; color: var(--text-faint); margin-right: 2px; }
-/* 오늘의 복약 — 기록 화면 원탭 기록 패널 */
+/* 오늘의 복약 — 시간대 버튼으로 기록·취소 */
 .med-log-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 0; border-bottom: 1px solid var(--border); }
 .med-log-row:last-of-type { border-bottom: none; }
-.med-log-row .txt { flex: 1; min-width: 150px; font-size: .92rem; }
+.med-log-row .txt { flex: 1; min-width: 120px; font-size: .92rem; }
+.med-log-row .slot-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.slot-chip {
+  min-height: 36px; padding: 6px 12px; border-radius: 999px;
+  font-size: .8rem; font-weight: 700; transition: .14s var(--ease);
+  border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text-muted);
+}
+.slot-chip.todo { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-soft); }
+.slot-chip.todo:hover { background: var(--primary); color: #fff; }
+.slot-chip.done { border-color: transparent; background: var(--c-cando-bg); color: #157a51; }
+.slot-chip.done:hover { border-color: var(--danger); color: var(--danger); background: #fbe9e7; }
+.slot-chip.off { opacity: .35; cursor: default; }
+.slot-chip .sc-time { font-weight: 400; font-size: .72rem; opacity: .85; }
 
 /* 기록 추가 — 프로필 약물 선택 삽입 패널 */
 .med-picker { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-3); }
