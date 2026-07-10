@@ -212,6 +212,134 @@
   }
   V._openMedEditor = openMedEditor;
 
+  /* ---------- 식약처 e약은요(의약품개요정보) — DrugAPI(drugapi.js) 연동 ----------
+     인증키는 localStorage에만 보관(저장소 커밋 금지). 키 없으면 설정 모달로 안내. */
+  function openDrugKeyModal(afterName) {
+    Modal.open({
+      title: '공공데이터 인증키 설정', icon: 'info',
+      body: '<p class="muted" style="font-size:.9rem">식약처 <b>e약은요(의약품개요정보)</b> 조회에는 ' +
+        '공공데이터포털(data.go.kr) 인증키가 필요해요. 한 번만 저장하면 이 기기에만 보관되고, ' +
+        '서버나 저장소로 보내지 않아요.</p>' +
+        '<div class="field" style="margin-top:12px"><label>일반 인증키 (Decoding)</label>' +
+        '<input class="input" id="drug-key-input" placeholder="공공데이터포털에서 발급받은 키를 붙여 넣어 주세요" ' +
+        'value="' + esc(global.DrugAPI ? DrugAPI.getKey() : '') + '"></div>' +
+        '<p class="faint" style="font-size:.78rem;margin-top:8px">공공데이터포털 &gt; 마이페이지 &gt; 활용신청 현황에서 ' +
+        '확인할 수 있어요. 새로 발급한 키는 활성화까지 최대 1시간 걸릴 수 있어요.</p>',
+      buttons: [
+        { label: '취소', value: 'cancel', variant: 'ghost' },
+        { label: '저장', value: 'save', variant: 'primary', icon: 'check' }
+      ],
+      onButton: function (v) {
+        if (v !== 'save') return;
+        var inp = document.getElementById('drug-key-input');
+        var k = inp && inp.value.trim();
+        if (!k) { toast('인증키를 입력해 주세요', 'err'); return 'keep'; }
+        DrugAPI.setKey(k);
+        toast('인증키를 저장했어요', 'ok');
+        if (afterName) setTimeout(function () { openDrugInfo(afterName); }, 80);
+      }
+    });
+  }
+
+  function drugDetailHTML(it) {
+    var secs = [
+      ['이런 효능이 있어요', it.efcyQesitm],
+      ['이렇게 사용해요', it.useMethodQesitm],
+      ['사용 전 꼭 확인하세요 (경고)', it.atpnWarnQesitm],
+      ['주의할 점', it.atpnQesitm],
+      ['함께 먹으면 주의 (상호작용)', it.intrcQesitm],
+      ['이런 증상이 나타날 수 있어요 (부작용)', it.seQesitm],
+      ['이렇게 보관해요', it.depositMethodQesitm]
+    ];
+    return '<div class="row" style="gap:12px;align-items:flex-start;flex-wrap:wrap">' +
+        (it.itemImage
+          ? '<img src="' + esc(it.itemImage) + '" alt="' + esc(it.itemName) + '" ' +
+            'style="width:96px;border-radius:8px;flex:none;background:var(--surface-2)">'
+          : '') +
+        '<div style="flex:1;min-width:180px"><b style="font-size:1.02rem">' + esc(it.itemName) + '</b>' +
+        (it.entpName ? '<div class="muted" style="font-size:.85rem;margin-top:2px">' + esc(it.entpName) + '</div>' : '') +
+        '</div></div>' +
+      secs.map(function (s) {
+        if (!s[1]) return '';
+        return '<div class="divider"></div><b style="font-size:.86rem">' + s[0] + '</b>' +
+          '<p class="muted" style="font-size:.88rem;margin-top:4px">' + nl2br(s[1]) + '</p>';
+      }).join('') +
+      '<div class="divider"></div><p class="faint" style="font-size:.76rem">출처: 식품의약품안전처 e약은요(의약품개요정보) · ' +
+      '참고용 정보예요. 의학적 판단은 의사·약사와 상의해 주세요.</p>';
+  }
+
+  function openDrugInfo(name) {
+    if (!global.DrugAPI) { window.open(drugInfoURL(name), '_blank', 'noopener'); return; }
+    if (!DrugAPI.hasKey()) { openDrugKeyModal(name); return; }
+    Modal.open({
+      title: 'e약은요 — ' + name, icon: 'pill', wide: true,
+      body: '<div id="einfo-body"><p class="muted" style="padding:12px 0;font-size:.9rem">' +
+        '식약처 e약은요에서 정보를 불러오는 중이에요…</p></div>',
+      buttons: [
+        { label: '약학정보원에서 보기', value: 'hk', variant: 'ghost', icon: 'search' },
+        { label: '닫기', value: 'close', variant: 'primary' }
+      ],
+      onButton: function (v) {
+        if (v === 'hk') { window.open(drugInfoURL(name), '_blank', 'noopener'); return 'keep'; }
+      },
+      onMount: function (root) {
+        var box = root.querySelector('#einfo-body');
+        var found = [];
+        function renderList() {
+          box.innerHTML = '<p class="muted" style="font-size:.88rem;margin-bottom:8px">' +
+            found.length + '건이 검색됐어요. 제품을 골라 주세요.</p>' +
+            found.map(function (it, i) {
+              return '<button type="button" class="item-row" data-epick="' + i + '" ' +
+                'style="width:100%;text-align:left;cursor:pointer">' +
+                '<span class="bullet" style="background:var(--c-comm)">약</span>' +
+                '<div class="txt"><b>' + esc(it.itemName) + '</b>' +
+                (it.entpName ? '<div class="resp">' + esc(it.entpName) + '</div>' : '') +
+                '</div></button>';
+            }).join('');
+        }
+        box.addEventListener('click', function (e) {
+          var pick = e.target.closest('[data-epick]');
+          if (pick) {
+            box.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" id="einfo-back" ' +
+              'style="margin-bottom:10px">← 검색 목록으로</button>' +
+              drugDetailHTML(found[Number(pick.dataset.epick)]);
+            return;
+          }
+          if (e.target.closest('#einfo-back')) { renderList(); return; }
+          if (e.target.closest('#einfo-key')) { openDrugKeyModal(name); }
+        });
+        DrugAPI.search(name).then(function (items) {
+          found = items;
+          if (!items.length) {
+            box.innerHTML = '<p class="muted" style="font-size:.9rem;padding:8px 0">' +
+              '‘' + esc(name) + '’ 검색 결과가 없어요.<br>제품명을 정확히 입력했는지 확인하거나, ' +
+              '아래 <b>약학정보원에서 보기</b>로 찾아보세요.</p>';
+            return;
+          }
+          if (items.length === 1) {
+            box.innerHTML = drugDetailHTML(items[0]);
+          } else {
+            renderList();
+          }
+        }).catch(function (err) {
+          if (err.message === 'KEY') {
+            box.innerHTML = '<p class="muted" style="font-size:.9rem;padding:8px 0">' +
+              '인증키가 아직 승인되지 않았거나 올바르지 않아요.<br>' +
+              '새로 발급한 키는 활성화까지 최대 1시간 걸릴 수 있어요.</p>' +
+              '<button type="button" class="btn btn-soft btn-sm" id="einfo-key">인증키 다시 설정</button>';
+          } else if (err.message === 'NET') {
+            box.innerHTML = '<p class="muted" style="font-size:.9rem;padding:8px 0">' +
+              '네트워크 연결을 확인해 주세요. 인터넷이 연결돼 있어야 식약처 정보를 불러올 수 있어요.</p>';
+          } else {
+            box.innerHTML = '<p class="muted" style="font-size:.9rem;padding:8px 0">' +
+              '지금은 정보를 불러올 수 없어요. 잠시 후 다시 시도해 주세요.</p>';
+          }
+        });
+      }
+    });
+  }
+  V._openDrugInfo = openDrugInfo;
+
   /* ---------- 빠른 입력 프리셋 (6/10 회의 반영 — 직접 쓰지 않아도 탭 한 번으로) ---------- */
   var QUICK = {
     canDo: [
@@ -931,6 +1059,8 @@
                 (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
                 (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
               '<div class="item-actions">' +
+                '<button class="btn-icon" data-einfo="' + i + '" title="e약은요 (식약처 개요정보)" ' +
+                  'aria-label="e약은요 정보 보기">' + icon('info', 15) + '</button>' +
                 '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
                   'title="약학정보원 정보 검색" aria-label="약학정보원 정보 검색">' + icon('search', 15) + '</a>' +
                 '<button class="btn-icon" data-medit="' + i + '" title="수정" aria-label="약물 수정">' +
@@ -952,7 +1082,8 @@
           (summary ? summary + '<div class="divider"></div>' : '') +
           list +
           '<p class="faint" style="font-size:.78rem;margin-top:10px">처방약·영양제·일반약을 구분해 두면 ' +
-            '병원용 설명서와 돌봄 인수인계에 그대로 담겨요. ‘정보 검색’은 약학정보원 결과를 새 창으로 보여 드려요.</p>' +
+            '병원용 설명서와 돌봄 인수인계에 그대로 담겨요. ⓘ는 <b>식약처 e약은요</b>(효능·사용법·주의사항)를 ' +
+            '앱 안에서 바로 보여 드리고, 돋보기는 약학정보원 검색을 새 창으로 열어요.</p>' +
           '</div></div>' +
         '<div class="card card-pad" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
           '<span style="color:var(--primary);flex:none">' + icon('note', 18) + '</span>' +
@@ -967,6 +1098,13 @@
       if (!child) return;
       UI.el('btn-med-add').onclick = function () { openMedEditor(child.id, null); };
       root.addEventListener('click', function (e) {
+        var ei = e.target.closest('[data-einfo]');
+        if (ei) {
+          var c0 = Store.getChild(child.id);
+          var mm = c0 && (c0.medications || [])[Number(ei.dataset.einfo)];
+          if (mm) openDrugInfo(mm.name);
+          return;
+        }
         var ed = e.target.closest('[data-medit]');
         if (ed) { openMedEditor(child.id, Number(ed.dataset.medit)); return; }
         var del = e.target.closest('[data-mdel]');
