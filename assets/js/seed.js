@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 13;   // 데모 데이터 변경 시 이 숫자를 올린다 (v13: 약물 기록 카테고리·기록 시간)
+  var SEED_VERSION = 14;   // 데모 데이터 변경 시 이 숫자를 올린다 (v14: 자폐 아동 실제 복약 구성 — e약은요 조회 가능 약 포함)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -77,12 +77,21 @@
         sensory: '청각 과민(큰 소리·예고 없는 소음에 강하게 반응) / 촉각 예민(끈적한 질감 회피) / 시각 — 밝은 형광등 불편'
       },
       medications: [
-        { kind: '처방약', name: '멜라토닌', dose: '3', doseUnit: 'mg', time: '취침 30분 전',
-          startDate: '2026-03-02', endDate: '', dosing: '취침 30분 전, 물과 함께 복용',
-          note: '수면 패턴 보조. 주치의 처방.' },
-        { kind: '영양제', name: '비타민D', dose: '1000', doseUnit: 'IU', time: '아침 식후',
-          startDate: '2026-01-15', endDate: '', dosing: '아침 식사 직후 1정',
-          note: '실내 활동이 많아 보충 중.' }
+        /* 자폐 아동의 실제 복약 구성 예 — 핵심 처방약 + 동반 증상(변비·알레르기·편식) 관리약.
+           마그밀·지르텍·텐텐은 식약처 e약은요(일반의약품 개요)에서 ⓘ로 실데이터가 조회된다.
+           리스페리돈은 전문의약품이라 e약은요에 없음 → 약학정보원 폴백 상태의 예시. */
+        { kind: '처방약', name: '리스페리돈', dose: '0.5', doseUnit: 'mg', time: '자기 전',
+          startDate: '2026-02-10', endDate: '', dosing: '자기 전 1회 — 소아정신과 처방(과민성·도전적 행동 완화)',
+          note: '용량 변경은 꼭 주치의와 상의해요.' },
+        { kind: '일반약', name: '마그밀', dose: '1', doseUnit: '정', time: '저녁 식후',
+          startDate: '2026-04-01', endDate: '', dosing: '변비가 있는 날 저녁 식후 1정, 물과 충분히',
+          note: '변비가 이어질 때만 먹여요.' },
+        { kind: '일반약', name: '지르텍', dose: '10', doseUnit: 'mg', time: '자기 전',
+          startDate: '2026-05-20', endDate: '', dosing: '알레르기 증상(콧물·두드러기)이 있을 때 자기 전 1회',
+          note: '졸릴 수 있어 저녁에 먹여요.' },
+        { kind: '영양제', name: '텐텐', dose: '2', doseUnit: '정', time: '아침 식후',
+          startDate: '2026-01-15', endDate: '', dosing: '아침 식후 2정, 잘 씹어서',
+          note: '편식이 있어 영양 보충 중이에요.' }
       ],
       allergies: [
         { name: '땅콩', reaction: '두드러기·호흡곤란', severity: '중증' },
@@ -106,7 +115,7 @@
         items: {
           commute: '노란 셔틀 8:10 아파트 정문 승차, 하원 4시 같은 자리',
           meal: '밥은 작게 떠 주세요. 반찬은 섞이지 않게 따로따로. 간식은 4시 한 번',
-          meds: '멜라토닌 — 냉장고 옆 흰 약통, 취침 30분 전 1정',
+          meds: '리스페리돈 — 냉장고 옆 흰 약통, 자기 전 1알. 지르텍은 콧물·두드러기 있는 날만',
           schedule: '화·목 4시 스텔라 감각통합센터 (김◯◯ 선생님 010-5555-0000)',
           sleep: '9시 소등, 자장가는 늘 같은 곡, 기차 인형 꼭 안고 자요'
         },
@@ -247,9 +256,9 @@
         tags: ['사회성', '의사소통'], photo: 'assets/img/child-junho.jpg',
         createdAt: '2026-05-17T08:00:00.000Z' },
       { id: 'rec-8', childId: child1.id, type: 'medication', date: '2026-05-16', time: '21:30',
-        title: '취침 전 멜라토닌 복용', mood: 4,
-        content: '[복약 정보]\n· [처방약] 멜라토닌 3mg · 취침 30분 전 · 취침 30분 전, 물과 함께 복용\n\n복용 30분 뒤 큰 뒤척임 없이 잠듦. 아침 기상도 순조로웠어요.',
-        tags: ['수면', '복약'], photo: null, createdAt: '2026-05-16T12:30:00.000Z' },
+        title: '리스페리돈 복용 (자기 전)', mood: 4,
+        content: '[복약 정보]\n· [처방약] 리스페리돈 0.5mg · 자기 전 · 소아정신과 처방(과민성·도전적 행동 완화)\n\n복용 후 저녁 짜증이 눈에 띄게 줄었어요. 잠들기도 수월했고 아침 기상도 순조로웠어요.',
+        tags: ['행동', '복약'], photo: null, createdAt: '2026-05-16T12:30:00.000Z' },
       { id: 'rec-2', childId: child1.id, type: 'treatment', date: '2026-05-14', time: '10:00',
         title: '언어치료 24회기', mood: 4,
         content: '주 2회 언어치료 진행. 2어절 문장 따라 말하기 안정적. 다음 목표는 요구하기 표현 확장.',
