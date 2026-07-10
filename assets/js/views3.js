@@ -242,7 +242,7 @@
             }).join('') + '</div>' +
             '<div class="row gap-sm" style="margin-top:8px">' +
               '<button type="button" class="btn btn-primary btn-sm" id="mp-insert">' +
-                icon('check', 14) + '선택한 약물 삽입</button>' +
+                icon('check', 14) + '선택한 약물 넣기</button>' +
               '<button type="button" class="btn btn-ghost btn-sm" id="mp-cancel">닫기</button>' +
             '</div>';
           picker.hidden = false;
@@ -250,7 +250,7 @@
           picker.querySelector('#mp-insert').onclick = function () {
             var chosen = [].filter.call(picker.querySelectorAll('.mp-cb'), function (cb) { return cb.checked; })
               .map(function (cb) { return meds[parseInt(cb.dataset.i, 10)]; });
-            if (!chosen.length) { toast('삽입할 약물을 선택해 주세요', 'err'); return; }
+            if (!chosen.length) { toast('넣을 약물을 골라 주세요', 'err'); return; }
             var block = '[복약 정보]\n' + chosen.map(medLine).join('\n');
             var cur = (contentEl.value || '').trim();
             contentEl.value = cur ? (cur + '\n\n' + block) : block;
@@ -364,7 +364,7 @@
               '<div class="row gap-sm" style="justify-content:center;margin-top:8px;flex-wrap:wrap">' +
                 '<span class="badge ok dot">영상 클립 ' + fmtClip(CL.duration) + '</span>' +
                 '<button type="button" class="btn btn-ghost btn-sm" id="cl-redo">다시</button>' +
-                '<button type="button" class="btn btn-danger btn-sm" id="cl-rm">제거</button>' +
+                '<button type="button" class="btn btn-danger btn-sm" id="cl-rm">지우기</button>' +
               '</div>' +
             '</div>';
           sec.querySelector('#cl-rev').src = CL.url;
@@ -518,14 +518,14 @@
             VideoDB.put(rec.id, CL.blob).catch(function () {
               var r2 = Store.getRecord(rec.id);
               if (r2) { r2.hasClip = false; r2.clipKey = null; Store.saveRecord(r2); }
-              toast('영상 저장에 실패했지만 기록은 보관되었습니다', 'err');
+              toast('영상 저장은 실패했지만 기록은 잘 남겨 뒀어요', 'err');
             });
           }
         } else {
           Store.saveRecord(rec);
         }
         if (CL._cleanup) CL._cleanup();
-        toast(isNew ? '기록이 추가되었습니다' : '수정되었습니다', 'ok');
+        toast(isNew ? '기록을 남겼어요' : '수정했어요', 'ok');
         App.refresh();
       }
     });
@@ -716,7 +716,7 @@
                     VideoDB.del(r.clipKey).catch(function () {});
                   }
                   Store.deleteRecord(r.id);
-                  toast('삭제되었습니다', 'ok'); App.refresh();
+                  toast('삭제했어요', 'ok'); App.refresh();
                 });
                 return 'keep';
               }
@@ -897,14 +897,14 @@
             var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
             return '<div class="card card-pad mb-2"' + (revoked ? ' style="opacity:.55"' : '') + '>' +
               '<div class="row between wrap" style="margin-bottom:8px">' +
-                '<div><b>' + esc(s.viewerName || '이름 없는 열람자') + '</b> ' +
+                '<div><b>' + esc(s.viewerName || '받는 분') + '</b> ' +
                   '<span class="badge">' + esc(s.viewerRole) + '</span> ' +
                   '<span class="badge brand">' + esc(label) + '</span>' +
                   (s.safeNumber ? ' <span class="badge ok">안심번호</span>' : '') +
                   (revoked ? ' <span class="badge danger">중단됨</span>' : '') +
                 '</div>' +
                 '<span class="faint" style="font-size:.8rem">' + icon('eye', 13) + ' ' +
-                  (s.views || 0) + '회 열람</span>' +
+                  (s.views || 0) + '번 봤어요</span>' +
               '</div>' +
               '<div class="row wrap" style="gap:10px">' +
                 '<div class="code-box" style="flex:1;min-width:200px">' +
@@ -972,7 +972,7 @@
                   icon('trash', 15) + '</button></div></div>';
             }).join('')
           : '<p class="faint" style="font-size:.88rem">아직 받은 노트가 없어요. 공유 링크를 받은 ' +
-            '열람자가 노트를 남기면 여기에 모입니다.</p>') +
+            '설명서를 본 분이 노트를 남기면 여기에 모여요.</p>') +
         '</div></div>';
 
       // 대상 선택 카드
@@ -1044,10 +1044,10 @@
               '<span>비상연락처를 <b>안심번호(050)</b>로 표시 ' +
               '<span class="faint" style="font-size:.8rem">— 실제 번호는 보호자만</span></span></label>' +
             '<div class="pill-info" style="margin-top:10px">' + icon('info', 16) +
-              '<div>생성 시 4자리 인증번호가 자동 발급됩니다. 링크와 인증번호를 함께 전달하세요.</div></div>',
+              '<div>만들면 4자리 인증번호가 함께 만들어져요. 링크와 인증번호를 같이 전해 주세요.</div></div>',
           buttons: [
             { label: '취소', value: 'cancel', variant: 'ghost' },
-            { label: '공유 생성', value: 'ok', variant: 'primary' }
+            { label: '공유 만들기', value: 'ok', variant: 'primary' }
           ],
           onButton: function (v, root) {
             if (v !== 'ok') return;
@@ -1059,7 +1059,7 @@
             Modal.close();
             var qrSvg = QR.svg(shareURL(s.token), { cell: 4, margin: 3, width: 180 });
             Modal.open({
-              title: '공유가 생성되었습니다', icon: 'check',
+              title: '공유 링크가 만들어졌어요', icon: 'check',
               body: '<p class="muted mb-2">' + esc(a.label) +
                 ' 설명서 링크와 인증번호를 함께 전달하세요.</p>' +
                 '<div style="text-align:center;margin-bottom:12px">' +
@@ -1101,20 +1101,20 @@
         Modal.open({
           title: '새 공유 만들기', icon: 'share',
           body:
-            '<div class="field"><label>열람자 이름 / 소속</label>' +
+            '<div class="field"><label>받는 분 이름 / 소속</label>' +
               '<input class="input" name="viewerName" placeholder="예) 햇살초 1학년 담임"></div>' +
-            '<div class="field"><label>열람자 유형</label>' +
+            '<div class="field"><label>받는 분 유형</label>' +
               '<select class="select" name="viewerRole">' +
               ['학교', '병원', '치료기관', '가족·친척', '기타'].map(function (o) {
                 return '<option>' + o + '</option>';
               }).join('') + '</select></div>' +
-            '<div class="field"><label>정보 공개 레벨 <span class="faint">열람자에게 보여줄 범위</span></label>' +
+            '<div class="field"><label>정보 공개 레벨 <span class="faint">받는 분에게 보여줄 범위</span></label>' +
               '<div class="scope-pick">' + scopeOpts + '</div></div>' +
             '<label class="checkline"><input type="checkbox" name="safeNumber" checked>' +
               '<span>비상연락처를 <b>안심번호(050)</b>로 표시 ' +
               '<span class="faint" style="font-size:.8rem">— 실제 번호는 보호자만 볼 수 있어요</span></span></label>' +
             '<div class="pill-info" style="margin-top:10px">' + icon('info', 16) +
-              '<div>생성 시 4자리 인증번호가 자동 발급됩니다. 링크와 인증번호를 함께 전달하세요. ' +
+              '<div>만들면 4자리 인증번호가 함께 만들어져요. 링크와 인증번호를 같이 전해 주세요. ' +
               '안심번호는 정식 서비스에서 통신사 050 연동으로 제공됩니다.</div></div>',
           onMount: function (root) {
             root.querySelectorAll('.scope-opt input').forEach(function (r) {
@@ -1127,7 +1127,7 @@
           },
           buttons: [
             { label: '취소', value: 'cancel', variant: 'ghost' },
-            { label: '공유 생성', value: 'ok', variant: 'primary' }
+            { label: '공유 만들기', value: 'ok', variant: 'primary' }
           ],
           onButton: function (v, root) {
             if (v !== 'ok') return;
@@ -1138,8 +1138,8 @@
             });
             Modal.close();
             Modal.open({
-              title: '공유가 생성되었습니다', icon: 'check',
-              body: '<p class="muted mb-2">아래 링크와 인증번호를 열람자에게 함께 전달하세요.</p>' +
+              title: '공유 링크가 만들어졌어요', icon: 'check',
+              body: '<p class="muted mb-2">아래 링크와 인증번호를 받는 분에게 같이 전해 주세요.</p>' +
                 '<div class="code-box mb-2"><span>' + esc(shareURL(s.token)) + '</span></div>' +
                 '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
                 '<div class="access-code">' + esc(s.accessCode) + '</div></div>',
@@ -1171,9 +1171,9 @@
       document.querySelectorAll('[data-revoke]').forEach(function (b) {
         b.onclick = function () {
           Modal.confirm({ title: '공유 중단', danger: true,
-            message: '이 링크의 접근을 차단할까요? 열람자는 더 이상 설명서를 볼 수 없습니다.',
+            message: '이 링크의 접근을 차단할까요? 받는 분은 더 이상 설명서를 볼 수 없어요.',
             okLabel: '공유 중단' }).then(function (ok) {
-            if (ok) { Store.revokeShare(b.dataset.revoke); toast('공유가 중단되었습니다', 'ok'); App.refresh(); }
+            if (ok) { Store.revokeShare(b.dataset.revoke); toast('공유를 중단했어요', 'ok'); App.refresh(); }
           });
         };
       });
@@ -1182,7 +1182,7 @@
         b.onclick = function () {
           Modal.confirm({ title: '노트 삭제', message: '이 방문 노트를 삭제할까요?',
             okLabel: '삭제', danger: true }).then(function (ok) {
-            if (ok) { Store.deleteVisitNote(b.dataset.vndel); toast('삭제되었습니다', 'ok'); App.refresh(); }
+            if (ok) { Store.deleteVisitNote(b.dataset.vndel); toast('삭제했어요', 'ok'); App.refresh(); }
           });
         };
       });
@@ -1334,8 +1334,8 @@
 
       if (!share || share.revoked) {
         return topBar + '<div class="container narrow"><div class="card empty">' +
-          '<div class="emoji">🔒</div><h3>열람할 수 없는 링크입니다</h3>' +
-          '<p>링크가 만료되었거나 공유가 중단되었습니다. 보호자에게 문의해 주세요.</p></div></div>';
+          '<div class="emoji">🔒</div><h3>지금은 열 수 없는 링크예요</h3>' +
+          '<p>링크가 만료되었거나 공유를 중단했어요. 보호자에게 문의해 주세요.</p></div></div>';
       }
       var child = Store.getChild(share.childId);
       var manual = child ? Store.getManual(child.id) : null;
@@ -1356,7 +1356,7 @@
               'style="text-align:center;font-size:1.6rem;letter-spacing:.4em;font-weight:800" ' +
               'placeholder="0000">' +
             '<button class="btn btn-primary btn-block btn-lg" type="submit" style="margin-top:14px">' +
-              '설명서 열람</button>' +
+              '설명서 보기</button>' +
           '</form></div></div>';
       }
 
@@ -1376,7 +1376,7 @@
         : (SCOPE_META[share.scope] || SCOPE_META.summary).t;
       return topBar + '<div class="container">' +
         '<div class="pill-info mb-2">' + icon('eye', 16) +
-          '<div><b>' + esc(share.viewerName || '열람자') + '</b> 님에게 공유된 ' +
+          '<div><b>' + esc(share.viewerName || '받는 분') + '</b> 님에게 공유된 ' +
           '<b>' + esc(audLabel) + '</b> 설명서입니다.</div></div>' +
         '<div class="print-area">' + V._summarySheet(child, manual,
           { audience: share.audience, scope: share.scope, safe: !!share.safeNumber, token: share.token }) + '</div>' +
@@ -1424,7 +1424,7 @@
             Store.bumpShareViews(share.id);
             App.refresh();
           } else {
-            toast('인증번호가 올바르지 않습니다', 'err');
+            toast('인증번호가 맞지 않아요. 다시 한번 확인해 주세요', 'err');
           }
         });
       }
@@ -1438,7 +1438,7 @@
         if (!author || !text) { toast('이름과 내용을 입력해 주세요', 'err'); return; }
         Store.addVisitNote({ shareId: share.id, childId: share.childId,
           author: author, role: UI.el('vn-role').value, text: text });
-        toast('노트가 보호자에게 전달되었습니다. 감사합니다!', 'ok');
+        toast('노트를 보호자에게 전해 드렸어요. 고맙습니다!', 'ok');
         App.refresh();
       };
     }
@@ -1544,7 +1544,7 @@
           .then(function (ok) {
             if (!ok) return;
             Store.withdraw(u.id); Store.logout();
-            toast('탈퇴 처리되었습니다', 'ok');
+            toast('탈퇴가 완료되었어요. 그동안 함께해 주셔서 감사합니다', 'ok');
             App.navigate('#/');
           });
       };
@@ -1760,7 +1760,7 @@
               if (v !== 'ok') return;
               c.title = UI.el('c-title').value.trim();
               c.body = UI.el('c-body').value.trim();
-              Store.saveContent(c); toast('저장되었습니다', 'ok'); App.refresh();
+              Store.saveContent(c); toast('저장했어요', 'ok'); App.refresh();
             }
           });
         };
@@ -1785,7 +1785,7 @@
         b.onclick = function () {
           Modal.confirm({ title: '팝업 삭제', message: '이 팝업을 삭제할까요?', okLabel: '삭제', danger: true })
             .then(function (ok) {
-              if (ok) { Store.deletePopup(b.dataset.pdelete); toast('삭제되었습니다', 'ok'); App.refresh(); }
+              if (ok) { Store.deletePopup(b.dataset.pdelete); toast('삭제했어요', 'ok'); App.refresh(); }
             });
         };
       });
@@ -1821,7 +1821,7 @@
         p.body = UI.el('p-body').value.trim();
         p.active = UI.el('p-active').checked;
         if (!p.title) { toast('제목을 입력해 주세요', 'err'); return 'keep'; }
-        Store.savePopup(p); toast('저장되었습니다', 'ok'); App.refresh();
+        Store.savePopup(p); toast('저장했어요', 'ok'); App.refresh();
       }
     });
   }

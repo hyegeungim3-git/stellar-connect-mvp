@@ -160,7 +160,7 @@
     var hb = UI.el('help-btn');
     if (hb) hb.onclick = function () { if (global.Help) Help.open(r.view); };
     UI.el('menu-logout').onclick = function () {
-      Store.logout(); UI.toast('로그아웃되었습니다', 'ok'); App.navigate('#/');
+      Store.logout(); UI.toast('로그아웃했어요', 'ok'); App.navigate('#/');
     };
     UI.el('menu-reset').onclick = function () {
       UI.Modal.confirm({ title: '데모 데이터 초기화', danger: true,
@@ -168,7 +168,7 @@
         .then(function (ok) {
           if (!ok) return;
           Store.resetDB(); Seed.seedIfEmpty();
-          UI.toast('초기화되었습니다', 'ok'); App.navigate('#/');
+          UI.toast('처음 상태로 되돌렸어요', 'ok'); App.navigate('#/');
         });
     };
 

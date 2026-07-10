@@ -442,7 +442,7 @@
             if (!c) return;
             c.photo = url;
             Store.saveChild(c);
-            toast('아이 사진이 변경되었습니다', 'ok');
+            toast('아이 사진을 바꿨어요', 'ok');
             App.refresh();
           });
         });
@@ -461,7 +461,7 @@
           if (!url) { toast('이미지를 불러오지 못했어요', 'err'); return; }
           c.gallery.push({ id: Store.uid('gal'), photo: url, date: Store.nowISO() });
           Store.saveChild(c);
-          toast('최신 사진이 추가되었습니다', 'ok');
+          toast('최신 사진을 담았어요', 'ok');
           App.refresh();
         });
       });
@@ -473,7 +473,7 @@
             var c = Store.getChild(p.id); if (!c) return;
             c.gallery = (c.gallery || []).filter(function (g) { return g.id !== b.dataset.gdel; });
             Store.saveChild(c);
-            toast('삭제되었습니다', 'ok');
+            toast('삭제했어요', 'ok');
             App.refresh();
           });
         };
@@ -534,7 +534,7 @@
             c.handover = { caretakers: cts, items: items,
                            note: UI.el('h-note').value.trim() };
             Store.saveChild(c);
-            toast('인수인계 노트가 저장되었습니다', 'ok');
+            toast('인수인계 노트를 저장했어요', 'ok');
             App.refresh();
           }
         });
@@ -561,7 +561,7 @@
             child.verifyDocs = docs ? docs.split(',').map(function (x) { return x.trim(); }) : ['제출 서류'];
             child.verifyStatus = 'pending';
             Store.saveChild(child);
-            toast('인증 요청이 접수되었습니다', 'ok');
+            toast('인증 요청을 보냈어요. 확인되면 알려드릴게요', 'ok');
             App.refresh();
           }
         });
@@ -574,7 +574,7 @@
         }).then(function (ok) {
           if (!ok) return;
           Store.deleteChild(p.id);
-          toast('삭제되었습니다', 'ok');
+          toast('삭제했어요', 'ok');
           App.navigate('#/dashboard');
         });
       };
@@ -863,7 +863,7 @@
           contacts: readRows(UI.el('ct-rows'), ['name', 'relation', 'phone'])
         };
         Store.saveChild(base);
-        toast(isNew ? '아이가 등록되었습니다' : '저장되었습니다', 'ok');
+        toast(isNew ? '아이를 등록했어요' : '저장했어요', 'ok');
         App.navigate(isNew ? '#/manual/' + base.id : '#/child/' + base.id);
       });
     }
@@ -1045,7 +1045,7 @@
         capNote();
         manual.summaryNote = noteInp.value.trim();
         Store.saveManual(manual);
-        toast('소개글이 저장되었습니다', 'ok');
+        toast('소개글을 저장했어요', 'ok');
       };
 
       // 보호자 한마디 저장
@@ -1053,7 +1053,7 @@
       if (pn) pn.onclick = function () {
         manual.parentNote = UI.el('parent-note').value.trim();
         Store.saveManual(manual);
-        toast('보호자 한마디가 저장되었습니다', 'ok');
+        toast('보호자 한마디를 저장했어요', 'ok');
       };
 
       // 탭 전환
@@ -1080,7 +1080,7 @@
       document.querySelectorAll('[data-qadd]').forEach(function (b) {
         b.onclick = function () {
           addItem(b.dataset.qadd, b.dataset.qtext, false);
-          toast('추가되었습니다 — 내용은 언제든 수정할 수 있어요', 'ok');
+          toast('추가했어요 — 언제든 고칠 수 있어요', 'ok');
         };
       });
       // 음성 입력 버튼을 각 add-item 인풋에 연결
@@ -1112,7 +1112,7 @@
               if (v !== 'ok') return;
               var t = UI.el('ed-text').value.trim();
               if (!t) { toast('내용을 입력해 주세요', 'err'); return 'keep'; }
-              it.text = t; Store.saveManual(manual); toast('수정되었습니다', 'ok'); App.refresh();
+              it.text = t; Store.saveManual(manual); toast('수정했어요', 'ok'); App.refresh();
             }
           });
         };
@@ -1124,7 +1124,7 @@
             .then(function (ok) {
               if (!ok) return;
               manual.sections[key] = manual.sections[key].filter(function (x) { return x.id !== id; });
-              Store.saveManual(manual); toast('삭제되었습니다', 'ok'); App.refresh();
+              Store.saveManual(manual); toast('삭제했어요', 'ok'); App.refresh();
             });
         };
       });
@@ -1228,7 +1228,7 @@
                 id: Store.uid('pb'), situation: sit, response: res, intensity: intensity
               });
             }
-            Store.saveManual(manual); toast('저장되었습니다', 'ok'); App.refresh();
+            Store.saveManual(manual); toast('저장했어요', 'ok'); App.refresh();
           }
         });
       }
@@ -1248,7 +1248,7 @@
               manual.sections.problem = manual.sections.problem.filter(function (x) {
                 return x.id !== b.dataset.pdel;
               });
-              Store.saveManual(manual); toast('삭제되었습니다', 'ok'); App.refresh();
+              Store.saveManual(manual); toast('삭제했어요', 'ok'); App.refresh();
             });
         };
       });
