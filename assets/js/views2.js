@@ -139,7 +139,7 @@
       encodeURIComponent(name || '') + '&search_flag=all';
   }
 
-  /* 약물 등록·수정 모달 — 약물 관리 화면에서 사용 (아이 정보 폼에서 분리, 사용자 요청)
+  /* 약물 등록·수정 모달 — 복용 관리 화면에서 사용 (아이 정보 폼에서 분리, 사용자 요청)
      기존 카드형 필드 3줄 + 빠른 입력 줄을 그대로 재사용 */
   function openMedEditor(childId, idx) {
     var child = Store.getChild(childId);
@@ -496,7 +496,7 @@
             '약학정보원 통합검색 결과를 새 창으로 바로 보여 드려요.</p>'
         : '<p class="muted" style="font-size:.9rem">아직 등록된 약물이 없어요.</p>';
       meds += '<div style="margin-top:10px"><a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '">' +
-        icon('pill', 14) + '약물 관리에서 등록·수정</a></div>';
+        icon('pill', 14) + '복용 관리에서 등록·수정</a></div>';
 
       var allg = child.allergies.length
         ? child.allergies.map(function (a) {
@@ -907,19 +907,19 @@
           icon('pill', 18) + '</span><h3>약물 정보</h3>' +
           (!isNew
             ? '<a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '" style="margin-left:auto">' +
-              icon('pill', 14) + '약물 관리로</a>'
+              icon('pill', 14) + '복용 관리로</a>'
             : '') +
         '</div><div class="card-body">' +
           (isNew
             ? '<p class="muted" style="font-size:.9rem">약물은 아이 등록을 마친 뒤 ' +
-              '<b>약물 관리</b> 메뉴에서 등록할 수 있어요.</p>'
+              '<b>복용 관리</b> 메뉴에서 등록할 수 있어요.</p>'
             : (child.medications.length
                 ? '<div class="row wrap gap-sm">' + child.medications.map(function (m) {
                     return '<span class="badge">' + esc(m.kind || '처방약') + ' · ' + esc(m.name) + '</span>';
                   }).join('') + '</div>'
                 : '<p class="muted" style="font-size:.9rem">아직 등록된 약물이 없어요.</p>') +
               '<p class="faint" style="font-size:.8rem;margin-top:8px">약물의 등록·수정·삭제는 ' +
-              '<b>약물 관리</b> 메뉴에서 해요. 이 화면에서 저장해도 약물 정보는 바뀌지 않아요.</p>') +
+              '<b>복용 관리</b> 메뉴에서 해요. 이 화면에서 저장해도 약물 정보는 바뀌지 않아요.</p>') +
         '</div></div>' +
 
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
@@ -1013,7 +1013,7 @@
           type: f.dtype || '자폐 스펙트럼 장애', diagnosedAt: f.ddate,
           summary: f.dsummary, sensory: joinSensory(picked, f.dsensoryMemo)
         };
-        /* 약물은 약물 관리 메뉴에서 별도 관리 — 이 폼은 건드리지 않는다 */
+        /* 약물은 복용 관리 메뉴에서 별도 관리 — 이 폼은 건드리지 않는다 */
         base.allergies = readRows(UI.el('allg-rows'), ['name', 'reaction', 'severity']);
         base.emergency = {
           protocol: f.eprotocol, hospital: f.ehospital, doctor: f.edoctor,
@@ -1027,7 +1027,7 @@
   };
 
   /* =====================================================================
-   * 약물 관리 — 등록·수정·삭제 전용 화면 (아이 정보 폼에서 분리, 사용자 요청)
+   * 복용 관리 — 등록·수정·삭제 전용 화면 (아이 정보 폼에서 분리, 사용자 요청)
    * 매일의 복약 확인은 기록 화면의 '오늘의 복약'과 이어진다
    * ===================================================================== */
   V.meds = {
@@ -1072,7 +1072,7 @@
         : '<p class="muted" style="font-size:.9rem;padding:6px 0">아직 등록된 약물이 없어요. ' +
           '‘약물 등록’으로 시작해 보세요.</p>';
 
-      return pageHead('약물 관리', child.name + '의 약물 관리',
+      return pageHead('복용 관리', child.name + '의 복용 관리',
           '복용 중인 약을 한곳에서 등록하고 고쳐요. 매일 먹였는지 확인은 기록 화면의 ‘오늘의 복약’과 이어져요.') +
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
           icon('pill', 18) + '</span><h3>복용 중인 약물</h3>' +

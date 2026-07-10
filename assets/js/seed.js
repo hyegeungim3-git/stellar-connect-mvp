@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 14;   // 데모 데이터 변경 시 이 숫자를 올린다 (v14: 자폐 아동 실제 복약 구성 — e약은요 조회 가능 약 포함)
+  var SEED_VERSION = 15;   // 데모 데이터 변경 시 이 숫자를 올린다 (v15: 복약 순서 — 마그밀 최상단)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -80,12 +80,12 @@
         /* 자폐 아동의 실제 복약 구성 예 — 핵심 처방약 + 동반 증상(변비·알레르기·편식) 관리약.
            마그밀·지르텍·텐텐은 식약처 e약은요(일반의약품 개요)에서 ⓘ로 실데이터가 조회된다.
            리스페리돈은 전문의약품이라 e약은요에 없음 → 약학정보원 폴백 상태의 예시. */
-        { kind: '처방약', name: '리스페리돈', dose: '0.5', doseUnit: 'mg', time: '자기 전',
-          startDate: '2026-02-10', endDate: '', dosing: '자기 전 1회 — 소아정신과 처방(과민성·도전적 행동 완화)',
-          note: '용량 변경은 꼭 주치의와 상의해요.' },
         { kind: '일반약', name: '마그밀', dose: '1', doseUnit: '정', time: '저녁 식후',
           startDate: '2026-04-01', endDate: '', dosing: '변비가 있는 날 저녁 식후 1정, 물과 충분히',
           note: '변비가 이어질 때만 먹여요.' },
+        { kind: '처방약', name: '리스페리돈', dose: '0.5', doseUnit: 'mg', time: '자기 전',
+          startDate: '2026-02-10', endDate: '', dosing: '자기 전 1회 — 소아정신과 처방(과민성·도전적 행동 완화)',
+          note: '용량 변경은 꼭 주치의와 상의해요.' },
         { kind: '일반약', name: '지르텍', dose: '10', doseUnit: 'mg', time: '자기 전',
           startDate: '2026-05-20', endDate: '', dosing: '알레르기 증상(콧물·두드러기)이 있을 때 자기 전 1회',
           note: '졸릴 수 있어 저녁에 먹여요.' },

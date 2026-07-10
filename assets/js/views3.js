@@ -267,7 +267,7 @@
         if (pullBtn) pullBtn.onclick = function () {
           var ch = Store.getChild(childId);
           var meds = (ch && ch.medications) || [];
-          if (!meds.length) { toast('약물 관리에 등록된 약물이 없어요', 'err'); return; }
+          if (!meds.length) { toast('복용 관리에 등록된 약물이 없어요', 'err'); return; }
           if (!picker.hidden) { picker.hidden = true; return; }   // 토글로 닫기
           picker.innerHTML =
             '<div class="mp-list">' + meds.map(function (m, i) {

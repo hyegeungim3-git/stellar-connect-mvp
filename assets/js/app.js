@@ -66,7 +66,7 @@
       { key: 'profile',   label: '아이 프로필', icon: 'smile', hash: cur ? '#/child/' + c : '#/dashboard' },
       { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
       { key: 'records',   label: '기록',        icon: 'note',  hash: cur ? '#/records/' + c : '#/dashboard' },
-      { key: 'meds',      label: '약물 관리',   icon: 'pill',  hash: cur ? '#/meds/' + c : '#/dashboard' },
+      { key: 'meds',      label: '복용 관리',   icon: 'pill',  hash: cur ? '#/meds/' + c : '#/dashboard' },
       { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: cur ? '#/gallery/' + c : '#/dashboard' },
       { key: 'plan',      label: '미래 준비',   icon: 'sprout', hash: cur ? '#/plan/' + c : '#/dashboard' },
       { key: 'share',     label: '대상별 공유', icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' },
@@ -221,7 +221,7 @@
     var cur = currentChildId(r);
     var links = [
       { t: '아이 프로필', i: 'smile', h: cur ? '#/child/' + cur : '#/dashboard' },
-      { t: '약물 관리', i: 'pill', h: cur ? '#/meds/' + cur : '#/dashboard' },
+      { t: '복용 관리', i: 'pill', h: cur ? '#/meds/' + cur : '#/dashboard' },
       { t: '미래 준비', i: 'sprout', h: cur ? '#/plan/' + cur : '#/dashboard' },
       { t: '대상별 공유', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' },
       { t: '양육자 정보', i: 'user', h: '#/caregiver' }
@@ -299,7 +299,7 @@
     var pageTitle = ({
       login: '로그인', signup: '회원가입',
       dashboard: '홈', manual: '내 아이 설명서', summary: '설명서 미리보기',
-      records: '기록', meds: '약물 관리', gallery: '갤러리',
+      records: '기록', meds: '복용 관리', gallery: '갤러리',
       share: '대상별 설명서·공유', plan: '미래 준비',
       viewer: '설명서 열람', caregiver: '양육자 정보', admin: '백오피스',
       childProfile: '아이 프로필', childEdit: '아이 정보'
