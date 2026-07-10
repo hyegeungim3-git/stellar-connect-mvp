@@ -89,15 +89,16 @@
         icon('settings', 19) + '<span>백오피스</span></a>';
     }
 
-    // 앱바
+    // 앱바 — 아이가 1명이면(대부분의 가정) 전환 드롭다운 없이 프로필 바로가기 칩
     var childSwitch = kids.length
-      ? '<button class="child-switch" id="child-switch">' +
+      ? '<button class="child-switch" id="child-switch" title="' +
+          (kids.length > 1 ? '아이 전환' : '아이 프로필') + '">' +
           '<span class="avatar">' + (function () {
             var cc = cur ? Store.getChild(cur) : kids[0];
             return cc && cc.photo ? '<img src="' + cc.photo + '">' : esc(UI.initials(cc ? cc.name : ''));
           })() + '</span>' +
           '<span class="nm-full">' + esc((cur ? (Store.getChild(cur) || {}).name : kids[0].name) || '아이 선택') +
-          '</span>' + icon('chevD', 15) + '</button>'
+          '</span>' + (kids.length > 1 ? icon('chevD', 15) : '') + '</button>'
       : '';
 
     var appbar = '<div class="app-bar">' +
@@ -174,6 +175,12 @@
     var cs = UI.el('child-switch');
     if (cs) cs.onclick = function () {
       var kids = Store.childrenOf(u.id);
+      // 아이가 1명이면 선택 모달 없이 프로필로 바로 이동
+      if (kids.length === 1) {
+        App.lastChildId = kids[0].id;
+        App.navigate('#/child/' + kids[0].id);
+        return;
+      }
       UI.Modal.open({
         title: '아이 선택', icon: 'users',
         body: kids.map(function (c) {

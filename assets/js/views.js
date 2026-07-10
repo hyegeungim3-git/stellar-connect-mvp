@@ -571,9 +571,12 @@
           '<p style="color:#0d5b52;font-size:.9rem;margin-top:4px">' + esc(pop.body) + '</p></div>';
       }
 
+      // 대부분 가정은 아이 1명 — 등록 후에는 '추가'를 낮은 톤(ghost)으로만 노출
       html += '<div class="page-head-row mb-2"><h2>우리 아이</h2>' +
-        '<button class="btn btn-primary btn-sm" onclick="App.navigate(\'#/child/new\')">' +
-        icon('plus', 16) + '아이 등록</button></div>';
+        (kids.length
+          ? '<button class="btn btn-ghost btn-sm" onclick="App.navigate(\'#/child/new\')">' +
+            icon('plus', 15) + '아이 추가</button>'
+          : '') + '</div>';
 
       if (!kids.length) {
         html += '<div class="card empty"><div class="emoji">🧒</div>' +
@@ -583,7 +586,8 @@
         return html;
       }
 
-      html += '<div class="grid grid-3 mb-3">' + kids.map(function (c) {
+      // 아이 1명이면 카드를 전폭으로 (3열 그리드에 1장만 두면 빈 공간이 생김)
+      html += '<div class="' + (kids.length > 1 ? 'grid grid-3 ' : '') + 'mb-3">' + kids.map(function (c) {
         var m = Store.getManual(c.id);
         var cnt = m ? manualCount(m) : 0;
         var age = UI.calcAge(c.birthDate);
