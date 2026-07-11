@@ -407,6 +407,7 @@ svg { vertical-align: middle; }
 .seg button {
   padding: 8px 15px; border-radius: 8px; font-weight: 700; font-size: .85rem;
   color: var(--text-muted); transition: .14s var(--ease);
+  min-height: 38px;   /* 터치 타깃 보정 (375에서 31px로 측정됨) */
 }
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow-xs); }
@@ -1311,7 +1312,7 @@ table.tbl td.actions { white-space: nowrap; }
 .profile-photo { position: relative; flex: none; }
 .photo-edit-btn {
   position: absolute; right: -3px; bottom: -3px;
-  width: 33px; height: 33px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   background: var(--primary); color: #fff;
   display: grid; place-items: center;
   border: 3px solid var(--surface); box-shadow: var(--shadow);
@@ -1776,7 +1777,7 @@ table.tbl td.actions { white-space: nowrap; }
 }
 .safe-gallery .ph .del {
   position: absolute; right: 6px; top: 6px;
-  width: 24px; height: 24px; border-radius: 8px;
+  width: 32px; height: 32px; border-radius: 8px;
   background: rgba(10,18,40,.55); color: #fff;
   display: grid; place-items: center; opacity: 0; transition: .14s var(--ease);
 }
@@ -1843,7 +1844,7 @@ table.tbl td.actions { white-space: nowrap; }
 .item-row.plan-done .txt { opacity: .55; }
 .item-row.plan-done .txt > div { text-decoration: line-through; }
 .item-row .seg { padding: 3px; }
-.item-row .seg button { padding: 5px 10px; font-size: .76rem; }
+.item-row .seg button { padding: 5px 10px; font-size: .76rem; min-height: 32px; }
 
 /* 친화 장소 */
 .place-points { display: flex; flex-wrap: wrap; gap: 5px; }

@@ -721,12 +721,23 @@
         }).join('') + '</div>';
       }
 
-      /* 오늘의 복약 패널은 복용 관리 메뉴로 이동됨 (2026-07-10 사용자 요청) */
+      /* 오늘의 복약 패널은 복용 관리 메뉴로 이동됨 (2026-07-10 사용자 요청)
+         — 기록에서 복약을 찾던 동선을 위해 미기록이 있으면 복용 관리로 잇는 한 줄 안내를 남긴다 */
+      var medPend = medStatusToday(child).filter(function (x) { return !x.done; }).length;
+      var medBridge = medPend
+        ? '<div class="card card-pad mb-2" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+            '<span style="color:var(--brand-grow);flex:none">' + icon('pill', 16) + '</span>' +
+            '<span class="muted" style="font-size:.88rem;flex:1;min-width:160px">오늘의 복약 ' +
+              medPend + '건이 아직 체크 전이에요.</span>' +
+            '<a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '">' +
+              icon('check', 14) + '복용 관리에서 체크</a></div>'
+        : '';
       return childContextBar(child, 'records') +
         pageHead('기록', child.name + ' 기록',
           '행동·치료·변화의 순간을 짧은 영상(릴스)이나 글로 남깁니다.',
           '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
           '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록 추가</button>') +
+        medBridge +
         '<div class="mb-2">' + seg + '</div>' + body;
     },
     mount: function (p) {
