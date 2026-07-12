@@ -179,10 +179,26 @@
   }
   function deleteChild(id) {
     var db = getDB();
+    /* 첨부 영상(IndexedDB)부터 정리 — records를 지우면 클립 키를 알 수 없게 된다 */
+    if (global.VideoDB && global.VideoDB.available && global.VideoDB.available()) {
+      db.records.forEach(function (r) {
+        if (r.childId === id && r.hasClip) {
+          try { global.VideoDB.del(r.id).catch(function () {}); } catch (e) {}
+        }
+      });
+    }
     db.children = db.children.filter(function (c) { return c.id !== id; });
     db.manuals = db.manuals.filter(function (m) { return m.childId !== id; });
     db.records = db.records.filter(function (r) { return r.childId !== id; });
     db.shares = db.shares.filter(function (s) { return s.childId !== id; });
+    /* 연쇄 삭제 보강(데이터정의서 P2) — 고아 데이터 방지 */
+    db.visitNotes = db.visitNotes.filter(function (n) { return n.childId !== id; });
+    db.plans = db.plans.filter(function (p) { return p.childId !== id; });
+    ['medChecks', 'dailyChecks'].forEach(function (col) {
+      Object.keys(db[col] || {}).forEach(function (k) {
+        if (k.indexOf(id + '|') === 0) delete db[col][k];
+      });
+    });
     setDB(db);
   }
   function setChildVerify(id, status) {
