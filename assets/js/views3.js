@@ -962,6 +962,8 @@
   /* =====================================================================
    * 공유 관리
    * ===================================================================== */
+  /* 공유 기간 — 기간이 지나면 자동으로 닫혀요(민감정보 최소 노출) */
+  var CYCLE_LABEL = { week: '1주일', month: '1개월', year: '1년' };
   /* 정보 공개 레벨 (6/10 회의: 정보별 공개 범위 옵션) */
   var SCOPE_META = {
     emergency: { t: '응급 카드',  cls: 'danger',
@@ -995,15 +997,22 @@
       var list = shares.length
         ? shares.map(function (s) {
             var revoked = s.revoked;
+            var expired = !revoked && Store.isShareExpired(s);
+            var inactive = revoked || expired;
             var am = (s.audience && AUD[s.audience]) || null;
             var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
-            return '<div class="card card-pad mb-2"' + (revoked ? ' style="opacity:.55"' : '') + '>' +
+            var dleft = (!inactive && s.expiresAt)
+              ? Math.max(0, Math.ceil((new Date(s.expiresAt).getTime() - Date.now()) / 864e5)) : null;
+            return '<div class="card card-pad mb-2"' + (inactive ? ' style="opacity:.55"' : '') + '>' +
               '<div class="row between wrap" style="margin-bottom:8px">' +
                 '<div><b>' + esc(s.viewerName || '받는 분') + '</b> ' +
                   '<span class="badge">' + esc(s.viewerRole) + '</span> ' +
                   '<span class="badge brand">' + esc(label) + '</span>' +
                   (s.safeNumber ? ' <span class="badge ok">안심번호</span>' : '') +
-                  (revoked ? ' <span class="badge danger">중단됨</span>' : '') +
+                  (revoked ? ' <span class="badge danger">중단됨</span>'
+                    : expired ? ' <span class="badge danger">기간 만료</span>'
+                    : s.renewCycle ? ' <span class="badge">' + CYCLE_LABEL[s.renewCycle] +
+                        '마다 자동으로 닫혀요' + (dleft != null ? ' · D-' + dleft : '') + '</span>' : '') +
                 '</div>' +
                 '<span class="faint" style="font-size:.8rem">' + icon('eye', 13) + ' ' +
                   (s.views || 0) + '번 봤어요</span>' +
@@ -1011,39 +1020,24 @@
               '<div class="row wrap" style="gap:10px">' +
                 '<div class="code-box" style="flex:1;min-width:200px">' +
                   '<span>' + esc(shareURL(s.token)) + '</span>' +
-                  '<button class="btn btn-soft btn-sm" data-copy="' + esc(shareURL(s.token)) + '">' +
-                    icon('copy', 14) + '복사</button></div>' +
+                  (inactive ? '' :
+                    '<button class="btn btn-soft btn-sm" data-copy="' + esc(shareURL(s.token)) + '">' +
+                      icon('copy', 14) + '복사</button>') + '</div>' +
                 '<div style="text-align:center"><div class="faint" style="font-size:.74rem">인증번호</div>' +
                   '<div style="font-weight:800;letter-spacing:.15em;color:var(--primary-dark)">' +
                   esc(s.accessCode) + '</div></div>' +
-                (revoked ? '' :
+                (inactive ? '' :
                   '<button class="btn btn-ghost btn-sm" data-qr="' + esc(s.token) +
                     '" data-qr-code="' + esc(s.accessCode) + '" data-qr-name="' + esc(child.name) + '">' +
                     icon('grid', 14) + 'QR·키링 카드</button>') +
+                (inactive ? '' :
+                  '<button class="btn btn-ghost btn-sm" data-web-share="1" data-token="' + esc(s.token) +
+                    '" data-code="' + esc(s.accessCode) + '" data-name="' + esc(child.name) + '">' +
+                    icon('share', 14) + '공유하기</button>') +
+                (expired ?
+                  '<button class="btn btn-primary btn-sm" data-renew="' + s.id + '">' +
+                    icon('check', 14) + CYCLE_LABEL[s.renewCycle] + ' 더 열어두기</button>' : '') +
               '</div>' +
-              (revoked ? ''
-                : '<div class="sns-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);' +
-                  'display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
-                  '<span class="faint" style="font-size:.78rem;margin-right:4px">공유하기</span>' +
-                  '<button class="btn btn-soft btn-sm sns-btn" data-web-share="1" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '">' + icon('share', 13) + '모든 앱</button>' +
-                  '<button class="btn btn-ghost btn-sm sns-btn" data-sns="twitter" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '" aria-label="X(트위터) 공유"><b>X</b></button>' +
-                  '<button class="btn btn-ghost btn-sm sns-btn" data-sns="facebook" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '" aria-label="페이스북 공유"><b>f</b> Facebook</button>' +
-                  '<button class="btn btn-ghost btn-sm sns-btn" data-sns="line" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '" aria-label="라인 공유"><b>LINE</b></button>' +
-                  '<button class="btn btn-ghost btn-sm sns-btn" data-sns="email" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '">' + icon('mail', 13) + '이메일</button>' +
-                  '<button class="btn btn-ghost btn-sm sns-btn" data-sns="sms" ' +
-                    'data-token="' + esc(s.token) + '" data-code="' + esc(s.accessCode) + '" ' +
-                    'data-name="' + esc(child.name) + '">' + icon('message', 13) + 'SMS</button>' +
-                '</div>') +
               '<div class="row between mt-1">' +
                 '<span class="faint" style="font-size:.78rem">' + UI.fmtDate(s.createdAt) + ' 생성</span>' +
                 (revoked ? ''
@@ -1142,6 +1136,12 @@
               ['학교', '병원', '치료기관', '활동지원사', '가족·친척', '기타'].map(function (o) {
                 return '<option>' + o + '</option>';
               }).join('') + '</select></div>' +
+            '<div class="field"><label>공유 기간 <span class="faint">기간이 지나면 자동으로 닫혀요</span></label>' +
+              '<select class="select" name="renewCycle">' +
+              [['month', '1개월'], ['week', '1주일'], ['year', '1년'], ['', '계속 유지']].map(function (o) {
+                return '<option value="' + o[0] + '"' + (o[0] === 'month' ? ' selected' : '') + '>' +
+                  o[1] + '</option>';
+              }).join('') + '</select></div>' +
             '<label class="checkline"><input type="checkbox" name="safeNumber" checked>' +
               '<span>비상연락처를 <b>안심번호(050)</b>로 표시 ' +
               '<span class="faint" style="font-size:.8rem">— 실제 번호는 보호자만</span></span></label>' +
@@ -1156,7 +1156,7 @@
             var f = readForm(root);
             var s = Store.createShare({
               childId: child.id, audience: audience, safeNumber: f.safeNumber,
-              viewerName: f.viewerName, viewerRole: f.viewerRole
+              viewerName: f.viewerName, viewerRole: f.viewerRole, renewCycle: f.renewCycle
             });
             Modal.close();
             var qrSvg = QR.svg(shareURL(s.token), { cell: 4, margin: 3, width: 180 });
@@ -1169,7 +1169,9 @@
                   'border-radius:14px;background:#fff">' + (qrSvg || '') + '</div></div>' +
                 '<div class="code-box mb-2"><span>' + esc(shareURL(s.token)) + '</span></div>' +
                 '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
-                '<div class="access-code">' + esc(s.accessCode) + '</div></div>',
+                '<div class="access-code">' + esc(s.accessCode) + '</div></div>' +
+                (s.renewCycle ? '<p class="faint" style="font-size:.8rem;text-align:center">' +
+                  CYCLE_LABEL[s.renewCycle] + ' 동안 열람할 수 있어요. 기간이 지나면 안전하게 자동으로 닫혀요.</p>' : ''),
               buttons: [
                 { label: '링크 복사', value: 'copy', variant: 'soft' },
                 { label: '확인', value: 'ok', variant: 'primary' }
@@ -1270,6 +1272,20 @@
           });
         };
       });
+      document.querySelectorAll('[data-web-share]').forEach(function (b) {
+        b.onclick = function () {
+          var url = shareURL(b.dataset.token);
+          var name = b.dataset.name || '아이';
+          var text = name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + b.dataset.code;
+          UI.webShare({ title: 'Stellar Connect — ' + name + ' 설명서', text: text, url: url })
+            .then(function (ok) {
+              if (!ok) {
+                UI.copyText(url + ' (인증번호: ' + b.dataset.code + ')')
+                  .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
+              }
+            });
+        };
+      });
       document.querySelectorAll('[data-revoke]').forEach(function (b) {
         b.onclick = function () {
           Modal.confirm({ title: '공유 중단', danger: true,
@@ -1277,6 +1293,13 @@
             okLabel: '공유 중단' }).then(function (ok) {
             if (ok) { Store.revokeShare(b.dataset.revoke); toast('공유를 중단했어요', 'ok'); App.refresh(); }
           });
+        };
+      });
+      document.querySelectorAll('[data-renew]').forEach(function (b) {
+        b.onclick = function () {
+          Store.renewShare(b.dataset.renew);
+          toast('공유를 다시 열었어요', 'ok');
+          App.refresh();
         };
       });
       // 방문 노트 삭제 (보호자 권한)
@@ -1390,33 +1413,6 @@
         };
       });
 
-      // SNS 공유 버튼 (Web Share API + 트위터/페북/라인/이메일/SMS 폴백)
-      document.querySelectorAll('.sns-btn').forEach(function (b) {
-        b.onclick = function () {
-          var url = shareURL(b.dataset.token);
-          var code = b.dataset.code;
-          var name = b.dataset.name || '아이';
-          var text = name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + code;
-          if (b.dataset.webShare) {
-            UI.webShare({ title: 'Stellar Connect — ' + name + ' 설명서',
-              text: text, url: url }).then(function (ok) {
-              if (!ok) {
-                UI.copyText(url + ' (인증번호: ' + code + ')').then(function () {
-                  toast('링크와 인증번호를 복사했어요', 'ok');
-                });
-              }
-            });
-            return;
-          }
-          var u = UI.snsShareUrl(b.dataset.sns, url, text);
-          if (!u) return;
-          if (b.dataset.sns === 'email' || b.dataset.sns === 'sms') {
-            location.href = u;
-          } else {
-            window.open(u, '_blank', 'noopener,noreferrer');
-          }
-        };
-      });
     }
   };
 
@@ -1434,10 +1430,10 @@
         '<div class="wordmark"><b>내 아이 설명서</b>' +
         '<span>Stellar Connect · S:CON</span></div></div></div>';
 
-      if (!share || share.revoked) {
+      if (!share || share.revoked || Store.isShareExpired(share)) {
         return topBar + '<div class="container narrow"><div class="card empty">' +
           '<div class="emoji">🔒</div><h3>지금은 열 수 없는 링크예요</h3>' +
-          '<p>링크가 만료되었거나 공유를 중단했어요. 보호자에게 문의해 주세요.</p></div></div>';
+          '<p>공유 기간이 끝났거나 중단됐어요. 보호자에게 새 링크를 요청해 주세요.</p></div></div>';
       }
       var child = Store.getChild(share.childId);
       var manual = child ? Store.getManual(child.id) : null;

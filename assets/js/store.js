@@ -359,8 +359,12 @@
   }
 
   /* ---------- 공유 ---------- */
+  /* 공유 주기 — 기간이 지나면 자동으로 닫혀 민감정보 노출을 최소화 (개인정보 동의 정책 L2 원칙) */
+  var SHARE_CYCLE_DAYS = { week: 7, month: 30, year: 365 };
+  function shareCycleDays(cycle) { return SHARE_CYCLE_DAYS[cycle] || null; }
   function createShare(opts) {
     var db = getDB();
+    var days = shareCycleDays(opts.renewCycle);
     var share = {
       id: uid('shr'),
       token: Math.random().toString(36).slice(2, 8).toUpperCase(),
@@ -372,13 +376,28 @@
       safeNumber: opts.safeNumber !== false,   // 비상연락처를 안심번호(050)로 표시 (기본 ON)
       accessCode: opts.accessCode || String(Math.floor(1000 + Math.random() * 9000)),
       createdAt: nowISO(),
-      expiresAt: opts.expiresAt || null,
+      renewCycle: opts.renewCycle || null,   // week | month | year | null(계속 유지)
+      expiresAt: days ? new Date(Date.now() + days * 864e5).toISOString() : (opts.expiresAt || null),
       revoked: false,
       views: 0
     };
     db.shares.push(share);
     setDB(db);
     return share;
+  }
+  /* 열람 가능 기간을 오늘부터 같은 주기만큼 다시 연장 */
+  function renewShare(id) {
+    var db = getDB();
+    var s = db.shares.filter(function (x) { return x.id === id; })[0];
+    if (!s) return null;
+    var days = shareCycleDays(s.renewCycle);
+    if (!days) return s;
+    s.expiresAt = new Date(Date.now() + days * 864e5).toISOString();
+    setDB(db);
+    return s;
+  }
+  function isShareExpired(s) {
+    return !!(s && s.expiresAt && new Date(s.expiresAt).getTime() < Date.now());
   }
   function sharesOf(childId) {
     return getDB().shares.filter(function (s) { return s.childId === childId; })
@@ -491,6 +510,7 @@
     // 공유
     createShare: createShare, sharesOf: sharesOf, getShareByToken: getShareByToken,
     revokeShare: revokeShare, bumpShareViews: bumpShareViews,
+    renewShare: renewShare, isShareExpired: isShareExpired, shareCycleDays: shareCycleDays,
     // 백오피스
     listContents: listContents, saveContent: saveContent,
     listPopups: listPopups, savePopup: savePopup, deletePopup: deletePopup,

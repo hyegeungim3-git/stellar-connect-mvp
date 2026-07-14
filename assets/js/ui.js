@@ -386,18 +386,6 @@
     return navigator.share(opts).then(function () { return true; })
       .catch(function () { return false; });
   }
-  function snsShareUrl(provider, url, text) {
-    var t = encodeURIComponent(text || ''), u = encodeURIComponent(url);
-    var subject = encodeURIComponent('Stellar Connect — 내 아이 사용 설명서 공유');
-    return ({
-      twitter:  'https://twitter.com/intent/tweet?text=' + t + '&url=' + u,
-      facebook: 'https://www.facebook.com/sharer/sharer.php?u=' + u,
-      line:     'https://social-plugins.line.me/lineit/share?url=' + u + '&text=' + t,
-      email:    'mailto:?subject=' + subject + '&body=' + encodeURIComponent((text || '') + '\n\n' + url),
-      sms:      'sms:?body=' + encodeURIComponent((text || '') + ' ' + url)
-    })[provider] || '';
-  }
-
   global.UI = {
     el: el, esc: esc, nl2br: nl2br, icon: icon, brandMark: brandMark,
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, timeAgo: timeAgo,
@@ -406,6 +394,6 @@
     barChart: barChart, lineChart: lineChart, distBar: distBar, moodStars: moodStars,
     fileToDataURL: fileToDataURL, copyText: copyText,
     speechSupported: speechSupported, attachVoiceInput: attachVoiceInput,
-    webShare: webShare, snsShareUrl: snsShareUrl
+    webShare: webShare
   };
 })(window);
