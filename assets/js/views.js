@@ -321,7 +321,7 @@
                   '<div class="pm-card pm-note"><span>“밝은 표정으로 먼저 인사했어요”</span>' +
                     '<span class="pm-plus">+</span></div>' +
                   '<div class="pm-nav">' + [
-                    ['grid', '홈', 1], ['book', '설명서', 0], ['note', '기록', 0],
+                    ['home', '홈', 1], ['book', '설명서', 0], ['note', '기록', 0],
                     ['share', '공유', 0], ['menu', '더보기', 0]
                   ].map(function (n) {
                     return '<span class="' + (n[2] ? 'on' : '') + '">' +

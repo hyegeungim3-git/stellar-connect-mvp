@@ -62,7 +62,7 @@
   function navItems(cur) {
     var c = cur || '';
     return [
-      { key: 'dashboard', label: '홈',          icon: 'grid',  hash: '#/dashboard' },
+      { key: 'dashboard', label: '홈',          icon: 'home',  hash: '#/dashboard' },
       { key: 'profile',   label: '아이 프로필', icon: 'smile', hash: cur ? '#/child/' + c : '#/dashboard' },
       { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
       { key: 'records',   label: '기록',        icon: 'note',  hash: cur ? '#/records/' + c : '#/dashboard' },
