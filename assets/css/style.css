@@ -1301,12 +1301,11 @@ table.tbl td.actions { white-space: nowrap; }
 
 /* 기록 검색·필터 툴바 (게시판 형태) */
 .rec-toolbar {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 10px;
   margin-bottom: 12px;
 }
 .rec-search {
-  display: flex; align-items: center; gap: 8px;
-  flex: 1; min-width: 220px;
+  display: flex; align-items: center; gap: 8px; min-width: 0;
   background: var(--surface); border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm); padding: 0 12px; min-height: 42px;
   color: var(--text-muted); transition: .14s var(--ease);
@@ -1320,10 +1319,17 @@ table.tbl td.actions { white-space: nowrap; }
 .rec-search-input::placeholder { color: var(--text-faint); }
 .rec-search-clear { flex: none; color: var(--text-muted); }
 .rec-search-clear:hover { color: var(--primary); }
-.rec-toolbar .seg { flex: none; overflow-x: auto; max-width: 100%; }
+.rec-filterbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rec-filterbar .seg { overflow-x: auto; max-width: 100%; }
+.rec-filterbar .select.sm { min-height: 40px; padding: 6px 30px 6px 11px; font-size: .84rem; width: auto; }
+.rec-filterbar #rec-reset { margin-left: auto; }
+.rec-daterange { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rec-daterange .input { max-width: 168px; min-height: 40px; }
+.rec-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .rec-count { font-size: .82rem; margin-bottom: 10px; }
 @media (max-width: 560px) {
-  .rec-toolbar .seg { width: 100%; }
+  .rec-filterbar .seg { width: 100%; }
+  .rec-filterbar #rec-reset { margin-left: 0; }
 }
 
 /* 기록 카드 — 영상 클립 썸네일은 제목·내용 아래에 큰 미리보기로 배치 (사진과 동일 구성) */

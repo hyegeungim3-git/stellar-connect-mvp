@@ -784,32 +784,80 @@
   }
   V._openRecordDetail = openRecordDetail;
   V._recordModal = recordModal;
+  /* 활성 필터(검색·유형·기간·컨디션·태그)가 하나라도 있는지 — 초기화 버튼·카운트 표기용 */
+  function recAnyFilter() {
+    return !!(S.recSearch && S.recSearch.trim()) || S.recFilter !== 'all' ||
+      S.recPeriod !== 'all' || S.recMood !== 'all' || !!S.recTag;
+  }
+  V._recAnyFilter = recAnyFilter;
+  function recYmdOffset(days) {
+    var d = new Date(); d.setDate(d.getDate() - days);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function recInPeriod(ds) {
+    var p = S.recPeriod;
+    if (!p || p === 'all') return true;
+    if (p === 'custom') {
+      if (S.recFrom && ds < S.recFrom) return false;
+      if (S.recTo && ds > S.recTo) return false;
+      return true;
+    }
+    if (p === 'today') return ds === recYmdOffset(0);
+    var days = { '7d': 7, '30d': 30, '3m': 90 }[p];
+    return days == null ? true : ds >= recYmdOffset(days);
+  }
+  function recInMood(m) {
+    m = m || 3;
+    var v = S.recMood;
+    if (!v || v === 'all') return true;
+    if (v === 'good') return m >= 4;
+    if (v === 'ok') return m === 3;
+    if (v === 'low') return m <= 2;
+    return true;
+  }
+  /* 기록에 등장한 태그(빈도순) — 태그 필터 칩 생성용 */
+  function recAllTags(all) {
+    var map = {};
+    all.forEach(function (r) { (r.tags || []).forEach(function (t) { map[t] = (map[t] || 0) + 1; }); });
+    return Object.keys(map).sort(function (a, b) { return map[b] - map[a]; });
+  }
+  V._recAllTags = recAllTags;
+
   /* 검색 결과 영역(카운트 + 타임라인/빈 상태) — 부분 갱신을 위해 분리 */
-  function recResultsHTML(all, list, q) {
+  function recResultsHTML(all, list) {
     if (!all.length) {
       return '<div class="card empty"><div class="emoji">🗒️</div>' +
         '<h3>아직 기록이 없어요</h3>' +
         '<p>행동·치료·변화의 순간을 짧은 영상이나 글로 남겨 보세요.</p>' +
         '<button class="btn btn-primary" id="empty-add">첫 기록 남기기</button></div>';
     }
-    var filtered = !!q || S.recFilter !== 'all';
     var countLine = '<div class="rec-count faint">' +
-      (filtered ? '검색 결과 ' + list.length + '건 · 전체 ' + all.length + '건'
-                : '전체 ' + all.length + '건') + '</div>';
+      (recAnyFilter() ? list.length + '건 / 전체 ' + all.length + '건'
+                      : '전체 ' + all.length + '건') + '</div>';
     if (!list.length) {
       return countLine + '<div class="card empty"><div class="emoji">🔍</div>' +
         '<h3>조건에 맞는 기록이 없어요</h3>' +
-        '<p>검색어나 필터를 바꿔 보세요.</p></div>';
+        '<p>검색어·필터·기간을 바꾸거나 초기화해 보세요.</p></div>';
     }
     return countLine + '<div class="timeline">' + list.map(recCardHTML).join('') + '</div>';
   }
-  /* 현재 S 상태로 기록 목록 필터링 */
+  /* 현재 S 상태로 기록 목록 필터링 + 정렬 */
   function recFiltered(child) {
     var all = Store.recordsOf(child.id);
     var q = (S.recSearch || '').trim().toLowerCase();
-    var typed = S.recFilter === 'all' ? all
-      : all.filter(function (r) { return r.type === S.recFilter; });
-    var list = q ? typed.filter(function (r) { return recMatch(r, q); }) : typed;
+    var list = all.filter(function (r) {
+      if (S.recFilter !== 'all' && r.type !== S.recFilter) return false;
+      if (q && !recMatch(r, q)) return false;
+      if (!recInPeriod(r.date)) return false;
+      if (!recInMood(r.mood)) return false;
+      if (S.recTag && (r.tags || []).indexOf(S.recTag) < 0) return false;
+      return true;
+    });
+    list.sort(function (a, b) {
+      var c = a.date < b.date ? -1 : (a.date > b.date ? 1
+        : ((a.createdAt || '') < (b.createdAt || '') ? -1 : 1));
+      return S.recSort === 'old' ? c : -c;
+    });
     return { all: all, list: list, q: q };
   }
 
@@ -829,6 +877,12 @@
           }).join('') + '</div>';
 
       /* 검색 + 필터 툴바 (게시판 형태) — 기록이 있을 때만 노출 */
+      function opts(cur, arr) {
+        return arr.map(function (o) {
+          return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('');
+      }
+      var tagList = recAllTags(f.all);
       var toolbar = f.all.length
         ? '<div class="rec-toolbar no-print">' +
             '<div class="rec-search">' + icon('search', 16) +
@@ -837,7 +891,35 @@
               '<button class="btn-icon rec-search-clear" id="rec-search-clear" ' +
                 'aria-label="검색 지우기"' + (S.recSearch ? '' : ' hidden') + '>' +
                 icon('x', 15) + '</button>' +
-            '</div>' + seg +
+            '</div>' +
+            '<div class="rec-filterbar">' + seg +
+              '<select class="select sm" id="rec-period" aria-label="기간">' +
+                opts(S.recPeriod, [['all', '전체 기간'], ['today', '오늘'], ['7d', '최근 7일'],
+                  ['30d', '최근 30일'], ['3m', '최근 3개월'], ['custom', '직접 지정']]) + '</select>' +
+              '<select class="select sm" id="rec-mood" aria-label="컨디션">' +
+                opts(S.recMood, [['all', '컨디션 전체'], ['good', '😊 좋음'], ['ok', '😐 보통'],
+                  ['low', '😣 힘듦']]) + '</select>' +
+              '<select class="select sm" id="rec-sort" aria-label="정렬">' +
+                opts(S.recSort, [['new', '최신순'], ['old', '오래된순']]) + '</select>' +
+              (recAnyFilter()
+                ? '<button class="btn btn-ghost btn-sm" id="rec-reset">' + icon('x', 14) + '초기화</button>'
+                : '') +
+            '</div>' +
+            (S.recPeriod === 'custom'
+              ? '<div class="rec-daterange">' +
+                  '<input type="date" class="input" id="rec-from" value="' + esc(S.recFrom || '') + '">' +
+                  '<span class="faint">~</span>' +
+                  '<input type="date" class="input" id="rec-to" value="' + esc(S.recTo || '') + '">' +
+                '</div>'
+              : '') +
+            (tagList.length
+              ? '<div class="rec-tags">' +
+                  tagList.map(function (t) {
+                    return '<button class="chip sm' + (S.recTag === t ? ' on' : '') +
+                      '" data-rectag="' + esc(t) + '">#' + esc(t) + '</button>';
+                  }).join('') +
+                '</div>'
+              : '') +
           '</div>'
         : '';
 
@@ -858,7 +940,7 @@
           '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
           '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록하기</button>') +
         medBridge + toolbar +
-        '<div id="rec-results">' + recResultsHTML(f.all, f.list, f.q) + '</div>';
+        '<div id="rec-results">' + recResultsHTML(f.all, f.list) + '</div>';
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
@@ -879,7 +961,7 @@
       function refreshResults() {
         if (!resultsBox) return;
         var f = recFiltered(child);
-        resultsBox.innerHTML = recResultsHTML(f.all, f.list, f.q);
+        resultsBox.innerHTML = recResultsHTML(f.all, f.list);
         wireRecCards(resultsBox);
       }
       if (searchIn) {
@@ -894,6 +976,32 @@
         if (searchIn) { searchIn.value = ''; searchIn.focus(); }
         clrBtn.hidden = true;
         refreshResults();
+      };
+      // 기간·컨디션·정렬 드롭다운 (전체 재렌더 — 값은 S에서 복원)
+      var perEl = UI.el('rec-period');
+      if (perEl) perEl.onchange = function () { S.recPeriod = perEl.value; App.refresh(); };
+      var moodEl = UI.el('rec-mood');
+      if (moodEl) moodEl.onchange = function () { S.recMood = moodEl.value; App.refresh(); };
+      var sortEl = UI.el('rec-sort');
+      if (sortEl) sortEl.onchange = function () { S.recSort = sortEl.value; App.refresh(); };
+      // 직접 지정 기간
+      var fromEl = UI.el('rec-from');
+      if (fromEl) fromEl.onchange = function () { S.recFrom = fromEl.value; App.refresh(); };
+      var toEl = UI.el('rec-to');
+      if (toEl) toEl.onchange = function () { S.recTo = toEl.value; App.refresh(); };
+      // 태그 칩 (같은 태그 다시 누르면 해제)
+      document.querySelectorAll('[data-rectag]').forEach(function (b) {
+        b.onclick = function () {
+          S.recTag = (S.recTag === b.dataset.rectag) ? null : b.dataset.rectag;
+          App.refresh();
+        };
+      });
+      // 필터 초기화
+      var resetBtn = UI.el('rec-reset');
+      if (resetBtn) resetBtn.onclick = function () {
+        S.recSearch = ''; S.recFilter = 'all'; S.recPeriod = 'all';
+        S.recFrom = ''; S.recTo = ''; S.recMood = 'all'; S.recSort = 'new'; S.recTag = null;
+        App.refresh();
       };
       wireRecCards(document);
     }
