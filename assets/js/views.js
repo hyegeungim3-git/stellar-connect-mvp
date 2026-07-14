@@ -7,7 +7,8 @@
   var esc = UI.esc, nl2br = UI.nl2br, icon = UI.icon, Modal = UI.Modal, toast = UI.toast;
 
   /* 화면 전환 사이 유지되는 임시 UI 상태 */
-  var S = { manualTab: 'canDo', recFilter: 'all', adminTab: 'stats', focusAdd: null };
+  var S = { manualTab: 'canDo', recFilter: 'all', recSearch: '', homeChild: null,
+    adminTab: 'stats', focusAdd: null };
 
   /* ---------- 설명서 섹션 정의 ---------- */
   var MSEC = {
@@ -531,53 +532,31 @@
   /* =====================================================================
    * 대시보드
    * ===================================================================== */
+  /* 홈에 표시할 아이 선택 — 저장된 선택이 유효하면 그것, 아니면 첫 아이 */
+  function homeChildOf(kids) {
+    if (!kids.length) return null;
+    if (S.homeChild) {
+      var found = kids.filter(function (k) { return k.id === S.homeChild; })[0];
+      if (found) return found;
+    }
+    return kids[0];
+  }
+
   var dashboard = {
     layout: 'app',
     render: function () {
       var u = Store.currentUser();
       var kids = Store.childrenOf(u.id);
       var pop = Store.listPopups().filter(function (p) { return p.active; })[0];
-      var primary = kids[0];
 
-      var html = '';
-      html += pageHead('홈', u.name + '님, 안녕하세요 👋',
-        '우리 아이를 가장 잘 설명하는 한 부 —「내 아이 설명서」를 함께 채워가요.');
+      var html = pageHead('홈', u.name + '님, 안녕하세요 👋',
+        '오늘 우리 아이의 하루를 함께 살펴보세요.');
 
       if (pop) {
         html += '<div class="card card-pad mb-2" style="border-left:4px solid var(--accent);background:var(--accent-soft)">' +
           '<b style="color:#0d5b52">' + icon('bell', 15) + ' ' + esc(pop.title) + '</b>' +
           '<p style="color:#0d5b52;font-size:.9rem;margin-top:4px">' + esc(pop.body) + '</p></div>';
       }
-
-      // 복약 리마인더 — 주기 복용 약물 중 오늘 기록이 없는 건 (실서비스: 복용 시간 앱 푸시)
-      var missedAll = [];
-      kids.forEach(function (c) {
-        var st = global.Views._medStatusToday ? global.Views._medStatusToday(c) : [];
-        st.forEach(function (x) { if (!x.done) missedAll.push({ child: c, med: x.med, slot: x.slot }); });
-      });
-      if (missedAll.length) {
-        html += '<div class="card card-pad mb-2" id="med-remind" ' +
-          'style="border-left:4px solid var(--c-problem);background:var(--c-problem-bg)">' +
-          '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' +
-            '<b style="color:#9a6207">' + icon('pill', 15) + ' 오늘 복약 기록 전이에요</b>' +
-            '<span style="color:#9a6207;font-size:.9rem;flex:1;min-width:180px">' +
-              missedAll.slice(0, 3).map(function (x) {
-                return esc(x.med.name) + '(' + esc(x.slot) + ')';
-              }).join(' · ') +
-              (missedAll.length > 3 ? ' 외 ' + (missedAll.length - 3) + '건' : '') + '</span>' +
-            '<button class="btn btn-primary btn-sm" ' +
-              'onclick="App.navigate(\'#/meds/' + missedAll[0].child.id + '\')">' +
-              icon('check', 14) + '바로 기록</button></div>' +
-          '<p class="faint" style="font-size:.78rem;margin-top:6px">복용 관리의 ‘오늘의 복약’에서 ' +
-            '탭 한 번으로 기록돼요. 실서비스에서는 복용 시간에 맞춰 앱 푸시로 알려드립니다.</p></div>';
-      }
-
-      // 대부분 가정은 아이 1명 — 등록 후에는 '추가'를 낮은 톤(ghost)으로만 노출
-      html += '<div class="page-head-row mb-2"><h2>우리 아이</h2>' +
-        (kids.length
-          ? '<button class="btn btn-ghost btn-sm" onclick="App.navigate(\'#/child/new\')">' +
-            icon('plus', 15) + '아이 추가</button>'
-          : '') + '</div>';
 
       if (!kids.length) {
         html += '<div class="card empty"><div class="emoji">🧒</div>' +
@@ -587,91 +566,127 @@
         return html;
       }
 
-      // 아이 1명이면 카드를 전폭으로 (3열 그리드에 1장만 두면 빈 공간이 생김)
-      html += '<div class="' + (kids.length > 1 ? 'grid grid-3 ' : '') + 'mb-3">' + kids.map(function (c) {
-        var m = Store.getManual(c.id);
-        var cnt = m ? manualCount(m) : 0;
-        var age = UI.calcAge(c.birthDate);
-        var note = m && m.summaryNote
-          ? '<div class="oneline">“' + esc(m.summaryNote) + '”</div>' : '';
-        return '<div class="card child-card" onclick="App.navigate(\'#/child/' + c.id + '\')">' +
-          '<div class="avatar lg">' + (c.photo
-            ? '<img src="' + c.photo + '" alt="">' : esc(UI.initials(c.name))) + '</div>' +
-          '<div class="meta"><div class="nm">' + esc(c.name) + '</div>' +
-            '<div class="sub">' + (age != null ? '만 ' + age + '세 · ' : '') +
-            esc(c.disability.type) + '</div>' + note +
-            '<div style="margin-top:6px"><span class="badge">설명서 ' + cnt + '항목</span></div>' +
-          '</div>' + icon('chevR', 18) + '</div>';
-      }).join('') + '</div>';
+      var child = homeChildOf(kids);
 
-      // 「내 아이 설명서」 진행 + 핵심 동선 (작성 → 대상별 생성 → 공유)
-      if (primary) {
-        var pm = Store.getManual(primary.id);
-        var pcnt = pm ? manualCount(pm) : 0;
-        var pct = Math.min(100, pcnt * 5);
-        var statusLabel = pcnt >= 20 ? '풍성하게 채워졌어요' : pcnt >= 10 ? '잘 채워지고 있어요' : '이제 시작이에요';
-        html += '<div class="card card-pad mb-3 manual-status">' +
-          '<div class="row between wrap" style="gap:10px;margin-bottom:10px">' +
-            '<div><div class="eyebrow" style="color:var(--primary)">내 아이 설명서</div>' +
-              '<b style="font-size:1.08rem">' + esc(primary.name) + ' 설명서 · ' + pcnt + '항목</b></div>' +
-            '<span class="badge ' + (pcnt >= 10 ? 'ok' : '') + '">' + statusLabel + '</span></div>' +
-          '<div style="height:9px;background:var(--surface-2);border-radius:99px;overflow:hidden">' +
-            '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--brand-understand),var(--brand-connect) 60%,var(--brand-grow));border-radius:99px"></div></div>' +
-          '<div class="grid grid-3 mt-2" style="gap:10px">' +
-            '<button class="btn btn-primary btn-block" onclick="App.navigate(\'#/manual/' + primary.id + '\')">' +
-              icon('edit', 16) + '설명서 ' + (pcnt ? '이어쓰기' : '작성하기') + '</button>' +
-            '<button class="btn btn-soft btn-block" onclick="App.navigate(\'#/share/' + primary.id + '\')">' +
-              icon('share', 16) + '대상별 설명서 만들기</button>' +
-            '<button class="btn btn-ghost btn-block" onclick="App.navigate(\'#/plan/' + primary.id + '\')">' +
-              icon('sprout', 16) + '미래 준비 보기</button>' +
-          '</div></div>';
+      // 아이 전환 칩 (2명 이상일 때만)
+      if (kids.length > 1) {
+        html += '<div class="home-switch">' + kids.map(function (c) {
+          return '<button class="home-switch-chip' + (c.id === child.id ? ' on' : '') +
+            '" data-homechild="' + c.id + '">' +
+            '<span class="avatar">' + (c.photo ? '<img src="' + c.photo + '" alt="">'
+              : esc(UI.initials(c.name))) + '</span>' + esc(c.name) + '</button>';
+        }).join('') +
+          '<button class="home-switch-chip add" onclick="App.navigate(\'#/child/new\')">' +
+            icon('plus', 15) + '아이 추가</button></div>';
       }
 
-      // (오늘의 체크인 카드는 2차 리뷰 요청으로 제거됨 — 복약 체크는 약물 기록으로 대체)
+      /* 1) 간단 프로필 — 이름·나이·진단·한 줄 소개 + 설명서 진행 + 핵심 동선 */
+      var m = Store.getManual(child.id);
+      var cnt = m ? manualCount(m) : 0;
+      var pct = Math.min(100, cnt * 5);
+      var age = UI.calcAge(child.birthDate);
+      var note = m && m.summaryNote
+        ? '<div class="oneline">“' + esc(m.summaryNote) + '”</div>' : '';
+      var profile = '<div class="card home-profile">' +
+        '<div class="hp-top">' +
+          '<div class="avatar xl">' + (child.photo
+            ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
+          '<div class="hp-meta">' +
+            '<div class="hp-name">' + esc(child.name) + '</div>' +
+            '<div class="hp-sub">' + (age != null ? '만 ' + age + '세 · ' : '') +
+              esc(child.disability.type) + '</div>' + note +
+          '</div>' +
+          '<a class="btn btn-ghost btn-sm hp-edit" href="#/child/' + child.id + '">' +
+            icon('user', 15) + '<span class="hp-edit-txt">프로필</span></a>' +
+        '</div>' +
+        '<div class="hp-manual">' +
+          '<div class="hp-manual-row">' +
+            '<span class="faint" style="font-size:.82rem">내 아이 설명서 · ' + cnt + '항목</span>' +
+            '<a href="#/manual/' + child.id + '" class="hp-link">' +
+              (cnt ? '이어쓰기' : '작성하기') + ' ›</a>' +
+          '</div>' +
+          '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>' +
+        '<div class="hp-actions">' +
+          '<a class="btn btn-primary btn-sm" href="#/manual/' + child.id + '">' +
+            icon('edit', 15) + '설명서</a>' +
+          '<a class="btn btn-soft btn-sm" href="#/share/' + child.id + '">' +
+            icon('share', 15) + '대상별 공유</a>' +
+        '</div>' +
+      '</div>';
 
-      // 최근 기록 — 행동·치료·변화·검사 (기록은 기본 기능)
-      var allRecords = [];
-      kids.forEach(function (c) { allRecords = allRecords.concat(Store.recordsOf(c.id)); });
-      var recent = allRecords.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 5);
-      html += '<div class="card mb-3"><div class="card-head"><h3>최근 기록</h3>' +
-        (primary ? '<a class="btn btn-soft btn-sm" href="#/records/' + primary.id + '" style="margin-left:auto">' +
-          icon('plus', 14) + '기록하기</a>' : '') + '</div><div class="card-body">';
-      if (!recent.length) {
-        html += '<p class="muted center" style="padding:14px 0">아직 기록이 없어요. 오늘 첫 기록을 남겨 보세요.</p>';
-      } else {
-        html += recent.map(function (r) {
-          var c = Store.getChild(r.childId);
-          var meta = RT[r.type] || RT.behavior;
-          return '<a class="row" href="#/records/' + r.childId + '" style="padding:9px 0;border-bottom:1px solid var(--border)">' +
-            '<span style="color:' + meta.color + '">' + icon(meta.icon, 18) + '</span>' +
-            '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.92rem">' +
-              esc(r.title) + '</div>' +
-            '<div class="faint" style="font-size:.78rem">' + esc(c ? c.name : '') +
-              ' · ' + esc(meta.label) + ' · ' + UI.fmtDate(r.date) + '</div></div>' +
-            UI.moodStars(r.mood) + '</a>';
-        }).join('');
-      }
-      html += '</div></div>';
+      /* 2) 복용 관리 — 복용 관리 화면의 '오늘의 복약' 패널을 그대로 재사용 */
+      var medPanel = global.Views._medTodayPanel ? global.Views._medTodayPanel(child) : '';
+      var medSection = '<section class="home-sec">' +
+        '<div class="home-sec-head"><h2>복용 관리</h2>' +
+          '<a class="hp-link" href="#/meds/' + child.id + '">전체 보기 ›</a></div>' +
+        (medPanel ||
+          '<div class="card card-pad"><p class="muted" style="font-size:.9rem;margin-bottom:10px">' +
+          '등록된 복약 일정이 없어요. 복용 관리에서 약을 추가하면 오늘의 복약을 여기서 바로 체크할 수 있어요.</p>' +
+          '<a class="btn btn-soft btn-sm" href="#/meds/' + child.id + '">' +
+            icon('pill', 15) + '복용 관리로 가기</a></div>') +
+      '</section>';
 
-      // 이렇게 쓰여요 — 3단계
-      var steps = [
-        { i: 'book',  t: '아이를 이해하는 항목 채우기', d: '좋아함·의사소통·감각·도전적 행동과 지원 방법까지. 추천 버튼만 눌러도 채워져요.' },
-        { i: 'print', t: '대상별 설명서로 자동 정리', d: '학교용·병원용·활동지원사용·돌봄기관용으로 필요한 내용만 한 장에 담아요.' },
-        { i: 'share', t: 'QR·링크로 바로 공유', d: '새로운 선생님·치료사를 만나도 다시 설명할 필요 없이 링크 하나로 전달.' }
+      /* 3) 기록 — Setlog식 빠른 기록 타일 + 최근 기록 피드 */
+      var QUICK = [
+        { k: 'behavior', label: '행동' }, { k: 'treatment', label: '치료' },
+        { k: 'change', label: '변화' }, { k: 'assessment', label: '검사' }
       ];
-      html += '<div class="card"><div class="card-head"><h3>이렇게 쓰여요</h3></div>' +
-        '<div class="card-body"><div class="how-steps">' +
-        steps.map(function (s, i) {
-          return '<div class="how-step"><span class="how-num">' + (i + 1) + '</span>' +
-            '<span class="how-ico" style="color:var(--primary)">' + icon(s.i, 18) + '</span>' +
-            '<div><b>' + esc(s.t) + '</b><p class="muted" style="font-size:.88rem;margin-top:2px">' +
-            esc(s.d) + '</p></div></div>';
-        }).join('') + '</div></div></div>';
+      var quickTiles = '<div class="quick-log">' +
+        QUICK.map(function (o) {
+          var meta = RT[o.k];
+          return '<button class="quick-tile" data-qrec="' + o.k + '">' +
+            '<span class="qt-ico" style="background:' + meta.color + '22;color:' + meta.color + '">' +
+              icon(meta.icon, 20) + '</span><span class="qt-label">' + o.label + '</span></button>';
+        }).join('') +
+        '<button class="quick-tile" data-qreels="1">' +
+          '<span class="qt-ico" style="background:var(--brand-connect-soft);color:var(--brand-connect)">' +
+            icon('camera', 20) + '</span><span class="qt-label">영상</span></button>' +
+      '</div>';
 
+      var recs = Store.recordsOf(child.id).sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+        return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+      }).slice(0, 4);
+      var feed = recs.length
+        ? '<div class="timeline">' + recs.map(function (r) {
+            return global.Views._recCardHTML ? global.Views._recCardHTML(r) : '';
+          }).join('') + '</div>'
+        : '<div class="card card-pad"><p class="muted center" style="padding:8px 0">' +
+          '아직 기록이 없어요. 위 버튼으로 오늘 첫 순간을 남겨 보세요.</p></div>';
+
+      var recSection = '<section class="home-sec">' +
+        '<div class="home-sec-head"><h2>기록</h2>' +
+          '<a class="hp-link" href="#/records/' + child.id + '">전체 보기 ›</a></div>' +
+        quickTiles + feed +
+      '</section>';
+
+      html += profile + '<div class="home-grid">' + medSection + recSection + '</div>';
       return html;
     },
     mount: function () {
-      // 오늘의 체크인 카드 제거로 대시보드 mount에 바인딩할 항목 없음
+      var u = Store.currentUser();
+      var kids = u ? Store.childrenOf(u.id) : [];
+      var child = homeChildOf(kids);
+      if (!child) return;
+
+      document.querySelectorAll('[data-homechild]').forEach(function (b) {
+        b.onclick = function () { S.homeChild = b.dataset.homechild; App.refresh(); };
+      });
+      document.querySelectorAll('[data-qrec]').forEach(function (b) {
+        b.onclick = function () {
+          if (global.Views._recordModal) global.Views._recordModal(child.id, null, { type: b.dataset.qrec });
+          else App.navigate('#/records/' + child.id);
+        };
+      });
+      var reels = document.querySelector('[data-qreels]');
+      if (reels) reels.onclick = function () {
+        if (global.Views._recordModal) global.Views._recordModal(child.id, null, { autoClip: true });
+        else App.navigate('#/records/' + child.id);
+      };
+      // 복용 관리 패널·기록 피드 카드 배선 (해당 화면의 헬퍼 재사용)
+      if (global.Views._wireMedToday) global.Views._wireMedToday(child);
+      if (global.Views._wireRecCards) global.Views._wireRecCards(document);
     }
   };
 

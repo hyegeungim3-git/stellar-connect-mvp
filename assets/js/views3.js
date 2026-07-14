@@ -268,7 +268,7 @@
   function recordModal(childId, rec, opts) {
     opts = opts || {};
     var isNew = !rec;
-    rec = rec || { childId: childId, type: 'behavior', date: todayStr(), time: nowHM(),
+    rec = rec || { childId: childId, type: (opts.type || 'behavior'), date: todayStr(), time: nowHM(),
                    title: '', content: '', tags: [], mood: 3, photo: null };
     if (isNew) { rec.id = Store.uid('rec'); rec.createdAt = Store.nowISO(); }
     var photoData = rec.photo || null;
@@ -289,7 +289,7 @@
     }).join('');
 
     Modal.open({
-      title: isNew ? '기록 추가' : '기록 수정', icon: 'note', wide: true,
+      title: isNew ? '기록하기' : '기록 수정', icon: 'note', wide: true,
       body:
         '<div class="field-row">' +
           '<div class="field"><label>기록 유형</label>' +
@@ -626,7 +626,7 @@
       },
       buttons: [
         { label: '취소', value: 'cancelx', variant: 'ghost' },
-        { label: isNew ? '기록 추가' : '저장', value: 'ok', variant: 'primary' }
+        { label: isNew ? '기록하기' : '저장', value: 'ok', variant: 'primary' }
       ],
       onButton: function (v, root) {
         if (v === 'cancelx') { if (CL._cleanup) CL._cleanup(); return; }
@@ -668,14 +668,157 @@
     });
   }
 
+  /* ---------- 기록 카드/검색 공용 헬퍼 (기록 메뉴·홈 공용) ---------- */
+  function recMatch(r, q) {
+    var hay = ((r.title || '') + ' ' + (r.content || '') + ' ' +
+      ((r.tags || []).join(' '))).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }
+  /* 기록 카드 1개 — 타임라인/게시판/홈 피드 공용 */
+  function recCardHTML(r) {
+    var meta = RT[r.type] || RT.behavior;
+    return '<div class="tl-item t-' + r.type + '">' +
+      '<div class="card rec-card" data-rec="' + r.id + '">' +
+        (r.hasClip ? '<div class="clip-thumb-wrap">' +
+          '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
+          'preload="metadata"></video>' +
+          '<span class="clip-play">' + icon('camera', 15) + '</span></div>' : '') +
+        '<div class="rec-main">' +
+          '<div class="rec-top">' +
+            '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
+              esc(meta.label) + '</span>' +
+            (r.hasClip ? '<span class="badge brand">' + icon('camera', 11) + ' 영상</span>' : '') +
+            UI.moodStars(r.mood) +
+            '<span class="rec-date">' + UI.fmtDate(r.date) +
+              (r.time ? ' ' + esc(r.time) : '') + '</span>' +
+          '</div>' +
+          '<div class="rec-title">' + esc(r.title) + '</div>' +
+          (r.content ? '<div class="rec-content">' + esc(r.content) + '</div>' : '') +
+          (r.photo ? '<img src="' + r.photo + '" style="margin-top:8px;max-height:150px;' +
+            'border-radius:8px">' : '') +
+          (r.tags && r.tags.length ? '<div style="margin-top:7px">' + r.tags.map(function (t) {
+            return '<span class="tag">#' + esc(t) + '</span>';
+          }).join('') + '</div>' : '') +
+        '</div>' +
+      '</div></div>';
+  }
+  V._recCardHTML = recCardHTML;
+  /* 클립 썸네일 지연 로드 + 카드 클릭(상세) 배선 — 지정 스코프 안에서만 */
+  function wireRecCards(scope) {
+    scope = scope || document;
+    scope.querySelectorAll('[data-clipthumb]').forEach(function (v) {
+      if (!VideoDB.available()) return;
+      VideoDB.get(v.dataset.clipthumb).then(function (blob) {
+        if (!blob) return;
+        v.src = URL.createObjectURL(blob);
+        v.onloadedmetadata = function () {
+          try { v.currentTime = Math.min(0.15, (v.duration || 0.3) / 2); } catch (e) {}
+        };
+      }).catch(function () {});
+    });
+    scope.querySelectorAll('[data-rec]').forEach(function (c) {
+      c.onclick = function () {
+        var r = Store.getRecord(c.dataset.rec);
+        if (r) openRecordDetail(r);
+      };
+    });
+  }
+  V._wireRecCards = wireRecCards;
+  /* 기록 상세 모달 */
+  function openRecordDetail(r) {
+    var meta = RT[r.type] || RT.behavior;
+    Modal.open({
+      title: '기록 상세', icon: meta.icon, wide: true,
+      body: '<div class="row mb-2"><span class="badge" style="background:' + meta.color +
+        '22;color:' + meta.color + '">' + esc(meta.label) + '</span>' +
+        UI.moodStars(r.mood) +
+        '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) +
+          (r.time ? ' ' + esc(r.time) : '') + '</span></div>' +
+        '<h3 class="mb-1">' + esc(r.title) + '</h3>' +
+        (r.content ? '<p class="muted" style="line-height:1.6">' + nl2br(r.content) + '</p>' : '') +
+        (r.hasClip ? '<div id="rec-clip-host" class="mt-2"><p class="faint" ' +
+          'style="font-size:.84rem">영상을 불러오는 중…</p></div>' : '') +
+        (r.photo ? '<img src="' + r.photo + '" style="margin-top:10px;border-radius:10px">' : '') +
+        (r.tags && r.tags.length ? '<div style="margin-top:10px">' + r.tags.map(function (t) {
+          return '<span class="tag">#' + esc(t) + '</span>';
+        }).join('') + '</div>' : ''),
+      onMount: function (droot) {
+        if (r.hasClip && r.clipKey && VideoDB.available()) {
+          var host = droot.querySelector('#rec-clip-host');
+          VideoDB.get(r.clipKey).then(function (blob) {
+            if (!host) return;
+            if (blob) {
+              host.innerHTML = '<div class="rec-clip-player"><div class="reels-frame">' +
+                '<video class="reels-video" controls playsinline src="' +
+                URL.createObjectURL(blob) + '"></video></div></div>';
+            } else {
+              host.innerHTML = '<p class="faint" style="font-size:.84rem">' +
+                '저장된 영상을 찾을 수 없습니다.</p>';
+            }
+          }).catch(function () {
+            if (host) host.innerHTML = '<p class="faint" style="font-size:.84rem">' +
+              '영상을 불러오지 못했습니다.</p>';
+          });
+        }
+      },
+      buttons: [
+        { label: '삭제', value: 'del', variant: 'danger' },
+        { label: '수정', value: 'edit', variant: 'primary' }
+      ],
+      onButton: function (v) {
+        if (v === 'edit') { recordModal(r.childId, r); return 'keep'; }
+        if (v === 'del') {
+          Modal.confirm({ title: '기록 삭제', message: '이 기록을 삭제할까요?',
+            okLabel: '삭제', danger: true }).then(function (ok) {
+            if (!ok) return;
+            if (r.hasClip && r.clipKey && VideoDB.available()) {
+              VideoDB.del(r.clipKey).catch(function () {});
+            }
+            Store.deleteRecord(r.id);
+            toast('삭제했어요', 'ok'); App.refresh();
+          });
+          return 'keep';
+        }
+      }
+    });
+  }
+  V._openRecordDetail = openRecordDetail;
+  V._recordModal = recordModal;
+  /* 검색 결과 영역(카운트 + 타임라인/빈 상태) — 부분 갱신을 위해 분리 */
+  function recResultsHTML(all, list, q) {
+    if (!all.length) {
+      return '<div class="card empty"><div class="emoji">🗒️</div>' +
+        '<h3>아직 기록이 없어요</h3>' +
+        '<p>행동·치료·변화의 순간을 짧은 영상이나 글로 남겨 보세요.</p>' +
+        '<button class="btn btn-primary" id="empty-add">첫 기록 남기기</button></div>';
+    }
+    var filtered = !!q || S.recFilter !== 'all';
+    var countLine = '<div class="rec-count faint">' +
+      (filtered ? '검색 결과 ' + list.length + '건 · 전체 ' + all.length + '건'
+                : '전체 ' + all.length + '건') + '</div>';
+    if (!list.length) {
+      return countLine + '<div class="card empty"><div class="emoji">🔍</div>' +
+        '<h3>조건에 맞는 기록이 없어요</h3>' +
+        '<p>검색어나 필터를 바꿔 보세요.</p></div>';
+    }
+    return countLine + '<div class="timeline">' + list.map(recCardHTML).join('') + '</div>';
+  }
+  /* 현재 S 상태로 기록 목록 필터링 */
+  function recFiltered(child) {
+    var all = Store.recordsOf(child.id);
+    var q = (S.recSearch || '').trim().toLowerCase();
+    var typed = S.recFilter === 'all' ? all
+      : all.filter(function (r) { return r.type === S.recFilter; });
+    var list = q ? typed.filter(function (r) { return recMatch(r, q); }) : typed;
+    return { all: all, list: list, q: q };
+  }
+
   V.records = {
     layout: 'app',
     render: function (p) {
       var child = ownedChild(p.childId);
       if (!child) return notFound('아이 정보를 찾을 수 없어요');
-      var all = Store.recordsOf(child.id);
-      var list = S.recFilter === 'all' ? all
-        : all.filter(function (r) { return r.type === S.recFilter; });
+      var f = recFiltered(child);
 
       var seg = '<div class="seg no-print">' +
         [['all', '전체'], ['behavior', '행동'], ['treatment', '치료'],
@@ -685,41 +828,18 @@
               '" data-f="' + o[0] + '">' + o[1] + '</button>';
           }).join('') + '</div>';
 
-      var body;
-      if (!list.length) {
-        body = '<div class="card empty"><div class="emoji">🗒️</div>' +
-          '<h3>아직 기록이 없어요</h3>' +
-          '<p>행동·치료·변화의 순간을 짧은 영상이나 글로 남겨 보세요.</p>' +
-          '<button class="btn btn-primary" id="empty-add">첫 기록 남기기</button></div>';
-      } else {
-        body = '<div class="timeline">' + list.map(function (r) {
-          var meta = RT[r.type];
-          return '<div class="tl-item t-' + r.type + '">' +
-            '<div class="card rec-card" data-rec="' + r.id + '">' +
-              (r.hasClip ? '<div class="clip-thumb-wrap">' +
-                '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
-                'preload="metadata"></video>' +
-                '<span class="clip-play">' + icon('camera', 15) + '</span></div>' : '') +
-              '<div class="rec-main">' +
-                '<div class="rec-top">' +
-                  '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
-                    esc(meta.label) + '</span>' +
-                  (r.hasClip ? '<span class="badge brand">' + icon('camera', 11) + ' 영상</span>' : '') +
-                  UI.moodStars(r.mood) +
-                  '<span class="rec-date">' + UI.fmtDate(r.date) +
-                    (r.time ? ' ' + esc(r.time) : '') + '</span>' +
-                '</div>' +
-                '<div class="rec-title">' + esc(r.title) + '</div>' +
-                (r.content ? '<div class="rec-content">' + esc(r.content) + '</div>' : '') +
-                (r.photo ? '<img src="' + r.photo + '" style="margin-top:8px;max-height:150px;' +
-                  'border-radius:8px">' : '') +
-                (r.tags && r.tags.length ? '<div style="margin-top:7px">' + r.tags.map(function (t) {
-                  return '<span class="tag">#' + esc(t) + '</span>';
-                }).join('') + '</div>' : '') +
-              '</div>' +
-            '</div></div>';
-        }).join('') + '</div>';
-      }
+      /* 검색 + 필터 툴바 (게시판 형태) — 기록이 있을 때만 노출 */
+      var toolbar = f.all.length
+        ? '<div class="rec-toolbar no-print">' +
+            '<div class="rec-search">' + icon('search', 16) +
+              '<input class="rec-search-input" id="rec-search" type="search" ' +
+                'placeholder="제목·내용·태그 검색" value="' + esc(S.recSearch || '') + '">' +
+              '<button class="btn-icon rec-search-clear" id="rec-search-clear" ' +
+                'aria-label="검색 지우기"' + (S.recSearch ? '' : ' hidden') + '>' +
+                icon('x', 15) + '</button>' +
+            '</div>' + seg +
+          '</div>'
+        : '';
 
       /* 오늘의 복약 패널은 복용 관리 메뉴로 이동됨 (2026-07-10 사용자 요청)
          — 기록에서 복약을 찾던 동선을 위해 미기록이 있으면 복용 관리로 잇는 한 줄 안내를 남긴다 */
@@ -736,9 +856,9 @@
         pageHead('기록', child.name + ' 기록',
           '행동·치료·변화의 순간을 짧은 영상(릴스)이나 글로 남깁니다.',
           '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
-          '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록 추가</button>') +
-        medBridge +
-        '<div class="mb-2">' + seg + '</div>' + body;
+          '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록하기</button>') +
+        medBridge + toolbar +
+        '<div id="rec-results">' + recResultsHTML(f.all, f.list, f.q) + '</div>';
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
@@ -752,84 +872,32 @@
         if (!b.closest('.seg')) return;
         b.onclick = function () { S.recFilter = b.dataset.f; App.refresh(); };
       });
-      // 클립 썸네일 지연 로드
-      document.querySelectorAll('[data-clipthumb]').forEach(function (v) {
-        if (!VideoDB.available()) return;
-        VideoDB.get(v.dataset.clipthumb).then(function (blob) {
-          if (!blob) return;
-          v.src = URL.createObjectURL(blob);
-          v.onloadedmetadata = function () {
-            try { v.currentTime = Math.min(0.15, (v.duration || 0.3) / 2); } catch (e) {}
-          };
-        }).catch(function () {});
-      });
-      document.querySelectorAll('[data-rec]').forEach(function (c) {
-        c.onclick = function () {
-          var r = Store.getRecord(c.dataset.rec);
-          if (!r) return;
-          var meta = RT[r.type];
-          Modal.open({
-            title: '기록 상세', icon: meta.icon, wide: true,
-            body: '<div class="row mb-2"><span class="badge" style="background:' + meta.color +
-              '22;color:' + meta.color + '">' + esc(meta.label) + '</span>' +
-              UI.moodStars(r.mood) +
-              '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) +
-                (r.time ? ' ' + esc(r.time) : '') + '</span></div>' +
-              '<h3 class="mb-1">' + esc(r.title) + '</h3>' +
-              (r.content ? '<p class="muted" style="line-height:1.6">' + nl2br(r.content) + '</p>' : '') +
-              (r.hasClip ? '<div id="rec-clip-host" class="mt-2"><p class="faint" ' +
-                'style="font-size:.84rem">영상을 불러오는 중…</p></div>' : '') +
-              (r.photo ? '<img src="' + r.photo + '" style="margin-top:10px;border-radius:10px">' : '') +
-              (r.tags && r.tags.length ? '<div style="margin-top:10px">' + r.tags.map(function (t) {
-                return '<span class="tag">#' + esc(t) + '</span>';
-              }).join('') + '</div>' : ''),
-            onMount: function (droot) {
-              if (r.hasClip && r.clipKey && VideoDB.available()) {
-                var host = droot.querySelector('#rec-clip-host');
-                VideoDB.get(r.clipKey).then(function (blob) {
-                  if (!host) return;
-                  if (blob) {
-                    host.innerHTML = '<div class="rec-clip-player"><div class="reels-frame">' +
-                      '<video class="reels-video" controls playsinline src="' +
-                      URL.createObjectURL(blob) + '"></video></div></div>';
-                  } else {
-                    host.innerHTML = '<p class="faint" style="font-size:.84rem">' +
-                      '저장된 영상을 찾을 수 없습니다.</p>';
-                  }
-                }).catch(function () {
-                  if (host) host.innerHTML = '<p class="faint" style="font-size:.84rem">' +
-                    '영상을 불러오지 못했습니다.</p>';
-                });
-              }
-            },
-            buttons: [
-              { label: '삭제', value: 'del', variant: 'danger' },
-              { label: '수정', value: 'edit', variant: 'primary' }
-            ],
-            onButton: function (v) {
-              // '수정'·'삭제'는 같은 modal-host에 새 모달(편집/확인)을 띄우므로
-              // 'keep'을 반환해 상세 모달의 자동 close()가 새 모달을 지우지 않게 한다.
-              if (v === 'edit') { recordModal(child.id, r); return 'keep'; }
-              if (v === 'del') {
-                Modal.confirm({ title: '기록 삭제', message: '이 기록을 삭제할까요?',
-                  okLabel: '삭제', danger: true }).then(function (ok) {
-                  if (!ok) return;
-                  if (r.hasClip && r.clipKey && VideoDB.available()) {
-                    VideoDB.del(r.clipKey).catch(function () {});
-                  }
-                  Store.deleteRecord(r.id);
-                  toast('삭제했어요', 'ok'); App.refresh();
-                });
-                return 'keep';
-              }
-            }
-          });
+      // 검색 — 입력 포커스 유지 위해 결과 영역(#rec-results)만 부분 갱신
+      var searchIn = UI.el('rec-search');
+      var resultsBox = UI.el('rec-results');
+      var clrBtn = UI.el('rec-search-clear');
+      function refreshResults() {
+        if (!resultsBox) return;
+        var f = recFiltered(child);
+        resultsBox.innerHTML = recResultsHTML(f.all, f.list, f.q);
+        wireRecCards(resultsBox);
+      }
+      if (searchIn) {
+        searchIn.oninput = function () {
+          S.recSearch = searchIn.value;
+          if (clrBtn) clrBtn.hidden = !searchIn.value;
+          refreshResults();
         };
-      });
+      }
+      if (clrBtn) clrBtn.onclick = function () {
+        S.recSearch = '';
+        if (searchIn) { searchIn.value = ''; searchIn.focus(); }
+        clrBtn.hidden = true;
+        refreshResults();
+      };
+      wireRecCards(document);
     }
   };
-
-  /* (구 V.records 정의 제거됨 — 위의 영상 클립(릴스) 지원 버전으로 통합) */
 
   /* =====================================================================
    * 데이터 분석

@@ -1283,6 +1283,33 @@ table.tbl td.actions { white-space: nowrap; }
 .reels-review { display: flex; flex-direction: column; align-items: center; }
 .rec-clip-player { display: flex; justify-content: center; margin: 4px 0; }
 
+/* 기록 검색·필터 툴바 (게시판 형태) */
+.rec-toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.rec-search {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 220px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 0 12px; min-height: 42px;
+  color: var(--text-muted); transition: .14s var(--ease);
+}
+.rec-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
+.rec-search svg { flex: none; }
+.rec-search-input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none;
+  font: inherit; color: var(--text); padding: 9px 0; min-height: 42px;
+}
+.rec-search-input::placeholder { color: var(--text-faint); }
+.rec-search-clear { flex: none; color: var(--text-muted); }
+.rec-search-clear:hover { color: var(--primary); }
+.rec-toolbar .seg { flex: none; overflow-x: auto; max-width: 100%; }
+.rec-count { font-size: .82rem; margin-bottom: 10px; }
+@media (max-width: 560px) {
+  .rec-toolbar .seg { width: 100%; }
+}
+
 /* 기록 카드의 클립 썸네일 */
 .rec-card { display: flex; gap: 12px; align-items: flex-start; }
 .rec-main { flex: 1; min-width: 0; }
@@ -1866,17 +1893,65 @@ table.tbl td.actions { white-space: nowrap; }
   margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* ---------- 32. MVP 홈 — 설명서 진행 + 사용 안내 ---------- */
-.manual-status { border: 1px solid var(--primary-100); }
-.how-steps { display: grid; gap: 14px; }
-.how-step { display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: start; }
-.how-step .how-num {
-  width: 26px; height: 26px; border-radius: 50%; flex: none;
-  background: linear-gradient(140deg, var(--brand-understand), var(--primary));
-  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .82rem;
+/* ---------- 32. 홈 재구성 — 간단 프로필 + 복용 관리 + 기록 (웹·모바일) ---------- */
+/* 아이 전환 칩 (2명 이상) */
+.home-switch { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.home-switch-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 13px 5px 6px; border-radius: 999px;
+  background: var(--surface); border: 1.5px solid var(--border-strong);
+  font-weight: 700; font-size: .88rem; color: var(--text-muted);
+  min-height: 40px; transition: .14s var(--ease);
 }
-.how-step .how-ico { display: grid; place-items: center; margin-top: 1px; }
-.how-step b { font-size: .98rem; }
+.home-switch-chip:hover { border-color: var(--primary); }
+.home-switch-chip .avatar { width: 28px; height: 28px; font-size: .74rem; }
+.home-switch-chip.on { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-tint); }
+.home-switch-chip.add { padding-left: 13px; border-style: dashed; }
+
+/* 간단 프로필 */
+.home-profile { padding: 18px; margin-bottom: 18px; }
+.hp-top { display: flex; gap: 14px; align-items: center; }
+.hp-meta { flex: 1; min-width: 0; }
+.hp-name { font-weight: 800; font-size: 1.25rem; }
+.hp-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
+.home-profile .oneline {
+  font-size: .86rem; color: var(--primary-dark); margin-top: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hp-edit { flex: none; align-self: flex-start; }
+.hp-manual { margin-top: 16px; }
+.hp-manual-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 10px; }
+.hp-link { font-size: .84rem; font-weight: 700; color: var(--primary); flex: none; }
+.hp-link:hover { text-decoration: underline; }
+.hp-bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.hp-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--brand-understand), var(--brand-connect) 60%, var(--brand-grow));
+}
+.hp-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.hp-actions .btn { flex: 1; min-width: 132px; }
+
+/* 홈 2단 그리드 (웹 ≥900px) / 1단 스택 (모바일) */
+.home-grid { display: grid; gap: 18px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) { .home-grid { grid-template-columns: 1fr 1fr; } }
+.home-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.home-sec-head h2 { font-size: 1.1rem; }
+
+/* Setlog식 빠른 기록 타일 */
+.quick-log {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 8px; margin-bottom: 14px;
+}
+.quick-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 13px 6px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  min-height: 76px; transition: .14s var(--ease); font: inherit; color: var(--text);
+}
+.quick-tile:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.quick-tile:active { transform: translateY(0); }
+.qt-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+.qt-label { font-size: .82rem; font-weight: 700; }
 
 /* 대상별 설명서 — 대상 선택 카드 */
 .aud-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
