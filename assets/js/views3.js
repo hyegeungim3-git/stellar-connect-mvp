@@ -1050,8 +1050,15 @@
     var editing = audId ? AUD[audId] : null;
     var isBuiltin = !!(editing && editing.builtin);
     var selected = editing ? editing.blocks.slice() : [];
-    var iconVal = editing ? editing.icon : 'star';
-    var colorVal = editing ? editing.color : V._AUD_COLORS[0];
+    // 아이콘·색상은 사용자가 고르지 않고 자동 배정 — 이미 쓰인 것 제외 우선, 없으면 순환
+    var used = Object.keys(AUD).map(function (k) { return AUD[k]; });
+    var n = used.length;
+    var iconVal = editing ? editing.icon
+      : (V._AUD_ICONS.filter(function (i) { return used.every(function (a) { return a.icon !== i; }); })[0]
+         || V._AUD_ICONS[n % V._AUD_ICONS.length]);
+    var colorVal = editing ? editing.color
+      : (V._AUD_COLORS.filter(function (c) { return used.every(function (a) { return a.color !== c; }); })[0]
+         || V._AUD_COLORS[n % V._AUD_COLORS.length]);
 
     function blockLabel(k) {
       var f = V._BLOCK_CATALOG.filter(function (b) { return b.key === k; })[0];
@@ -1094,16 +1101,6 @@
         '<div class="field"><label>소개 문구 <span class="faint">받는 분에게 보이는 안내 문구(선택)</span></label>' +
           '<textarea class="textarea" name="intro" placeholder="예) 언어치료 선생님이 처음 만났을 때 알아두면 좋은 내용입니다.">' +
           esc(editing ? editing.intro : '') + '</textarea></div>' +
-        '<div class="field"><label>아이콘</label><div class="row wrap gap-sm">' +
-          V._AUD_ICONS.map(function (ic) {
-            return '<button type="button" class="btn-icon aud-swatch' + (ic === iconVal ? ' on' : '') +
-              '" data-iconpick="' + ic + '">' + icon(ic, 18) + '</button>';
-          }).join('') + '</div></div>' +
-        '<div class="field"><label>색상</label><div class="row wrap gap-sm">' +
-          V._AUD_COLORS.map(function (c) {
-            return '<button type="button" class="aud-colorswatch' + (c === colorVal ? ' on' : '') +
-              '" data-colorpick="' + esc(c) + '" style="background:' + c + '" aria-label="색상 선택"></button>';
-          }).join('') + '</div></div>' +
         '<div class="field"><label>포함할 내용 <span class="faint">누른 순서대로 보여드려요</span></label>' +
           '<div id="aud-selected"></div></div>' +
         '<div class="field"><label>추가하기</label><div id="aud-available" class="row wrap gap-sm"></div></div>' +
@@ -1143,22 +1140,6 @@
           });
         }
         rerender();
-        root.querySelectorAll('[data-iconpick]').forEach(function (b) {
-          b.onclick = function () {
-            iconVal = b.dataset.iconpick;
-            root.querySelectorAll('[data-iconpick]').forEach(function (x) {
-              x.classList.toggle('on', x === b);
-            });
-          };
-        });
-        root.querySelectorAll('[data-colorpick]').forEach(function (b) {
-          b.onclick = function () {
-            colorVal = b.dataset.colorpick;
-            root.querySelectorAll('[data-colorpick]').forEach(function (x) {
-              x.classList.toggle('on', x === b);
-            });
-          };
-        });
       },
       onButton: function (v, root) {
         if (v === 'cancel') return;
@@ -1301,10 +1282,7 @@
             'aria-label="' + esc(a.label) + ' 편집" title="이 대상 편집">' + icon('edit', 14) + '</button>' +
           '<span class="aud-ico" style="background:' + a.color + '">' + icon(a.icon, 20) + '</span>' +
           '<span><b>' + esc(a.label) + '</b><p>' + esc(a.intro) + '</p></span></div>';
-      }).join('') +
-        '<div class="aud-card new" id="aud-new" role="button" tabindex="0">' +
-          icon('plus', 22) + '<b>새 대상 만들기</b>' +
-          '<p>선생님·치료사 등 필요한 대상을 직접 추가해요</p></div>';
+      }).join('');
 
       var preview = '<div class="print-area">' +
         V._summarySheet(child, manual, { audience: aud, printBtn: true }) + '</div>';
@@ -1313,7 +1291,9 @@
         '<div class="card card-pad mb-3">' +
           '<div class="page-head-row mb-2"><div>' +
             '<div class="eyebrow" style="color:var(--primary)">대상별 설명서</div>' +
-            '<h2 style="font-size:1.2rem">누구에게 보여줄 설명서인가요?</h2></div></div>' +
+            '<h2 style="font-size:1.2rem">누구에게 보여줄 설명서인가요?</h2></div>' +
+            '<button class="btn btn-ghost btn-sm" id="aud-new">' + icon('plus', 15) +
+              '새 대상 만들기</button></div>' +
           '<p class="muted mb-2" style="font-size:.9rem">대상에 맞는 내용만 골라 한 장으로 정리됩니다. ' +
             '새 선생님·치료사를 만나도 다시 설명할 필요 없이 링크 하나로 전달하세요.</p>' +
           '<div class="aud-grid">' + audPicker + '</div>' +

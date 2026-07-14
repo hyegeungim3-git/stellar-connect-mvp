@@ -1992,22 +1992,11 @@ table.tbl td.actions { white-space: nowrap; }
   display: grid; place-items: center; color: var(--text-muted); z-index: 1;
 }
 .aud-edit-btn:hover { color: var(--primary); border-color: var(--primary); }
-.aud-card.new {
-  flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  border-style: dashed; color: var(--text-muted); gap: 4px;
-}
-.aud-card.new:hover { color: var(--primary); }
-.aud-card.new p { color: var(--text-muted); }
 .aud-blockrow {
   display: flex; align-items: center; gap: 6px; padding: 7px 4px;
   border-bottom: 1px dashed var(--border);
 }
 .aud-blockrow:last-child { border-bottom: none; }
-.aud-swatch.on { border: 2px solid var(--primary); color: var(--primary); background: var(--primary-tint); }
-.aud-colorswatch {
-  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0;
-}
-.aud-colorswatch.on { border-color: var(--text); }
 
 /* 대상별 설명서 시트 — 인트로 + 대상 컬러 액센트 */
 .aud-intro {
