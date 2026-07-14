@@ -679,7 +679,7 @@
 
       var seg = '<div class="seg no-print">' +
         [['all', '전체'], ['behavior', '행동'], ['treatment', '치료'],
-         ['medication', '약물'], ['change', '변화'], ['assessment', '검사']]
+         ['medication', '복용'], ['change', '변화'], ['assessment', '검사']]
           .map(function (o) {
             return '<button class="' + (S.recFilter === o[0] ? 'on' : '') +
               '" data-f="' + o[0] + '">' + o[1] + '</button>';

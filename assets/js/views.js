@@ -39,8 +39,8 @@
   var RT = {
     behavior:   { label: '행동 기록', color: 'var(--c-help)',  icon: 'note' },
     treatment:  { label: '치료 기록', color: 'var(--c-comm)',  icon: 'heart' },
-    /* 약물 기록 — 복약 사실·시간을 남겨 약효/컨디션 변화와 함께 보도록 (2차 리뷰 요청) */
-    medication: { label: '약물 기록', color: 'var(--brand-grow)', icon: 'pill' },
+    /* 복용 기록 — 복약 사실·시간을 남겨 약효/컨디션 변화와 함께 보도록 (2차 리뷰 요청) */
+    medication: { label: '복용 기록', color: 'var(--brand-grow)', icon: 'pill' },
     change:     { label: '변화 기록', color: 'var(--accent)',  icon: 'sparkle' },
     /* 검사·평가 — 여러 기관의 검사 결과를 한곳에 (링크아이 벤치마킹: 재공유 불필요) */
     assessment: { label: '검사·평가', color: 'var(--brand-understand)', icon: 'chart' }

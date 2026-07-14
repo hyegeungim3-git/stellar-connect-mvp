@@ -889,6 +889,7 @@ svg { vertical-align: middle; }
 }
 .tl-item.t-behavior::before  { background: var(--c-help); }
 .tl-item.t-treatment::before { background: var(--c-comm); }
+.tl-item.t-medication::before { background: var(--brand-grow); }
 .tl-item.t-change::before    { background: var(--accent); }
 .tl-item.t-assessment::before { background: var(--brand-understand); }
 .rec-card { padding: 16px 18px; transition: .16s var(--ease); }
