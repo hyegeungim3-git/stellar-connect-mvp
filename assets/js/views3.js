@@ -1281,6 +1281,57 @@
     });
   }
 
+  /* 공유 링크 전체 기록(히스토리) — 지금까지 만든 모든 링크(사용 중·중단·기간 만료)를 한 모달에 모아 본다.
+     만료된 링크는 [다시 열기]로 재활성화 가능. */
+  function openShareHistory(child) {
+    var AUD = V._audienceMap(child.ownerId);
+    var all = Store.sharesOf(child.id).slice().sort(function (a, b) {
+      return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+    });
+    var rows = all.map(function (s) {
+      var revoked = s.revoked;
+      var expired = !revoked && Store.isShareExpired(s);
+      var am = (s.audience && AUD[s.audience]) || null;
+      var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
+      var statusBadge = revoked ? '<span class="badge danger">중단됨</span>'
+        : expired ? '<span class="badge danger">기간 만료</span>'
+        : '<span class="badge ok">사용 중</span>';
+      var period = UI.fmtDate(s.createdAt) + ' ~ ' + (s.expiresAt ? UI.fmtDate(s.expiresAt) : '계속');
+      return '<div class="hist-row">' +
+        '<div class="hist-main">' +
+          '<div class="hist-top">' + statusBadge +
+            '<b>' + esc(s.viewerName || '받는 분') + '</b>' +
+            '<span class="badge">' + esc(s.viewerRole) + '</span>' +
+            '<span class="badge brand">' + esc(label) + '</span>' +
+          '</div>' +
+          '<div class="faint" style="font-size:.78rem;margin-top:3px">' + period +
+            ' · ' + icon('eye', 12) + ' ' + (s.views || 0) + '번 봤어요</div>' +
+        '</div>' +
+        (expired
+          ? '<button class="btn btn-soft btn-sm" data-histrenew="' + s.id + '">' +
+            icon('check', 14) + '다시 열기</button>'
+          : '') +
+      '</div>';
+    }).join('');
+    Modal.open({
+      title: '공유 링크 전체 기록', icon: 'clock', wide: true,
+      body: '<p class="muted mb-2" style="font-size:.88rem">지금까지 만든 모든 공유 링크예요. ' +
+        '사용 중·중단·기간 만료를 한눈에 볼 수 있고, 만료된 링크는 다시 열 수 있어요.</p>' +
+        '<div class="hist-list">' + rows + '</div>',
+      buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }],
+      onMount: function (root) {
+        root.querySelectorAll('[data-histrenew]').forEach(function (b) {
+          b.onclick = function () {
+            Store.renewShare(b.dataset.histrenew);
+            Modal.close();
+            toast('공유를 다시 열었어요', 'ok');
+            App.refresh();
+          };
+        });
+      }
+    });
+  }
+
   V.share = {
     layout: 'app',
     render: function (p) {
@@ -1301,8 +1352,12 @@
           '설명서 작성하러 가기</button></div>';
       }
 
-      var list = shares.length
-        ? shares.map(function (s) {
+      // 활성(중단·만료 아님) 링크만 목록에 노출 — 지난 링크는 '전체 기록'(히스토리)에서
+      var activeShares = shares.filter(function (s) {
+        return !s.revoked && !Store.isShareExpired(s);
+      });
+      var list = activeShares.length
+        ? activeShares.map(function (s) {
             var revoked = s.revoked;
             var expired = !revoked && Store.isShareExpired(s);
             var inactive = revoked || expired;
@@ -1354,9 +1409,13 @@
                 '</div>' +
               '</div></div>';
           }).join('')
-        : '<div class="card empty"><div class="emoji">🔗</div>' +
-          '<h3>아직 만든 공유가 없어요</h3>' +
-          '<p>인증 링크를 만들어 학교·병원·치료실에 안전하게 전달하세요.</p></div>';
+        : (shares.length
+            ? '<div class="card empty"><div class="emoji">🔗</div>' +
+              '<h3>지금 사용 중인 공유 링크가 없어요</h3>' +
+              '<p>위에서 새 공유 링크를 만들어 보세요. 중단·만료된 지난 링크는 오른쪽 ‘전체 기록’에서 볼 수 있어요.</p></div>'
+            : '<div class="card empty"><div class="emoji">🔗</div>' +
+              '<h3>아직 만든 공유가 없어요</h3>' +
+              '<p>인증 링크를 만들어 학교·병원·치료실에 안전하게 전달하세요.</p></div>');
 
       // 방문 노트 — 열람자들이 남긴 기록 (협업 1단계: 읽기 공유 → 한마디 참여)
       var notes = Store.visitNotesOfChild(child.id);
@@ -1412,7 +1471,11 @@
         '</div>' +
         preview;
 
-      var listSection = '<div class="page-head-row mb-2 mt-3"><h2 style="font-size:1.15rem">공유한 링크</h2></div>' +
+      var listSection = '<div class="page-head-row mb-2 mt-3"><h2 style="font-size:1.15rem">공유 링크</h2>' +
+        (shares.length
+          ? '<button class="btn btn-ghost btn-sm" id="share-history">' + icon('clock', 15) +
+            '전체 기록 ' + shares.length + '</button>'
+          : '') + '</div>' +
         '<div class="pill-info mb-2">' + icon('lock', 16) +
           '<div>공유 링크는 <b>4자리 인증번호</b>를 입력해야 열람할 수 있고, 비상연락처는 ' +
           '<b>안심번호(050)</b>로 표시됩니다. 필요 없어지면 ‘공유 중단’으로 차단하세요.</div></div>' +
@@ -1426,6 +1489,10 @@
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
       var AUD = V._audienceMap(child.ownerId);
+
+      // 공유 링크 전체 기록(히스토리) 열기
+      var histBtn = UI.el('share-history');
+      if (histBtn) histBtn.onclick = function () { openShareHistory(child); };
 
       // 대상 선택 → 미리보기 갱신 (편집 버튼 클릭은 선택으로 번지지 않게 stopPropagation)
       document.querySelectorAll('[data-aud]').forEach(function (b) {

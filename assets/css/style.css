@@ -1956,8 +1956,8 @@ table.tbl td.actions { white-space: nowrap; }
 .hp-actions .btn { flex: 1; min-width: 132px; }
 
 /* 홈 2단 그리드 (웹 ≥900px) / 1단 스택 (모바일) */
+/* 복용 관리(위) → 기록(아래) 세로 1단 정렬 — 각 섹션 전체 폭 (2026-07-14 사용자 요청) */
 .home-grid { display: grid; gap: 18px; grid-template-columns: 1fr; align-items: start; }
-@media (min-width: 900px) { .home-grid { grid-template-columns: 1fr 1fr; } }
 .home-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .home-sec-head h2 { font-size: 1.1rem; }
 
@@ -2006,6 +2006,15 @@ table.tbl td.actions { white-space: nowrap; }
   border-bottom: 1px dashed var(--border);
 }
 .aud-blockrow:last-child { border-bottom: none; }
+/* 공유 링크 전체 기록(히스토리) 모달 */
+.hist-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+.hist-row {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.hist-main { flex: 1; min-width: 160px; }
+.hist-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.hist-row .btn { flex: none; }
 
 /* 대상별 설명서 시트 — 인트로 + 대상 컬러 액센트 */
 .aud-intro {
