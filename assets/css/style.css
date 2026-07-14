@@ -1930,35 +1930,35 @@ table.tbl td.actions { white-space: nowrap; }
 .home-switch-chip.add { padding-left: 13px; border-style: dashed; }
 
 /* 간단 프로필 */
-/* 홈 프로필 — 증명사진형 사진 + 요즘 반짝인 순간 + (공간 남으면) 갤러리 사진들 */
-.home-profile { padding: 18px; margin-bottom: 18px; }
-.hp-top { display: flex; gap: 14px; align-items: center; }
+/* 홈 프로필 — 증명사진형 사진 + 요즘 반짝인 순간 + (공간 남으면) 갤러리 사진들 (컴팩트) */
+.home-profile { padding: 15px 16px; margin-bottom: 16px; }
+.hp-top { display: flex; gap: 12px; align-items: center; }
 .hp-meta { flex: 1; min-width: 0; }
-.hp-name { font-weight: 800; font-size: 1.25rem; }
-.hp-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
+.hp-name { font-weight: 800; font-size: 1.15rem; }
+.hp-sub { font-size: .86rem; color: var(--text-muted); margin-top: 1px; }
 .home-profile .oneline {
-  font-size: .86rem; color: var(--primary-dark); margin-top: 5px;
+  font-size: .84rem; color: var(--primary-dark); margin-top: 3px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hp-edit { flex: none; align-self: flex-start; }
-/* 요즘 반짝인 순간 — 변화 기록 하이라이트 */
-.hp-moment { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-.hp-moment-lab { font-size: .8rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
-.hp-moment-txt { font-size: .95rem; font-weight: 700; color: var(--text); display: block; }
+/* 요즘 반짝인 순간 — 변화 기록 하이라이트 (한 줄로 컴팩트) */
+.hp-moment { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border); }
+.hp-moment-lab { font-size: .76rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; margin-right: 8px; }
+.hp-moment-txt { font-size: .92rem; font-weight: 700; color: var(--text); }
 .hp-moment-txt:hover { color: var(--primary); }
-.hp-moment-empty { font-size: .88rem; color: var(--text-muted); }
+.hp-moment-empty { font-size: .85rem; color: var(--text-muted); }
 /* 갤러리 사진 스트립 */
-.hp-manual-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 10px; }
-.hp-link { font-size: .84rem; font-weight: 700; color: var(--primary); flex: none; }
+.hp-manual-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; gap: 10px; }
+.hp-link { font-size: .82rem; font-weight: 700; color: var(--primary); flex: none; }
 .hp-link:hover { text-decoration: underline; }
-.hp-gallery { margin-top: 16px; }
-.hp-gallery-strip { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
+.hp-gallery { margin-top: 11px; }
+.hp-gallery-strip { display: flex; gap: 7px; margin-top: 6px; overflow-x: auto; padding-bottom: 2px; }
 .hp-photo {
-  flex: none; width: 74px; height: 74px; border-radius: 12px; overflow: hidden;
+  flex: none; width: 56px; height: 56px; border-radius: 10px; overflow: hidden;
   display: block; background: var(--surface-2);
 }
 .hp-photo img { width: 100%; height: 100%; object-fit: cover; }
-.hp-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.hp-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .hp-actions .btn { flex: 1; min-width: 132px; }
 
 /* 홈 2단 그리드 (웹 ≥900px) / 1단 스택 (모바일) */

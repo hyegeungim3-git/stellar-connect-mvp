@@ -548,16 +548,9 @@
     render: function () {
       var u = Store.currentUser();
       var kids = Store.childrenOf(u.id);
-      var pop = Store.listPopups().filter(function (p) { return p.active; })[0];
 
       var html = pageHead('홈', u.name + '님, 안녕하세요 👋',
         '오늘 우리 아이의 하루를 함께 살펴보세요.');
-
-      if (pop) {
-        html += '<div class="card card-pad mb-2" style="border-left:4px solid var(--accent);background:var(--accent-soft)">' +
-          '<b style="color:#0d5b52">' + icon('bell', 15) + ' ' + esc(pop.title) + '</b>' +
-          '<p style="color:#0d5b52;font-size:.9rem;margin-top:4px">' + esc(pop.body) + '</p></div>';
-      }
 
       if (!kids.length) {
         html += '<div class="card empty"><div class="emoji">🧒</div>' +
@@ -622,7 +615,7 @@
         : '';
       var profile = '<div class="card home-profile">' +
         '<div class="hp-top">' +
-          '<div class="avatar xl">' + (child.photo
+          '<div class="avatar lg">' + (child.photo
             ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
           '<div class="hp-meta">' +
             '<div class="hp-name">' + esc(child.name) + '</div>' +
