@@ -60,6 +60,13 @@
     };
     db.users.push(admin, parent1, parent2);
 
+    /* 데모 날짜 — 항상 '요즘'처럼 보이도록 현재 시각 기준 상대 계산 */
+    function _dAgo(n) { return new Date(Date.now() - n * 864e5).toISOString(); }
+    function _dayAgo(n) {
+      var d = new Date(Date.now() - n * 864e5);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+
     /* ---------- 아이 프로필 ---------- */
     var child1 = {
       id: 'child-junho', ownerId: parent1.id,
@@ -68,7 +75,10 @@
       body: { height: '122', weight: '24', bloodType: 'A형', sizes: '상의 130 · 신발 190',
               features: '왼쪽 눈썹 옆 작은 흉터, 외출 시 파란색 기차 가방을 꼭 메고 다녀요' },
       gallery: [
-        { id: 'gal-junho-1', photo: 'assets/img/child-junho.jpg', date: '2026-06-01T09:00:00.000Z' }
+        { id: 'gal-junho-1', photo: 'assets/img/child-junho.jpg', date: _dAgo(2) },
+        { id: 'gal-junho-2', photo: 'assets/img/intro-kids.jpg', date: _dAgo(6) },
+        { id: 'gal-junho-3', photo: 'assets/img/star-hands.jpg', date: _dAgo(12) },
+        { id: 'gal-junho-4', photo: 'assets/img/intro-hands-star.jpg', date: _dAgo(20) }
       ],
       disability: {
         type: '자폐 스펙트럼 장애',
@@ -250,39 +260,39 @@
 
     /* ---------- 기록 (행동 / 치료 / 변화) ---------- */
     db.records.push(
-      { id: 'rec-1', childId: child1.id, type: 'change', date: '2026-05-17', time: '15:20',
+      { id: 'rec-1', childId: child1.id, type: 'change', date: _dayAgo(2), time: '15:20',
         title: '처음으로 친구에게 먼저 인사했어요', mood: 5,
         content: '놀이치료실에서 또래에게 먼저 "안녕"이라고 말함. 작은 목소리였지만 스스로 시도한 첫 사례.',
         tags: ['사회성', '의사소통'], photo: 'assets/img/child-junho.jpg',
-        createdAt: '2026-05-17T08:00:00.000Z' },
-      { id: 'rec-8', childId: child1.id, type: 'medication', date: '2026-05-16', time: '21:30',
+        createdAt: _dAgo(2) },
+      { id: 'rec-8', childId: child1.id, type: 'medication', date: _dayAgo(3), time: '21:30',
         title: '리스페리돈 복용 (자기 전)', mood: 4,
         content: '[복약 정보]\n· [처방약] 리스페리돈 0.5mg · 자기 전 · 소아정신과 처방(과민성·도전적 행동 완화)\n\n복용 후 저녁 짜증이 눈에 띄게 줄었어요. 잠들기도 수월했고 아침 기상도 순조로웠어요.',
-        tags: ['행동', '복약'], photo: null, createdAt: '2026-05-16T12:30:00.000Z' },
-      { id: 'rec-2', childId: child1.id, type: 'treatment', date: '2026-05-14', time: '10:00',
+        tags: ['행동', '복약'], photo: null, createdAt: _dAgo(3) },
+      { id: 'rec-2', childId: child1.id, type: 'treatment', date: _dayAgo(5), time: '10:00',
         title: '언어치료 24회기', mood: 4,
         content: '주 2회 언어치료 진행. 2어절 문장 따라 말하기 안정적. 다음 목표는 요구하기 표현 확장.',
-        tags: ['언어치료'], photo: null, createdAt: '2026-05-14T07:00:00.000Z' },
-      { id: 'rec-3', childId: child1.id, type: 'behavior', date: '2026-05-12',
+        tags: ['언어치료'], photo: null, createdAt: _dAgo(5) },
+      { id: 'rec-3', childId: child1.id, type: 'behavior', date: _dayAgo(7),
         title: '마트에서 소음으로 힘들어함', mood: 2,
         content: '오후 마트 방문 중 안내방송 소리에 귀를 막고 주저앉음. 헤드폰 착용 후 5분 만에 진정. 다음엔 한산한 시간대 방문 예정.',
-        tags: ['감각', '청각과민'], photo: null, createdAt: '2026-05-12T10:00:00.000Z' },
-      { id: 'rec-4', childId: child1.id, type: 'behavior', date: '2026-05-08',
+        tags: ['감각', '청각과민'], photo: null, createdAt: _dAgo(7) },
+      { id: 'rec-4', childId: child1.id, type: 'behavior', date: _dayAgo(10),
         title: '아침 등원 루틴 안정적', mood: 4,
         content: '그림 스케줄 도입 3주차. 아침 준비 과정에서 떼쓰기 없이 순서대로 진행함.',
-        tags: ['루틴', '일상'], photo: null, createdAt: '2026-05-08T23:00:00.000Z' },
-      { id: 'rec-5', childId: child1.id, type: 'treatment', date: '2026-04-30',
+        tags: ['루틴', '일상'], photo: null, createdAt: _dAgo(10) },
+      { id: 'rec-5', childId: child1.id, type: 'treatment', date: _dayAgo(16),
         title: '감각통합치료 평가', mood: 3,
         content: '청각 방어 반응 여전. 전정·고유수용 활동에는 잘 참여. 가정 연계 활동 안내받음.',
-        tags: ['감각통합'], photo: null, createdAt: '2026-04-30T06:00:00.000Z' },
-      { id: 'rec-6', childId: child2.id, type: 'change', date: '2026-05-10',
+        tags: ['감각통합'], photo: null, createdAt: _dAgo(16) },
+      { id: 'rec-6', childId: child2.id, type: 'change', date: _dayAgo(8),
         title: '새 단어 "더" 사용 시작', mood: 5,
         content: '간식을 더 먹고 싶을 때 "더"라고 표현. 요구하기 의사소통의 첫 확장.',
-        tags: ['언어', '의사소통'], photo: null, createdAt: '2026-05-10T05:00:00.000Z' },
-      { id: 'rec-7', childId: child1.id, type: 'assessment', date: '2026-04-21',
+        tags: ['언어', '의사소통'], photo: null, createdAt: _dAgo(8) },
+      { id: 'rec-7', childId: child1.id, type: 'assessment', date: _dayAgo(22),
         title: '언어평가(PRES) 결과', mood: 3,
         content: '수용언어 36개월 / 표현언어 30개월 수준. 6개월 전 대비 각 4개월 향상. 결과지는 사진으로 보관 — 새 치료실·학교에 다시 제출할 필요 없이 이 기록을 공유하면 됩니다.',
-        tags: ['검사', '언어평가'], photo: null, createdAt: '2026-04-21T05:00:00.000Z' }
+        tags: ['검사', '언어평가'], photo: null, createdAt: _dAgo(22) }
     );
 
     /* ---------- 공유 ---------- */
