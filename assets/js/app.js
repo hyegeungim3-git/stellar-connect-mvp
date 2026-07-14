@@ -69,8 +69,8 @@
       { key: 'meds',      label: '복용 관리',   icon: 'pill',  hash: cur ? '#/meds/' + c : '#/dashboard' },
       { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: cur ? '#/gallery/' + c : '#/dashboard' },
       { key: 'plan',      label: '미래 준비',   icon: 'sprout', hash: cur ? '#/plan/' + c : '#/dashboard' },
-      { key: 'share',     label: '대상별 공유', icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' },
-      { key: 'caregiver', label: '양육자',      icon: 'user',  hash: '#/caregiver' }
+      { key: 'share',     label: '대상별 공유', icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' }
+      /* 양육자 정보는 좌측/더보기 메뉴에서 제외 — 우측 계정 드롭다운에만 유지(사용자 의견) */
     ];
   }
   /* 모바일 하단 탭 4개 고정 (나머지는 더보기) */
@@ -223,8 +223,8 @@
       { t: '아이 프로필', i: 'smile', h: cur ? '#/child/' + cur : '#/dashboard' },
       { t: '복용 관리', i: 'pill', h: cur ? '#/meds/' + cur : '#/dashboard' },
       { t: '미래 준비', i: 'sprout', h: cur ? '#/plan/' + cur : '#/dashboard' },
-      { t: '대상별 공유', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' },
-      { t: '양육자 정보', i: 'user', h: '#/caregiver' }
+      { t: '대상별 공유', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' }
+      /* 양육자 정보는 계정 드롭다운에만 유지 */
     ];
     if (u.role === 'admin') links.push({ t: '백오피스', i: 'settings', h: '#/admin' });
 
