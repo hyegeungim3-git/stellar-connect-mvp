@@ -1410,10 +1410,25 @@
                 (s.renewCycle ? '<p class="faint" style="font-size:.8rem;text-align:center">' +
                   CYCLE_LABEL[s.renewCycle] + ' 동안 열람할 수 있어요. 기간이 지나면 안전하게 자동으로 닫혀요.</p>' : ''),
               buttons: [
+                { label: '공유하기', value: 'share', variant: 'soft' },
                 { label: '링크 복사', value: 'copy', variant: 'soft' },
                 { label: '확인', value: 'ok', variant: 'primary' }
               ],
               onButton: function (vv) {
+                if (vv === 'share') {
+                  var url = shareURL(s.token);
+                  UI.webShare({
+                    title: 'Stellar Connect — ' + child.name + ' 설명서',
+                    text: child.name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + s.accessCode,
+                    url: url
+                  }).then(function (ok) {
+                    if (!ok) {
+                      UI.copyText(url + ' (인증번호: ' + s.accessCode + ')')
+                        .then(function () { toast('공유가 지원되지 않아 링크를 복사했어요', 'ok'); });
+                    }
+                  });
+                  return 'keep';
+                }
                 if (vv === 'copy') {
                   UI.copyText(shareURL(s.token) + ' (인증번호: ' + s.accessCode + ')')
                     .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
@@ -1485,10 +1500,25 @@
                 '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
                 '<div class="access-code">' + esc(s.accessCode) + '</div></div>',
               buttons: [
+                { label: '공유하기', value: 'share', variant: 'soft' },
                 { label: '링크 복사', value: 'copy', variant: 'soft' },
                 { label: '확인', value: 'ok', variant: 'primary' }
               ],
               onButton: function (vv) {
+                if (vv === 'share') {
+                  var url = shareURL(s.token);
+                  UI.webShare({
+                    title: 'Stellar Connect — ' + child.name + ' 설명서',
+                    text: child.name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + s.accessCode,
+                    url: url
+                  }).then(function (ok) {
+                    if (!ok) {
+                      UI.copyText(url + ' (인증번호: ' + s.accessCode + ')')
+                        .then(function () { toast('공유가 지원되지 않아 링크를 복사했어요', 'ok'); });
+                    }
+                  });
+                  return 'keep';
+                }
                 if (vv === 'copy') {
                   UI.copyText(shareURL(s.token) + ' (인증번호: ' + s.accessCode + ')')
                     .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
