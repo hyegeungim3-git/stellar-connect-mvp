@@ -1307,7 +1307,7 @@
           '<p>선생님·치료사 등 필요한 대상을 직접 추가해요</p></div>';
 
       var preview = '<div class="print-area">' +
-        V._summarySheet(child, manual, { audience: aud }) + '</div>';
+        V._summarySheet(child, manual, { audience: aud, printBtn: true }) + '</div>';
 
       var hub =
         '<div class="card card-pad mb-3">' +
@@ -1322,11 +1322,7 @@
               '이 설명서로 공유 링크·QR 만들기</button>' +
           '</div>' +
         '</div>' +
-        preview +
-        '<div class="row no-print mt-2" style="justify-content:center">' +
-          '<button class="btn btn-ghost" id="btn-print-aud">' + icon('print', 16) +
-            'PDF로 저장</button>' +
-        '</div>';
+        preview;
 
       var listSection = '<div class="page-head-row mb-2 mt-3"><h2 style="font-size:1.15rem">공유한 링크</h2></div>' +
         '<div class="pill-info mb-2">' + icon('lock', 16) +

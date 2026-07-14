@@ -843,6 +843,14 @@ svg { vertical-align: middle; }
   font-size: .68rem; font-weight: 800; letter-spacing: .12em;
   color: rgba(255,255,255,.7);
 }
+.summary-sheet .sheet-top .sheet-print {
+  position: absolute; right: 24px; bottom: 20px;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.55);
+  color: #fff; padding: 7px 13px; border-radius: 9px;
+  font-size: .82rem; font-weight: 700; min-height: 36px; transition: .14s var(--ease);
+}
+.summary-sheet .sheet-top .sheet-print:hover { background: rgba(255,255,255,.3); }
 .summary-sheet .sheet-body { padding: 28px 30px; }
 .summary-note {
   background: var(--brand-understand-soft); border: 1px solid #d9d4f8;

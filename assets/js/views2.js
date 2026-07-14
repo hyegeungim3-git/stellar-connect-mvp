@@ -1821,6 +1821,9 @@
         '<div class="sub">' + (age != null ? '만 ' + age + '세 · ' : '') +
           esc(child.gender || '') + ' · ' + esc(child.disability.type || '') + '</div></div>' +
         '<div class="brand-tag">' + (aud ? esc(aud.label) : 'ASTROGEN') + '</div>' +
+        (opts.printBtn ? '<button type="button" class="sheet-print no-print" id="btn-print-aud" ' +
+          'title="인쇄 창에서 대상을 ‘PDF로 저장’으로 고르면 PDF로도 저장돼요">' +
+          icon('print', 14) + '인쇄' + '</button>' : '') +
       '</div><div class="sheet-body">';
 
     if (aud) {
