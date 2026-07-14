@@ -582,18 +582,34 @@
       }
 
       /* 1) 간단 프로필 — 이름·나이·진단·한 줄 소개 + 설명서 진행 + 핵심 동선 */
+      /* 1) 간단 프로필 — 증명사진형 작은 사진 + 요즘 반짝인 순간 + (공간 남으면) 갤러리 사진들
+         진단명·설명서 진행률은 노출하지 않음(양육자 배려) */
       var m = Store.getManual(child.id);
       var age = UI.calcAge(child.birthDate);
-      var note = m && m.summaryNote
-        ? '<div class="oneline">“' + esc(m.summaryNote) + '”</div>' : '';
-      /* 진단명은 홈에 노출하지 않음(양육자 배려 — 매일 마주하지 않도록) · 대신 갤러리 사진을 보여줌 */
+      var noteText = m && m.summaryNote ? m.summaryNote : '';
       var homeGallery = (child.gallery || []).slice().sort(function (a, b) {
         return (a.date || '') < (b.date || '') ? 1 : -1;
       }).slice(0, 6);
+      // 반짝인 순간 — 변화 기록 우선, 없으면 컨디션 좋았던 기록
+      var allRecs = Store.recordsOf(child.id);
+      function byDateDesc(a, b) { return (a.date || '') < (b.date || '') ? 1 : -1; }
+      var moment = allRecs.filter(function (r) { return r.type === 'change'; }).sort(byDateDesc)[0]
+        || allRecs.filter(function (r) { return (r.mood || 3) >= 4; }).sort(byDateDesc)[0] || null;
+      function agoText(ds) {
+        var d = Math.floor((Date.now() - new Date(ds + 'T00:00:00').getTime()) / 864e5);
+        return d <= 0 ? '오늘' : d === 1 ? '어제' : d + '일 전';
+      }
+      var momentBlock = '<div class="hp-moment">' +
+        '<div class="hp-moment-lab">' + icon('sparkle', 14) + ' 요즘 ' + esc(child.name) + '의 반짝인 순간</div>' +
+        (moment
+          ? '<a class="hp-moment-txt" href="#/records/' + child.id + '">“' + esc(moment.title) + '” ' +
+            '<span class="faint">· ' + agoText(moment.date) + '</span></a>'
+          : '<div class="hp-moment-empty">이번 주 순간은 아직이에요. 사진 한 장, 한 줄이면 충분해요.</div>') +
+      '</div>';
       var galleryBlock = homeGallery.length
         ? '<div class="hp-gallery">' +
             '<div class="hp-manual-row">' +
-              '<span class="faint" style="font-size:.82rem">' + esc(child.name) + '의 순간</span>' +
+              '<span class="faint" style="font-size:.82rem">사진</span>' +
               '<a href="#/gallery/' + child.id + '" class="hp-link">갤러리 ›</a>' +
             '</div>' +
             '<div class="hp-gallery-strip">' +
@@ -603,22 +619,20 @@
               }).join('') +
             '</div>' +
           '</div>'
-        : '<div class="hp-gallery empty-strip">' +
-            '<a href="#/gallery/' + child.id + '" class="btn btn-soft btn-sm">' +
-              icon('camera', 15) + '갤러리에 사진 담기</a>' +
-          '</div>';
+        : '';
       var profile = '<div class="card home-profile">' +
         '<div class="hp-top">' +
           '<div class="avatar xl">' + (child.photo
             ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
           '<div class="hp-meta">' +
             '<div class="hp-name">' + esc(child.name) + '</div>' +
-            '<div class="hp-sub">' + (age != null ? '만 ' + age + '세' : '') + '</div>' + note +
+            '<div class="hp-sub">' + (age != null ? '만 ' + age + '세' : '') + '</div>' +
+            (noteText ? '<div class="oneline">“' + esc(noteText) + '”</div>' : '') +
           '</div>' +
           '<a class="btn btn-ghost btn-sm hp-edit" href="#/child/' + child.id + '">' +
             icon('user', 15) + '<span class="hp-edit-txt">프로필</span></a>' +
         '</div>' +
-        galleryBlock +
+        momentBlock + galleryBlock +
         '<div class="hp-actions">' +
           '<a class="btn btn-primary btn-sm" href="#/manual/' + child.id + '">' +
             icon('edit', 15) + '설명서</a>' +
