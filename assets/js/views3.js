@@ -1249,8 +1249,8 @@
                     icon('check', 14) + CYCLE_LABEL[s.renewCycle] + ' 더 열어두기</button>' : '') +
               '</div>' +
               '<div class="row between mt-1 wrap" style="gap:8px">' +
-                '<span class="faint" style="font-size:.78rem">생성일 ' + UI.fmtDate(s.createdAt) +
-                  (s.expiresAt ? ' ~ ' + UI.fmtDate(s.expiresAt) : '') + '</span>' +
+                '<span class="faint" style="font-size:.78rem">공유 기간 ' + UI.fmtDate(s.createdAt) +
+                  ' ~ ' + (s.expiresAt ? UI.fmtDate(s.expiresAt) : '계속') + '</span>' +
                 '<div class="row gap-sm wrap">' +
                   (inactive ? '' :
                     '<button class="btn btn-ghost btn-sm" data-qr="' + esc(s.token) +
