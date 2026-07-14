@@ -963,7 +963,7 @@
    * 공유 관리
    * ===================================================================== */
   /* 공유 기간 — 기간이 지나면 자동으로 닫혀요(민감정보 최소 노출) */
-  var CYCLE_LABEL = { week: '1주일', month: '1개월', year: '1년' };
+  var CYCLE_LABEL = { day: '1일', week: '1주일', month: '1개월', year: '1년' };
   /* 정보 공개 레벨 (6/10 회의: 정보별 공개 범위 옵션) */
   var SCOPE_META = {
     emergency: { t: '응급 카드',  cls: 'danger',
@@ -974,14 +974,164 @@
       d: '요약 정보 + 복약 정보 포함 — 병원·의료진에게 적합' }
   };
 
+  /* 대상별 공유 편집기 — 이름·아이콘·색·소개 문구와, 무엇을 어떤 순서로 보여줄지 직접 고른다.
+     audId가 없으면 새 대상 만들기, 있으면 그 대상(기본 4종 포함) 수정 — 기본값도 자유롭게 고쳐 쓸 수 있다. */
+  function openAudienceEditor(child, audId) {
+    var ownerId = child.ownerId;
+    var AUD = V._audienceMap(ownerId);
+    var editing = audId ? AUD[audId] : null;
+    var isBuiltin = !!(editing && editing.builtin);
+    var selected = editing ? editing.blocks.slice() : [];
+    var iconVal = editing ? editing.icon : 'star';
+    var colorVal = editing ? editing.color : V._AUD_COLORS[0];
+
+    function blockLabel(k) {
+      var f = V._BLOCK_CATALOG.filter(function (b) { return b.key === k; })[0];
+      return f ? f.label : k;
+    }
+    function selectedHTML() {
+      if (!selected.length) {
+        return '<p class="faint" style="font-size:.85rem;padding:6px 2px">' +
+          '아직 고른 항목이 없어요. 아래 목록에서 눌러 추가해 주세요.</p>';
+      }
+      return selected.map(function (k, i) {
+        return '<div class="aud-blockrow">' +
+          '<span style="flex:1">' + esc(blockLabel(k)) + '</span>' +
+          '<button type="button" class="btn-icon" data-bup="' + i + '" aria-label="위로 이동"' +
+            (i === 0 ? ' disabled' : '') + '><span style="display:inline-flex;transform:rotate(180deg)">' +
+            icon('chevD', 14) + '</span></button>' +
+          '<button type="button" class="btn-icon" data-bdown="' + i + '" aria-label="아래로 이동"' +
+            (i === selected.length - 1 ? ' disabled' : '') + '>' + icon('chevD', 14) + '</button>' +
+          '<button type="button" class="btn-icon" data-bremove="' + i + '" aria-label="빼기">' +
+            icon('x', 14) + '</button></div>';
+      }).join('');
+    }
+    function availableHTML() {
+      var avail = V._BLOCK_CATALOG.filter(function (b) { return selected.indexOf(b.key) < 0; });
+      if (!avail.length) return '<p class="faint" style="font-size:.83rem">모든 항목을 다 골랐어요.</p>';
+      return avail.map(function (b) {
+        return '<button type="button" class="chip sm" data-badd="' + b.key + '">' +
+          icon('plus', 12) + esc(b.label) + '</button>';
+      }).join('');
+    }
+
+    Modal.open({
+      title: editing ? (editing.label + ' 편집') : '새 대상 만들기', icon: 'share', wide: true,
+      body:
+        '<p class="muted mb-2" style="font-size:.88rem">받는 분에게 딱 맞는 설명서를 만들어요. ' +
+          '이름과 보여줄 내용을 정해 주세요.</p>' +
+        '<div class="field"><label>대상 이름</label>' +
+          '<input class="input" name="label" value="' + esc(editing ? editing.label : '') +
+          '" placeholder="예) 언어치료실용"></div>' +
+        '<div class="field"><label>소개 문구 <span class="faint">받는 분에게 보이는 안내 문구(선택)</span></label>' +
+          '<textarea class="textarea" name="intro" placeholder="예) 언어치료 선생님이 처음 만났을 때 알아두면 좋은 내용입니다.">' +
+          esc(editing ? editing.intro : '') + '</textarea></div>' +
+        '<div class="field"><label>아이콘</label><div class="row wrap gap-sm">' +
+          V._AUD_ICONS.map(function (ic) {
+            return '<button type="button" class="btn-icon aud-swatch' + (ic === iconVal ? ' on' : '') +
+              '" data-iconpick="' + ic + '">' + icon(ic, 18) + '</button>';
+          }).join('') + '</div></div>' +
+        '<div class="field"><label>색상</label><div class="row wrap gap-sm">' +
+          V._AUD_COLORS.map(function (c) {
+            return '<button type="button" class="aud-colorswatch' + (c === colorVal ? ' on' : '') +
+              '" data-colorpick="' + esc(c) + '" style="background:' + c + '" aria-label="색상 선택"></button>';
+          }).join('') + '</div></div>' +
+        '<div class="field"><label>포함할 내용 <span class="faint">누른 순서대로 보여드려요</span></label>' +
+          '<div id="aud-selected"></div></div>' +
+        '<div class="field"><label>추가하기</label><div id="aud-available" class="row wrap gap-sm"></div></div>' +
+        '<p class="faint" style="font-size:.78rem">알레르기·응급 정보는 안전을 위해 항상 맨 위에 표시돼요.</p>',
+      buttons: (isBuiltin
+        ? [{ label: '기본값으로 되돌리기', value: 'reset', variant: 'ghost' }]
+        : editing ? [{ label: '삭제', value: 'delete', variant: 'danger' }] : []
+      ).concat([
+        { label: '취소', value: 'cancel', variant: 'ghost' },
+        { label: '저장', value: 'ok', variant: 'primary' }
+      ]),
+      onMount: function (root) {
+        var selBody = root.querySelector('#aud-selected');
+        var availBody = root.querySelector('#aud-available');
+        function rerender() {
+          selBody.innerHTML = selectedHTML();
+          availBody.innerHTML = availableHTML();
+          selBody.querySelectorAll('[data-bup]').forEach(function (b) {
+            b.onclick = function () {
+              var i = parseInt(b.dataset.bup, 10);
+              var t = selected[i - 1]; selected[i - 1] = selected[i]; selected[i] = t;
+              rerender();
+            };
+          });
+          selBody.querySelectorAll('[data-bdown]').forEach(function (b) {
+            b.onclick = function () {
+              var i = parseInt(b.dataset.bdown, 10);
+              var t = selected[i + 1]; selected[i + 1] = selected[i]; selected[i] = t;
+              rerender();
+            };
+          });
+          selBody.querySelectorAll('[data-bremove]').forEach(function (b) {
+            b.onclick = function () { selected.splice(parseInt(b.dataset.bremove, 10), 1); rerender(); };
+          });
+          availBody.querySelectorAll('[data-badd]').forEach(function (b) {
+            b.onclick = function () { selected.push(b.dataset.badd); rerender(); };
+          });
+        }
+        rerender();
+        root.querySelectorAll('[data-iconpick]').forEach(function (b) {
+          b.onclick = function () {
+            iconVal = b.dataset.iconpick;
+            root.querySelectorAll('[data-iconpick]').forEach(function (x) {
+              x.classList.toggle('on', x === b);
+            });
+          };
+        });
+        root.querySelectorAll('[data-colorpick]').forEach(function (b) {
+          b.onclick = function () {
+            colorVal = b.dataset.colorpick;
+            root.querySelectorAll('[data-colorpick]').forEach(function (x) {
+              x.classList.toggle('on', x === b);
+            });
+          };
+        });
+      },
+      onButton: function (v, root) {
+        if (v === 'cancel') return;
+        if (v === 'reset') {
+          Store.deleteAudienceTemplate(audId, ownerId);
+          toast('기본값으로 되돌렸어요', 'ok');
+          App.refresh();
+          return;
+        }
+        if (v === 'delete') {
+          Store.deleteAudienceTemplate(audId, ownerId);
+          if (S.shareAudience === audId) S.shareAudience = null;
+          toast('대상을 삭제했어요', 'ok');
+          App.refresh();
+          return;
+        }
+        if (v === 'ok') {
+          var f = readForm(root);
+          var label = (f.label || '').trim();
+          if (!label) { toast('대상 이름을 입력해 주세요', 'err'); return 'keep'; }
+          if (!selected.length) { toast('보여줄 내용을 하나 이상 골라 주세요', 'err'); return 'keep'; }
+          var saved = Store.saveAudienceTemplate({
+            id: audId || null, ownerId: ownerId, label: label, intro: (f.intro || '').trim(),
+            icon: iconVal, color: colorVal, blocks: selected.slice()
+          });
+          S.shareAudience = saved.id;
+          toast(editing ? '대상을 저장했어요' : '새 대상을 만들었어요', 'ok');
+          App.refresh();
+        }
+      }
+    });
+  }
+
   V.share = {
     layout: 'app',
     render: function (p) {
       var child = ownedChild(p.childId);
       if (!child) return notFound('아이 정보를 찾을 수 없어요');
-      var AUD = V._AUDIENCES;
+      var AUD = V._audienceMap(child.ownerId);
       var manual = Store.getManual(child.id) || Store.saveManual(Store.emptyManual(child.id));
-      if (!S.shareAudience) S.shareAudience = 'school';
+      if (!S.shareAudience || !AUD[S.shareAudience]) S.shareAudience = Object.keys(AUD)[0] || 'school';
       var aud = S.shareAudience;
       var shares = Store.sharesOf(child.id);
 
@@ -1026,22 +1176,25 @@
                 '<div style="text-align:center"><div class="faint" style="font-size:.74rem">인증번호</div>' +
                   '<div style="font-weight:800;letter-spacing:.15em;color:var(--primary-dark)">' +
                   esc(s.accessCode) + '</div></div>' +
-                (inactive ? '' :
-                  '<button class="btn btn-ghost btn-sm" data-qr="' + esc(s.token) +
-                    '" data-qr-code="' + esc(s.accessCode) + '" data-qr-name="' + esc(child.name) + '">' +
-                    icon('grid', 14) + 'QR·키링 카드</button>') +
-                (inactive ? '' :
-                  '<button class="btn btn-ghost btn-sm" data-web-share="1" data-token="' + esc(s.token) +
-                    '" data-code="' + esc(s.accessCode) + '" data-name="' + esc(child.name) + '">' +
-                    icon('share', 14) + '공유하기</button>') +
                 (expired ?
                   '<button class="btn btn-primary btn-sm" data-renew="' + s.id + '">' +
                     icon('check', 14) + CYCLE_LABEL[s.renewCycle] + ' 더 열어두기</button>' : '') +
               '</div>' +
-              '<div class="row between mt-1">' +
-                '<span class="faint" style="font-size:.78rem">' + UI.fmtDate(s.createdAt) + ' 생성</span>' +
-                (revoked ? ''
-                  : '<button class="btn btn-danger btn-sm" data-revoke="' + s.id + '">공유 중단</button>') +
+              '<div class="row between mt-1 wrap" style="gap:8px">' +
+                '<span class="faint" style="font-size:.78rem">생성일 ' + UI.fmtDate(s.createdAt) +
+                  (s.expiresAt ? ' ~ ' + UI.fmtDate(s.expiresAt) : '') + '</span>' +
+                '<div class="row gap-sm wrap">' +
+                  (inactive ? '' :
+                    '<button class="btn btn-ghost btn-sm" data-qr="' + esc(s.token) +
+                      '" data-qr-code="' + esc(s.accessCode) + '" data-qr-name="' + esc(child.name) + '">' +
+                      icon('grid', 14) + 'QR·키링 카드</button>') +
+                  (inactive ? '' :
+                    '<button class="btn btn-ghost btn-sm" data-web-share="1" data-token="' + esc(s.token) +
+                      '" data-code="' + esc(s.accessCode) + '" data-name="' + esc(child.name) + '">' +
+                      icon('share', 14) + '공유하기</button>') +
+                  (revoked ? ''
+                    : '<button class="btn btn-danger btn-sm" data-revoke="' + s.id + '">공유 중단</button>') +
+                '</div>' +
               '</div></div>';
           }).join('')
         : '<div class="card empty"><div class="emoji">🔗</div>' +
@@ -1071,13 +1224,19 @@
             '설명서를 본 분이 노트를 남기면 여기에 모여요.</p>') +
         '</div></div>';
 
-      // 대상 선택 카드
+      // 대상 선택 카드 — 기본 4종 + 직접 만든 대상. 각 카드에서 바로 편집할 수 있고, 새 대상도 추가할 수 있다.
+      // (편집 버튼을 카드 안에 중첩해야 해서 카드 자체는 button이 아닌 div로 구성)
       var audPicker = Object.keys(AUD).map(function (k) {
         var a = AUD[k];
-        return '<button type="button" class="aud-card' + (k === aud ? ' on' : '') + '" data-aud="' + k + '">' +
+        return '<div class="aud-card' + (k === aud ? ' on' : '') + '" data-aud="' + k + '" role="button" tabindex="0">' +
+          '<button type="button" class="aud-edit-btn" data-audedit="' + k + '" ' +
+            'aria-label="' + esc(a.label) + ' 편집" title="이 대상 편집">' + icon('edit', 14) + '</button>' +
           '<span class="aud-ico" style="background:' + a.color + '">' + icon(a.icon, 20) + '</span>' +
-          '<span><b>' + esc(a.label) + '</b><p>' + esc(a.intro) + '</p></span></button>';
-      }).join('');
+          '<span><b>' + esc(a.label) + '</b><p>' + esc(a.intro) + '</p></span></div>';
+      }).join('') +
+        '<div class="aud-card new" id="aud-new" role="button" tabindex="0">' +
+          icon('plus', 22) + '<b>새 대상 만들기</b>' +
+          '<p>선생님·치료사 등 필요한 대상을 직접 추가해요</p></div>';
 
       var preview = '<div class="print-area">' +
         V._summarySheet(child, manual, { audience: aud }) + '</div>';
@@ -1112,12 +1271,20 @@
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
-      var AUD = V._AUDIENCES;
+      var AUD = V._audienceMap(child.ownerId);
 
-      // 대상 선택 → 미리보기 갱신
+      // 대상 선택 → 미리보기 갱신 (편집 버튼 클릭은 선택으로 번지지 않게 stopPropagation)
       document.querySelectorAll('[data-aud]').forEach(function (b) {
         b.onclick = function () { S.shareAudience = b.dataset.aud; App.refresh(); };
       });
+      document.querySelectorAll('[data-audedit]').forEach(function (b) {
+        b.onclick = function (e) {
+          e.stopPropagation();
+          openAudienceEditor(child, b.dataset.audedit);
+        };
+      });
+      var audNew = UI.el('aud-new');
+      if (audNew) audNew.onclick = function () { openAudienceEditor(child, null); };
       var bp = UI.el('btn-print-aud');
       if (bp) bp.onclick = function () { window.print(); };
       var bs = UI.el('btn-share-aud');
@@ -1138,7 +1305,7 @@
               }).join('') + '</select></div>' +
             '<div class="field"><label>공유 기간 <span class="faint">기간이 지나면 자동으로 닫혀요</span></label>' +
               '<select class="select" name="renewCycle">' +
-              [['month', '1개월'], ['week', '1주일'], ['year', '1년'], ['', '계속 유지']].map(function (o) {
+              [['month', '1개월'], ['day', '1일'], ['week', '1주일'], ['year', '1년'], ['', '계속 유지']].map(function (o) {
                 return '<option value="' + o[0] + '"' + (o[0] === 'month' ? ' selected' : '') + '>' +
                   o[1] + '</option>';
               }).join('') + '</select></div>' +
@@ -1425,7 +1592,6 @@
     layout: 'public',
     render: function (p) {
       var share = Store.getShareByToken(p.token);
-      var AUD = V._AUDIENCES;
       var topBar = '<div class="app-bar"><div class="brand">' + UI.brandMark(34) +
         '<div class="wordmark"><b>내 아이 설명서</b>' +
         '<span>Stellar Connect · S:CON</span></div></div></div>';
@@ -1441,6 +1607,7 @@
         return topBar + '<div class="container narrow"><div class="card empty">' +
           '<div class="emoji">🔍</div><h3>설명서를 찾을 수 없습니다</h3></div></div>';
       }
+      var AUD = V._audienceMap(child.ownerId);
 
       if (!viewerAuthed[share.token]) {
         return topBar + '<div class="container narrow" style="padding-top:44px">' +

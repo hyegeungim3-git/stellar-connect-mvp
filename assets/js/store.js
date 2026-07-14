@@ -31,6 +31,9 @@
       plans: [],        // 성장 플랜 항목 {id, childId, stage, area, text, status, createdAt}
       visitNotes: [],   // 방문 노트 {id, shareId, childId, author, role, text, createdAt}
       placeReports: [], // 친화 장소 제보 {id, name, category, reason, createdAt}
+      /* 대상별 공유 커스텀 — 기본 4종(학교/병원/활동지원사/돌봄기관) 재정의 또는 신규 대상 추가.
+         {id, ownerId, label, icon, color, intro, blocks[]} — id가 기본 4종 키와 같으면 그 대상을 덮어씀 */
+      audienceTemplates: [],
       meta: { createdAt: nowISO(), seeded: false }
     };
   }
@@ -360,7 +363,7 @@
 
   /* ---------- 공유 ---------- */
   /* 공유 주기 — 기간이 지나면 자동으로 닫혀 민감정보 노출을 최소화 (개인정보 동의 정책 L2 원칙) */
-  var SHARE_CYCLE_DAYS = { week: 7, month: 30, year: 365 };
+  var SHARE_CYCLE_DAYS = { day: 1, week: 7, month: 30, year: 365 };
   function shareCycleDays(cycle) { return SHARE_CYCLE_DAYS[cycle] || null; }
   function createShare(opts) {
     var db = getDB();
@@ -417,6 +420,29 @@
     var db = getDB();
     var s = db.shares.filter(function (x) { return x.id === id; })[0];
     if (s) { s.views = (s.views || 0) + 1; setDB(db); }
+  }
+
+  /* ---------- 대상별 공유 커스텀 ---------- */
+  function listAudienceTemplates(ownerId) {
+    return getDB().audienceTemplates.filter(function (t) { return t.ownerId === ownerId; });
+  }
+  function saveAudienceTemplate(t) {
+    var db = getDB();
+    if (!t.id) t.id = uid('aud');
+    var idx = -1;
+    db.audienceTemplates.forEach(function (x, i) {
+      if (x.id === t.id && x.ownerId === t.ownerId) idx = i;
+    });
+    if (idx >= 0) db.audienceTemplates[idx] = t; else db.audienceTemplates.push(t);
+    setDB(db);
+    return t;
+  }
+  function deleteAudienceTemplate(id, ownerId) {
+    var db = getDB();
+    db.audienceTemplates = db.audienceTemplates.filter(function (x) {
+      return !(x.id === id && x.ownerId === ownerId);
+    });
+    setDB(db);
   }
 
   /* ---------- 백오피스: 콘텐츠 / 팝업 / 알림 ---------- */
@@ -511,6 +537,8 @@
     createShare: createShare, sharesOf: sharesOf, getShareByToken: getShareByToken,
     revokeShare: revokeShare, bumpShareViews: bumpShareViews,
     renewShare: renewShare, isShareExpired: isShareExpired, shareCycleDays: shareCycleDays,
+    listAudienceTemplates: listAudienceTemplates, saveAudienceTemplate: saveAudienceTemplate,
+    deleteAudienceTemplate: deleteAudienceTemplate,
     // 백오피스
     listContents: listContents, saveContent: saveContent,
     listPopups: listPopups, savePopup: savePopup, deletePopup: deletePopup,

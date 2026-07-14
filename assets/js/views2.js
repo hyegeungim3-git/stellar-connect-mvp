@@ -1634,7 +1634,51 @@
       /* 우선(2차 리뷰 §4): 자조활동 · 생활정보 · 약물정보 */
       blocks: ['canDo', 'routine', 'likeDislike', 'health', 'comm', 'sensory', 'problem', 'parentNote'] }
   };
-  V._AUDIENCES = AUDIENCES;
+  V._AUDIENCES = AUDIENCES;   // 기본값(수정 불가 원본) — '기본값으로 되돌리기'의 기준
+
+  /* 대상별 설명서에 넣을 수 있는 내용 목록 (응급·알레르기 블록은 항상 최상단 고정이라 제외) */
+  var BLOCK_CATALOG = [
+    { key: 'diagnosis',   label: '진단 정보' },
+    { key: 'sensory',     label: '감각 특성' },
+    { key: 'comm',        label: '의사소통 방법' },
+    { key: 'likeDislike', label: '좋아함 · 싫어함' },
+    { key: 'canDo',       label: '할 수 있어요' },
+    { key: 'needHelp',    label: '도움이 필요해요' },
+    { key: 'problem',     label: '도전적 행동 및 대응 방법' },
+    { key: 'safety',      label: '안전 주의사항' },
+    { key: 'routine',     label: '생활 루틴' },
+    { key: 'meds',        label: '복용 약물' },
+    { key: 'health',      label: '건강 정보' },
+    { key: 'history',     label: '병력 및 치료 이력' },
+    { key: 'handover',    label: '돌봄 인수인계' },
+    { key: 'parentNote',  label: '보호자 한마디' }
+  ];
+  V._BLOCK_CATALOG = BLOCK_CATALOG;
+  /* 새 대상을 만들 때 고를 수 있는 아이콘·색상 팔레트 */
+  V._AUD_ICONS = ['school', 'hospital', 'user', 'users', 'heart', 'shield', 'star', 'book', 'flag', 'target'];
+  V._AUD_COLORS = ['var(--brand-connect)', 'var(--brand-grow)', 'var(--brand-understand)',
+    'var(--primary)', 'var(--accent)', 'var(--c-comm)', 'var(--brand-trust)'];
+
+  /* 기본 4종 + 사용자가 만든/고쳐 쓴 대상을 하나의 맵으로 합친다.
+     같은 id(school 등)로 저장된 커스텀 항목은 기본값을 덮어쓰고, 새 id는 그대로 추가된다. */
+  function audienceMap(ownerId) {
+    var map = {};
+    Object.keys(AUDIENCES).forEach(function (k) {
+      var d = AUDIENCES[k];
+      map[k] = { id: k, label: d.label, icon: d.icon, color: d.color,
+        intro: d.intro, blocks: d.blocks.slice(), builtin: true };
+    });
+    (Store.listAudienceTemplates(ownerId) || []).forEach(function (t) {
+      var base = map[t.id];
+      map[t.id] = {
+        id: t.id, label: t.label, icon: t.icon, color: t.color, intro: t.intro,
+        blocks: (t.blocks || []).slice(),
+        builtin: !!base, overridden: !!base
+      };
+    });
+    return map;
+  }
+  V._audienceMap = audienceMap;
 
   function medsBlock(child) {
     if (!child.medications || !child.medications.length) return '';
@@ -1754,7 +1798,7 @@
   V._summarySheet = function (child, manual, opts) {
     opts = opts || {};
     var scope = opts.scope || 'summary';
-    var aud = opts.audience ? AUDIENCES[opts.audience] : null;
+    var aud = opts.audience ? audienceMap(child.ownerId)[opts.audience] : null;
     var age = UI.calcAge(child.birthDate);
     var s = manual.sections;
     var sheet = '<div class="summary-sheet">' +

@@ -1879,6 +1879,7 @@ table.tbl td.actions { white-space: nowrap; }
 /* 대상별 설명서 — 대상 선택 카드 */
 .aud-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
 .aud-card {
+  position: relative;
   text-align: left; padding: 16px; border-radius: var(--radius);
   border: 1.5px solid var(--border-strong); background: var(--surface);
   display: flex; gap: 13px; align-items: flex-start; cursor: pointer;
@@ -1893,6 +1894,28 @@ table.tbl td.actions { white-space: nowrap; }
 .aud-card p { font-size: .82rem; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
 @media (max-width: 560px) { .aud-grid { grid-template-columns: 1fr; } }
 .aud-card.on { border-color: var(--primary); background: var(--primary-tint); box-shadow: var(--shadow-sm); }
+.aud-edit-btn {
+  position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
+  border-radius: 8px; background: var(--surface); border: 1px solid var(--border);
+  display: grid; place-items: center; color: var(--text-muted); z-index: 1;
+}
+.aud-edit-btn:hover { color: var(--primary); border-color: var(--primary); }
+.aud-card.new {
+  flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  border-style: dashed; color: var(--text-muted); gap: 4px;
+}
+.aud-card.new:hover { color: var(--primary); }
+.aud-card.new p { color: var(--text-muted); }
+.aud-blockrow {
+  display: flex; align-items: center; gap: 6px; padding: 7px 4px;
+  border-bottom: 1px dashed var(--border);
+}
+.aud-blockrow:last-child { border-bottom: none; }
+.aud-swatch.on { border: 2px solid var(--primary); color: var(--primary); background: var(--primary-tint); }
+.aud-colorswatch {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0;
+}
+.aud-colorswatch.on { border-color: var(--text); }
 
 /* 대상별 설명서 시트 — 인트로 + 대상 컬러 액센트 */
 .aud-intro {
