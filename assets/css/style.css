@@ -1940,15 +1940,18 @@ table.tbl td.actions { white-space: nowrap; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hp-edit { flex: none; align-self: flex-start; }
-.hp-manual { margin-top: 16px; }
 .hp-manual-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 10px; }
 .hp-link { font-size: .84rem; font-weight: 700; color: var(--primary); flex: none; }
 .hp-link:hover { text-decoration: underline; }
-.hp-bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
-.hp-bar-fill {
-  height: 100%; border-radius: 99px;
-  background: linear-gradient(90deg, var(--brand-understand), var(--brand-connect) 60%, var(--brand-grow));
+/* 홈 프로필 갤러리 스트립 — 진단명 대신 아이 사진을 보여줌 */
+.hp-gallery { margin-top: 16px; }
+.hp-gallery-strip { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
+.hp-photo {
+  flex: none; width: 74px; height: 74px; border-radius: 12px; overflow: hidden;
+  display: block; background: var(--surface-2);
 }
+.hp-photo img { width: 100%; height: 100%; object-fit: cover; }
+.hp-gallery.empty-strip { margin-top: 16px; }
 .hp-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .hp-actions .btn { flex: 1; min-width: 132px; }
 

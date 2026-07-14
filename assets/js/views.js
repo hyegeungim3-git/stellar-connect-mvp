@@ -583,31 +583,42 @@
 
       /* 1) 간단 프로필 — 이름·나이·진단·한 줄 소개 + 설명서 진행 + 핵심 동선 */
       var m = Store.getManual(child.id);
-      var cnt = m ? manualCount(m) : 0;
-      var pct = Math.min(100, cnt * 5);
       var age = UI.calcAge(child.birthDate);
       var note = m && m.summaryNote
         ? '<div class="oneline">“' + esc(m.summaryNote) + '”</div>' : '';
+      /* 진단명은 홈에 노출하지 않음(양육자 배려 — 매일 마주하지 않도록) · 대신 갤러리 사진을 보여줌 */
+      var homeGallery = (child.gallery || []).slice().sort(function (a, b) {
+        return (a.date || '') < (b.date || '') ? 1 : -1;
+      }).slice(0, 6);
+      var galleryBlock = homeGallery.length
+        ? '<div class="hp-gallery">' +
+            '<div class="hp-manual-row">' +
+              '<span class="faint" style="font-size:.82rem">' + esc(child.name) + '의 순간</span>' +
+              '<a href="#/gallery/' + child.id + '" class="hp-link">갤러리 ›</a>' +
+            '</div>' +
+            '<div class="hp-gallery-strip">' +
+              homeGallery.map(function (g) {
+                return '<a class="hp-photo" href="#/gallery/' + child.id + '">' +
+                  '<img src="' + g.photo + '" alt=""></a>';
+              }).join('') +
+            '</div>' +
+          '</div>'
+        : '<div class="hp-gallery empty-strip">' +
+            '<a href="#/gallery/' + child.id + '" class="btn btn-soft btn-sm">' +
+              icon('camera', 15) + '갤러리에 사진 담기</a>' +
+          '</div>';
       var profile = '<div class="card home-profile">' +
         '<div class="hp-top">' +
           '<div class="avatar xl">' + (child.photo
             ? '<img src="' + child.photo + '" alt="">' : esc(UI.initials(child.name))) + '</div>' +
           '<div class="hp-meta">' +
             '<div class="hp-name">' + esc(child.name) + '</div>' +
-            '<div class="hp-sub">' + (age != null ? '만 ' + age + '세 · ' : '') +
-              esc(child.disability.type) + '</div>' + note +
+            '<div class="hp-sub">' + (age != null ? '만 ' + age + '세' : '') + '</div>' + note +
           '</div>' +
           '<a class="btn btn-ghost btn-sm hp-edit" href="#/child/' + child.id + '">' +
             icon('user', 15) + '<span class="hp-edit-txt">프로필</span></a>' +
         '</div>' +
-        '<div class="hp-manual">' +
-          '<div class="hp-manual-row">' +
-            '<span class="faint" style="font-size:.82rem">내 아이 설명서 · ' + cnt + '항목</span>' +
-            '<a href="#/manual/' + child.id + '" class="hp-link">' +
-              (cnt ? '이어쓰기' : '작성하기') + ' ›</a>' +
-          '</div>' +
-          '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + pct + '%"></div></div>' +
-        '</div>' +
+        galleryBlock +
         '<div class="hp-actions">' +
           '<a class="btn btn-primary btn-sm" href="#/manual/' + child.id + '">' +
             icon('edit', 15) + '설명서</a>' +
