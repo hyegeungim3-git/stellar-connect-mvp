@@ -286,12 +286,18 @@
     );
 
     /* ---------- 공유 ---------- */
+    /* 공유 기간(주기)이 화면에 '생성일 ~ 만료일'로 보이도록 활성 월 주기 공유로 시드
+       — 데모 시점에 항상 유효하도록 현재 시각 기준 상대 날짜로 계산 */
+    var _now = Date.now();
+    var _shareCreated = _now - 6 * 864e5;          // 6일 전 생성
+    var _shareExpires = _shareCreated + 30 * 864e5; // 월 주기 → 30일 뒤 만료
     db.shares.push({
       id: 'shr-demo', token: 'JUNHO7', childId: child1.id, scope: 'summary',
       viewerName: '햇살초등학교 1학년 담임', viewerRole: '학교',
-      accessCode: '0312', safeNumber: true,
-      createdAt: '2026-05-18T09:00:00.000Z',
-      expiresAt: null, revoked: false, views: 3
+      accessCode: '0312', safeNumber: true, renewCycle: 'month',
+      createdAt: new Date(_shareCreated).toISOString(),
+      expiresAt: new Date(_shareExpires).toISOString(),
+      revoked: false, views: 3
     });
 
     /* ---------- 방문 노트 (열람자가 남긴 한마디) ---------- */
@@ -299,7 +305,7 @@
       id: 'vn-demo', shareId: 'shr-demo', childId: child1.id,
       author: '햇살초 1학년 담임', role: '교사',
       text: '설명서 잘 읽었습니다. 오늘 음악 시간에 소리가 커지자 스스로 귀를 막고 제게 와서 도움을 청했어요. 설명서 덕분에 바로 조용한 교실로 안내할 수 있었습니다.',
-      createdAt: '2026-05-20T06:30:00.000Z'
+      createdAt: new Date(_now - 4 * 864e5).toISOString()   // 공유 생성 이후(4일 전)
     });
 
     /* ---------- 성장 플랜 (학령기 예시) ---------- */

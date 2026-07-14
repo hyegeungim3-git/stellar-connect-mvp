@@ -679,10 +679,6 @@
     var meta = RT[r.type] || RT.behavior;
     return '<div class="tl-item t-' + r.type + '">' +
       '<div class="card rec-card" data-rec="' + r.id + '">' +
-        (r.hasClip ? '<div class="clip-thumb-wrap">' +
-          '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
-          'preload="metadata"></video>' +
-          '<span class="clip-play">' + icon('camera', 15) + '</span></div>' : '') +
         '<div class="rec-main">' +
           '<div class="rec-top">' +
             '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
@@ -694,6 +690,10 @@
           '</div>' +
           '<div class="rec-title">' + esc(r.title) + '</div>' +
           (r.content ? '<div class="rec-content">' + esc(r.content) + '</div>' : '') +
+          (r.hasClip ? '<div class="rec-clip-inline">' +
+            '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
+            'preload="metadata"></video>' +
+            '<span class="clip-play">' + icon('camera', 20) + '</span></div>' : '') +
           (r.photo ? '<img src="' + r.photo + '" style="margin-top:8px;max-height:150px;' +
             'border-radius:8px">' : '') +
           (r.tags && r.tags.length ? '<div style="margin-top:7px">' + r.tags.map(function (t) {
@@ -1320,11 +1320,13 @@
           '<div class="row gap-sm mt-2" style="flex-wrap:wrap">' +
             '<button class="btn btn-primary" id="btn-share-aud">' + icon('share', 16) +
               '이 설명서로 공유 링크·QR 만들기</button>' +
-            '<button class="btn btn-ghost no-print" id="btn-print-aud">' + icon('print', 16) +
-              'PDF로 저장</button>' +
           '</div>' +
         '</div>' +
-        preview;
+        preview +
+        '<div class="row no-print mt-2" style="justify-content:center">' +
+          '<button class="btn btn-ghost" id="btn-print-aud">' + icon('print', 16) +
+            'PDF로 저장</button>' +
+        '</div>';
 
       var listSection = '<div class="page-head-row mb-2 mt-3"><h2 style="font-size:1.15rem">공유한 링크</h2></div>' +
         '<div class="pill-info mb-2">' + icon('lock', 16) +
