@@ -962,6 +962,14 @@ table.tbl td.actions { white-space: nowrap; }
   padding: 18px; animation: fadeIn .16s var(--ease);
 }
 @keyframes fadeIn { from { opacity: 0; } }
+/* 새로 만든 공유 카드 강조 — 발급 직후 목록에서 잠깐 하이라이트 */
+.card.just-created { animation: justCreated 2.4s var(--ease); }
+@keyframes justCreated {
+  0%   { box-shadow: 0 0 0 0 var(--primary-tint); border-color: var(--primary); }
+  12%  { box-shadow: 0 0 0 4px var(--primary-tint); border-color: var(--primary); }
+  70%  { box-shadow: 0 0 0 4px var(--primary-tint); border-color: var(--primary); }
+  100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+}
 .modal {
   background: var(--surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg); width: 100%; max-width: 490px;

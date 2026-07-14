@@ -1221,7 +1221,7 @@
             var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
             var dleft = (!inactive && s.expiresAt)
               ? Math.max(0, Math.ceil((new Date(s.expiresAt).getTime() - Date.now()) / 864e5)) : null;
-            return '<div class="card card-pad mb-2"' + (inactive ? ' style="opacity:.55"' : '') + '>' +
+            return '<div class="card card-pad mb-2" data-share-card="' + s.id + '"' + (inactive ? ' style="opacity:.55"' : '') + '>' +
               '<div class="row between wrap" style="margin-bottom:8px">' +
                 '<div><b>' + esc(s.viewerName || '받는 분') + '</b> ' +
                   '<span class="badge">' + esc(s.viewerRole) + '</span> ' +
@@ -1434,6 +1434,7 @@
                     .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
                   return 'keep';
                 }
+                S.focusShareId = s.id;   // 목록에서 새로 만든 공유로 스크롤·강조
                 App.refresh();
               }
             });
@@ -1524,6 +1525,7 @@
                     .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
                   return 'keep';
                 }
+                S.focusShareId = s.id;   // 목록에서 새로 만든 공유로 스크롤·강조
                 App.refresh();
               }
             });
@@ -1680,6 +1682,18 @@
         };
       });
 
+      // 새로 만든 공유가 있으면 목록에서 해당 카드로 스크롤 + 잠깐 강조 (1회성)
+      if (S.focusShareId) {
+        var focusId = S.focusShareId;
+        S.focusShareId = null;
+        setTimeout(function () {
+          var card = document.querySelector('[data-share-card="' + focusId + '"]');
+          if (!card) return;
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('just-created');
+          setTimeout(function () { card.classList.remove('just-created'); }, 2400);
+        }, 120);
+      }
     }
   };
 
