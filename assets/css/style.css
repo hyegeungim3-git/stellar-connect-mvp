@@ -816,6 +816,8 @@ svg { vertical-align: middle; }
 /* 터치 기기(hover 불가)·키보드 포커스에서도 편집/삭제 접근 가능하게 — hover 의존 금지 */
 @media (hover: none) { .item-actions { opacity: 1; } }
 .item-row:focus-within .item-actions { opacity: 1; }
+/* 복용 중인 약물 목록은 항상 조작 버튼이 보여야 함 (2026-07-14 사용자 요청) */
+.med-row .item-actions { opacity: 1; }
 
 .add-item { display: flex; gap: 9px; margin-top: 14px; align-items: flex-start; }
 .add-item .input, .add-item .textarea { flex: 1; }

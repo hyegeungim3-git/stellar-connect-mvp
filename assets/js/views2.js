@@ -1041,34 +1041,43 @@
         var k = m.kind || '처방약';
         counts[k] = (counts[k] || 0) + 1;
       });
+      if (!S.medKindFilter) S.medKindFilter = 'all';
+      if (S.medKindFilter !== 'all' && !counts[S.medKindFilter]) S.medKindFilter = 'all';
       var summary = meds.length
-        ? '<div class="row wrap gap-sm">' +
-            '<span class="badge brand">전체 ' + meds.length + '개</span>' +
-            (counts['처방약'] ? '<span class="badge">처방약 ' + counts['처방약'] + '</span>' : '') +
-            (counts['영양제'] ? '<span class="badge ok">영양제 ' + counts['영양제'] + '</span>' : '') +
-            (counts['일반약'] ? '<span class="badge">일반약 ' + counts['일반약'] + '</span>' : '') +
+        ? '<div class="seg">' +
+            '<button class="' + (S.medKindFilter === 'all' ? 'on' : '') + '" data-mkf="all">전체 ' +
+              meds.length + '개</button>' +
+            ['처방약', '영양제', '일반약'].map(function (k) {
+              if (!counts[k]) return '';
+              return '<button class="' + (S.medKindFilter === k ? 'on' : '') + '" data-mkf="' + k + '">' +
+                k + ' ' + counts[k] + '</button>';
+            }).join('') +
           '</div>'
         : '';
+      var medRows = meds.map(function (m, i) {
+        var k = m.kind || '처방약';
+        if (S.medKindFilter !== 'all' && k !== S.medKindFilter) return '';
+        return '<div class="item-row med-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
+          '<div class="txt">' + V._medKindBadge(m.kind) + '<b>' + esc(m.name) + '</b> ' +
+            esc(medDose(m)) +
+            (m.time ? ' · ' + esc(m.time) : '') +
+            (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
+            (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
+            (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
+          '<div class="item-actions">' +
+            '<button class="btn-icon" data-einfo="' + i + '" title="e약은요 (식약처 개요정보)" ' +
+              'aria-label="e약은요 정보 보기">' + icon('info', 15) + '</button>' +
+            '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
+              'title="약학정보원 정보 검색" aria-label="약학정보원 정보 검색">' + icon('search', 15) + '</a>' +
+            '<button class="btn-icon" data-medit="' + i + '" title="수정" aria-label="약물 수정">' +
+              icon('edit', 15) + '</button>' +
+            '<button class="btn-icon" data-mdel="' + i + '" title="삭제" aria-label="약물 삭제">' +
+              icon('trash', 15) + '</button>' +
+          '</div></div>';
+      }).filter(Boolean);
       var list = meds.length
-        ? meds.map(function (m, i) {
-            return '<div class="item-row"><span class="bullet" style="background:var(--c-comm)">약</span>' +
-              '<div class="txt">' + V._medKindBadge(m.kind) + '<b>' + esc(m.name) + '</b> ' +
-                esc(medDose(m)) +
-                (m.time ? ' · ' + esc(m.time) : '') +
-                (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') +
-                (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
-                (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
-              '<div class="item-actions">' +
-                '<button class="btn-icon" data-einfo="' + i + '" title="e약은요 (식약처 개요정보)" ' +
-                  'aria-label="e약은요 정보 보기">' + icon('info', 15) + '</button>' +
-                '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
-                  'title="약학정보원 정보 검색" aria-label="약학정보원 정보 검색">' + icon('search', 15) + '</a>' +
-                '<button class="btn-icon" data-medit="' + i + '" title="수정" aria-label="약물 수정">' +
-                  icon('edit', 15) + '</button>' +
-                '<button class="btn-icon" data-mdel="' + i + '" title="삭제" aria-label="약물 삭제">' +
-                  icon('trash', 15) + '</button>' +
-              '</div></div>';
-          }).join('')
+        ? (medRows.length ? medRows.join('')
+            : '<p class="muted" style="font-size:.9rem;padding:6px 0">이 구분의 약물이 없어요.</p>')
         : '<p class="muted" style="font-size:.9rem;padding:6px 0">아직 등록된 약물이 없어요. ' +
           '‘약물 등록’으로 시작해 보세요.</p>';
 
@@ -1099,6 +1108,9 @@
       if (!child) return;
       if (V._wireMedToday) V._wireMedToday(child);
       UI.el('btn-med-add').onclick = function () { openMedEditor(child.id, null); };
+      document.querySelectorAll('[data-mkf]').forEach(function (b) {
+        b.onclick = function () { S.medKindFilter = b.dataset.mkf; App.refresh(); };
+      });
       root.addEventListener('click', function (e) {
         var ei = e.target.closest('[data-einfo]');
         if (ei) {

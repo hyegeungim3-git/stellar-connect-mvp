@@ -696,6 +696,10 @@
           var meta = RT[r.type];
           return '<div class="tl-item t-' + r.type + '">' +
             '<div class="card rec-card" data-rec="' + r.id + '">' +
+              (r.hasClip ? '<div class="clip-thumb-wrap">' +
+                '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
+                'preload="metadata"></video>' +
+                '<span class="clip-play">' + icon('camera', 15) + '</span></div>' : '') +
               '<div class="rec-main">' +
                 '<div class="rec-top">' +
                   '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
@@ -713,10 +717,6 @@
                   return '<span class="tag">#' + esc(t) + '</span>';
                 }).join('') + '</div>' : '') +
               '</div>' +
-              (r.hasClip ? '<div class="clip-thumb-wrap">' +
-                '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
-                'preload="metadata"></video>' +
-                '<span class="clip-play">' + icon('camera', 15) + '</span></div>' : '') +
             '</div></div>';
         }).join('') + '</div>';
       }
