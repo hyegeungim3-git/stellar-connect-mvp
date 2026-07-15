@@ -8,7 +8,7 @@
 
   /* 화면 전환 사이 유지되는 임시 UI 상태 */
   var S = { manualTab: 'canDo', recFilter: 'all', recSearch: '', homeChild: null,
-    recPeriod: 'all', recFrom: '', recTo: '', recMood: 'all', recSort: 'new', recTag: null,
+    recPeriod: 'all', recFrom: '', recTo: '', recMood: 'all', recSort: 'new',
     adminTab: 'stats', focusAdd: null };
 
   /* ---------- 설명서 섹션 정의 ---------- */

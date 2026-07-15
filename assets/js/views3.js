@@ -795,10 +795,10 @@
   }
   V._openRecordDetail = openRecordDetail;
   V._recordModal = recordModal;
-  /* 활성 필터(검색·유형·기간·컨디션·태그)가 하나라도 있는지 — 초기화 버튼·카운트 표기용 */
+  /* 활성 필터(검색·유형·기간·컨디션)가 하나라도 있는지 — 초기화 버튼·카운트 표기용 */
   function recAnyFilter() {
     return !!(S.recSearch && S.recSearch.trim()) || S.recFilter !== 'all' ||
-      S.recPeriod !== 'all' || S.recMood !== 'all' || !!S.recTag;
+      S.recPeriod !== 'all' || S.recMood !== 'all';
   }
   V._recAnyFilter = recAnyFilter;
   function recYmdOffset(days) {
@@ -826,14 +826,6 @@
     if (v === 'low') return m <= 2;
     return true;
   }
-  /* 기록에 등장한 태그(빈도순) — 태그 필터 칩 생성용 */
-  function recAllTags(all) {
-    var map = {};
-    all.forEach(function (r) { (r.tags || []).forEach(function (t) { map[t] = (map[t] || 0) + 1; }); });
-    return Object.keys(map).sort(function (a, b) { return map[b] - map[a]; });
-  }
-  V._recAllTags = recAllTags;
-
   /* 검색 결과 영역(카운트 + 타임라인/빈 상태) — 부분 갱신을 위해 분리 */
   function recResultsHTML(all, list) {
     if (!all.length) {
@@ -861,7 +853,6 @@
       if (q && !recMatch(r, q)) return false;
       if (!recInPeriod(r.date)) return false;
       if (!recInMood(r.mood)) return false;
-      if (S.recTag && (r.tags || []).indexOf(S.recTag) < 0) return false;
       return true;
     });
     list.sort(function (a, b) {
@@ -893,7 +884,6 @@
           return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('');
       }
-      var tagList = recAllTags(f.all);
       var toolbar = f.all.length
         ? '<div class="rec-toolbar no-print">' +
             '<div class="rec-search">' + icon('search', 16) +
@@ -921,14 +911,6 @@
                   '<input type="date" class="input" id="rec-from" value="' + esc(S.recFrom || '') + '">' +
                   '<span class="faint">~</span>' +
                   '<input type="date" class="input" id="rec-to" value="' + esc(S.recTo || '') + '">' +
-                '</div>'
-              : '') +
-            (tagList.length
-              ? '<div class="rec-tags">' +
-                  tagList.map(function (t) {
-                    return '<button class="chip sm' + (S.recTag === t ? ' on' : '') +
-                      '" data-rectag="' + esc(t) + '">#' + esc(t) + '</button>';
-                  }).join('') +
                 '</div>'
               : '') +
           '</div>'
@@ -1000,18 +982,11 @@
       if (fromEl) fromEl.onchange = function () { S.recFrom = fromEl.value; App.refresh(); };
       var toEl = UI.el('rec-to');
       if (toEl) toEl.onchange = function () { S.recTo = toEl.value; App.refresh(); };
-      // 태그 칩 (같은 태그 다시 누르면 해제)
-      document.querySelectorAll('[data-rectag]').forEach(function (b) {
-        b.onclick = function () {
-          S.recTag = (S.recTag === b.dataset.rectag) ? null : b.dataset.rectag;
-          App.refresh();
-        };
-      });
       // 필터 초기화
       var resetBtn = UI.el('rec-reset');
       if (resetBtn) resetBtn.onclick = function () {
         S.recSearch = ''; S.recFilter = 'all'; S.recPeriod = 'all';
-        S.recFrom = ''; S.recTo = ''; S.recMood = 'all'; S.recSort = 'new'; S.recTag = null;
+        S.recFrom = ''; S.recTo = ''; S.recMood = 'all'; S.recSort = 'new';
         App.refresh();
       };
       wireRecCards(document);

@@ -1333,7 +1333,6 @@ table.tbl td.actions { white-space: nowrap; }
 .rec-filterbar #rec-reset { margin-left: auto; }
 .rec-daterange { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .rec-daterange .input { max-width: 168px; min-height: 40px; }
-.rec-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .rec-count { font-size: .82rem; margin-bottom: 10px; }
 @media (max-width: 560px) {
   .rec-filterbar .seg { width: 100%; }
