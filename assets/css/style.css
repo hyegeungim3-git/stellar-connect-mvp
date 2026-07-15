@@ -1325,8 +1325,11 @@ table.tbl td.actions { white-space: nowrap; }
   font: inherit; color: var(--text); padding: 9px 0; min-height: 42px;
 }
 .rec-search-input::placeholder { color: var(--text-faint); }
-.rec-search-clear { flex: none; color: var(--text-muted); }
-.rec-search-clear:hover { color: var(--primary); }
+.rec-search-clear {
+  flex: none; width: 26px; height: 26px; border-radius: 8px;
+  background: none; color: var(--text-faint);
+}
+.rec-search-clear:hover { background: var(--surface-2); color: var(--primary); }
 .rec-filterbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .rec-filterbar .seg { overflow-x: auto; max-width: 100%; }
 .rec-filterbar .select.sm { min-height: 40px; padding: 6px 30px 6px 11px; font-size: .84rem; width: auto; }
