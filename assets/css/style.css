@@ -1990,19 +1990,31 @@ table.tbl td.actions { white-space: nowrap; }
 
 /* Setlog식 빠른 기록 타일 */
 .quick-log {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-  gap: 8px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 9px; margin-bottom: 14px;
 }
 .quick-tile {
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 13px 6px; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  padding: 15px 8px; border-radius: var(--radius);
   border: 1px solid var(--border); background: var(--surface);
-  min-height: 76px; transition: .14s var(--ease); font: inherit; color: var(--text);
+  min-height: 84px; transition: .14s var(--ease); font: inherit; color: var(--text);
 }
 .quick-tile:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .quick-tile:active { transform: translateY(0); }
-.qt-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
-.qt-label { font-size: .82rem; font-weight: 700; }
+.qt-ico { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; }
+.qt-label { font-size: .9rem; font-weight: 700; letter-spacing: -.01em; }
+
+/* 기록 모달 — 기록 유형 버튼 선택 (드롭다운 대체) */
+.type-pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 7px; }
+.type-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong); background: var(--surface);
+  font-size: .88rem; font-weight: 700; color: var(--text-muted); transition: .14s var(--ease);
+}
+.type-btn .type-ico { display: inline-flex; }
+.type-btn:hover { border-color: var(--primary); }
+.type-btn.on { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); box-shadow: var(--shadow-xs); }
 
 /* 대상별 설명서 — 대상 선택 카드 */
 .aud-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }

@@ -283,17 +283,21 @@
       recT0: 0, recTimer: null
     };
 
-    var typeOpts = Object.keys(RT).map(function (k) {
-      return '<option value="' + k + '"' + (rec.type === k ? ' selected' : '') + '>' +
-        esc(RT[k].label) + '</option>';
+    var typeButtons = Object.keys(RT).map(function (k) {
+      var meta = RT[k];
+      return '<button type="button" class="type-btn' + (rec.type === k ? ' on' : '') + '" data-rectype="' + k + '">' +
+        '<span class="type-ico" style="color:' + meta.color + '">' + icon(meta.icon, 16) + '</span>' +
+        esc(meta.label.replace(/ 기록$/, '')) + '</button>';
     }).join('');
 
     Modal.open({
       title: isNew ? '기록하기' : '기록 수정', icon: 'note', wide: true,
       body:
+        '<div class="field"><label>기록 유형</label>' +
+          '<input type="hidden" name="type" value="' + esc(rec.type) + '">' +
+          '<div class="type-pick" id="rec-type-pick">' + typeButtons + '</div>' +
+        '</div>' +
         '<div class="field-row">' +
-          '<div class="field"><label>기록 유형</label>' +
-            '<select class="select" name="type">' + typeOpts + '</select></div>' +
           '<div class="field"><label>날짜</label>' +
             '<input class="input" name="date" type="date" value="' + esc(rec.date) + '"></div>' +
           '<div class="field"><label>시간 <span class="faint">복약·컨디션 연결</span></label>' +
@@ -411,7 +415,14 @@
           });
         }
         paintTitleQuick();
-        typeSel.addEventListener('change', paintTitleQuick);
+        // 기록 유형 — 버튼 선택(hidden input 값 갱신 + 제목 추천 재계산)
+        root.querySelectorAll('[data-rectype]').forEach(function (b) {
+          b.onclick = function () {
+            typeSel.value = b.dataset.rectype;
+            root.querySelectorAll('[data-rectype]').forEach(function (x) { x.classList.toggle('on', x === b); });
+            paintTitleQuick();
+          };
+        });
 
         /* --- 컨디션 --- */
         function paintMood() {
