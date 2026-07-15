@@ -662,11 +662,11 @@
           var meta = RT[o.k];
           return '<button class="quick-tile" data-qrec="' + o.k + '">' +
             '<span class="qt-ico" style="background:' + meta.color + '22;color:' + meta.color + '">' +
-              icon(meta.icon, 20) + '</span><span class="qt-label">' + o.label + '</span></button>';
+              icon(meta.icon, 22) + '</span><span class="qt-label">' + o.label + '</span></button>';
         }).join('') +
         '<button class="quick-tile" data-qreels="1">' +
           '<span class="qt-ico" style="background:var(--brand-connect-soft);color:var(--brand-connect)">' +
-            icon('camera', 20) + '</span><span class="qt-label">영상</span></button>' +
+            icon('camera', 22) + '</span><span class="qt-label">영상</span></button>' +
       '</div>';
 
       var recs = Store.recordsOf(child.id).sort(function (a, b) {
