@@ -441,7 +441,7 @@
             };
           } else {
             photoTile.classList.add('empty-tile');
-            photoTile.innerHTML = icon('camera', 20) + '<span>사진</span>';
+            photoTile.innerHTML = icon('image', 20) + '<span>사진</span>';
           }
           photoTile.onclick = function (e) {
             if (e.target.closest('#rec-photo-remove')) return;
@@ -466,7 +466,7 @@
             clipTile.classList.remove('empty-tile');
             clipTile.innerHTML =
               '<video src="' + CL.url + '" muted playsinline preload="metadata"></video>' +
-              '<span class="media-tile-badge">' + icon('camera', 11) +
+              '<span class="media-tile-badge">' + icon('video', 11) +
                 (CL.duration ? ' ' + fmtClip(CL.duration) : '') + '</span>' +
               '<button type="button" class="media-tile-remove" id="clip-remove" ' +
               'aria-label="영상 지우기">' + icon('x', 13) + '</button>';
@@ -482,7 +482,7 @@
             };
           } else {
             clipTile.classList.add('empty-tile');
-            clipTile.innerHTML = icon('camera', 20) + '<span>영상</span>';
+            clipTile.innerHTML = icon('video', 20) + '<span>영상</span>';
             clipTile.onclick = function () { clipFileInput.click(); };
           }
         }
@@ -598,7 +598,7 @@
           '<div class="rec-top">' +
             '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
               esc(meta.label) + '</span>' +
-            (r.hasClip ? '<span class="badge brand">' + icon('camera', 11) + ' 영상</span>' : '') +
+            (r.hasClip ? '<span class="badge brand">' + icon('video', 11) + ' 영상</span>' : '') +
             UI.moodStars(r.mood) +
             '<span class="rec-date">' + UI.fmtDate(r.date) +
               (r.time ? ' ' + esc(r.time) : '') + '</span>' +
@@ -608,7 +608,7 @@
           (r.hasClip ? '<div class="rec-clip-inline">' +
             '<video class="clip-thumb" data-clipthumb="' + r.id + '" muted playsinline ' +
             'preload="metadata"></video>' +
-            '<span class="clip-play">' + icon('camera', 20) + '</span></div>' : '') +
+            '<span class="clip-play">' + icon('video', 20) + '</span></div>' : '') +
           (r.photo ? '<img src="' + r.photo + '" style="margin-top:8px;max-height:150px;' +
             'border-radius:8px">' : '') +
           (r.tags && r.tags.length ? '<div style="margin-top:7px">' + r.tags.map(function (t) {
@@ -834,7 +834,7 @@
       return childContextBar(child, 'records') +
         pageHead('기록', child.name + ' 기록',
           '행동·치료·변화의 순간을 짧은 영상(릴스)이나 글로 남깁니다.',
-          '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('camera', 15) + '영상으로 기록</button>' +
+          '<button class="btn btn-ghost btn-sm" id="btn-reels">' + icon('video', 15) + '영상으로 기록</button>' +
           '<button class="btn btn-primary btn-sm" id="btn-add-rec">' + icon('plus', 15) + '기록하기</button>') +
         medBridge + toolbar +
         '<div id="rec-results">' + recResultsHTML(f.all, f.list) + '</div>';

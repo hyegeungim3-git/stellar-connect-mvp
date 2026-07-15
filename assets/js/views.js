@@ -666,7 +666,7 @@
         }).join('') +
         '<button class="quick-tile" data-qreels="1">' +
           '<span class="qt-ico" style="background:var(--brand-connect-soft);color:var(--brand-connect)">' +
-            icon('camera', 22) + '</span><span class="qt-label">영상</span></button>' +
+            icon('video', 22) + '</span><span class="qt-label">영상</span></button>' +
       '</div>';
 
       var recs = Store.recordsOf(child.id).sort(function (a, b) {
