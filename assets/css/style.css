@@ -1270,7 +1270,30 @@ table.tbl td.actions { white-space: nowrap; }
 @keyframes drawerIn { from { transform: translateX(100%); } }
 
 /* ---------- 23. 짧은 영상(릴스) 기록 ---------- */
-.clip-empty { display: flex; gap: 8px; flex-wrap: wrap; }
+/* 기록 모달 — 미디어(사진·영상) 통합 필드. 두 슬롯을 나란히 두어 동시 첨부 가능 */
+.media-row { display: flex; gap: 12px; margin-top: 2px; }
+.media-tile {
+  width: 84px; height: 84px; border-radius: 10px; overflow: hidden;
+  position: relative; flex: none; background: var(--surface-2);
+}
+.media-tile img, .media-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.media-tile.empty-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 1px dashed var(--border-strong); background: var(--surface);
+  color: var(--text-muted); font-size: .72rem; font-weight: 700; cursor: pointer; transition: .14s var(--ease);
+}
+.media-tile.empty-tile:hover { border-color: var(--primary); color: var(--primary); }
+.media-tile:not(.empty-tile) { cursor: pointer; }
+.media-tile-remove {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; border: none;
+}
+.media-pickvideo {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  font-size: .78rem; color: var(--text-muted); background: none; border: none; padding: 0;
+  text-decoration: underline; cursor: pointer;
+}
+.media-pickvideo:hover { color: var(--primary); }
 .reels-cap { display: flex; flex-direction: column; align-items: center; gap: 11px; padding: 6px 0; }
 .reels-frame {
   position: relative; width: 208px; max-width: 72vw; aspect-ratio: 9 / 16;

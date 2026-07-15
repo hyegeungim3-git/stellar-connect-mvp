@@ -304,7 +304,15 @@
             '<input class="input" name="time" type="time" value="' + esc(rec.time || '') + '"></div>' +
         '</div>' +
         '<div class="field"><label>' + icon('camera', 14) +
-          ' 짧은 영상 (릴스) <span class="faint">최대 30초 · 세로 영상 권장</span></label>' +
+          ' 미디어 <span class="faint">사진과 영상을 함께 남길 수 있어요 · 영상은 최대 30초</span></label>' +
+          '<div class="media-row">' +
+            '<div class="media-tile" id="rec-photo"></div>' +
+            '<div class="media-tile" id="clip-tile"></div>' +
+          '</div>' +
+          '<button type="button" class="media-pickvideo" id="cl-pickvideo">' +
+            icon('download', 13) + '영상 파일에서 선택</button>' +
+          '<input type="file" id="rec-photo-input" accept="image/*" hidden>' +
+          '<input type="file" id="cl-file" accept="video/*" hidden>' +
           '<div id="clip-sec" class="clip-sec"></div></div>' +
         '<div class="field"><label>제목 <span class="req">*</span></label>' +
           '<div style="display:flex;gap:6px;align-items:center">' +
@@ -339,15 +347,6 @@
                 'style="font-size:1.3rem;padding:6px 12px">' +
                 ['😣', '😕', '😐', '🙂', '😊'][i - 1] + '</button>';
             }).join('') +
-          '</div></div>' +
-        '<div class="field"><label>사진 <span class="faint">(선택)</span></label>' +
-          '<div class="row" style="gap:12px">' +
-            '<div id="rec-photo" style="width:84px;height:84px;border-radius:10px;overflow:hidden;' +
-              'background:var(--surface-2);display:grid;place-items:center;flex:none">' +
-              (photoData ? '<img src="' + photoData + '" style="width:100%;height:100%;object-fit:cover">'
-                : '<span class="faint">' + icon('camera', 22) + '</span>') + '</div>' +
-            '<label class="btn btn-ghost btn-sm" style="cursor:pointer">사진 선택' +
-              '<input type="file" id="rec-photo-input" accept="image/*" hidden></label>' +
           '</div></div>',
       onMount: function (root) {
         /* --- 음성 입력 (STT) — 제목·내용 --- */
@@ -437,19 +436,46 @@
         });
         paintMood();
 
-        /* --- 사진 --- */
-        root.querySelector('#rec-photo-input').addEventListener('change', function (e) {
+        /* --- 사진 (미디어 타일) --- */
+        var photoTile = root.querySelector('#rec-photo');
+        var photoInput = root.querySelector('#rec-photo-input');
+        function paintPhotoTile() {
+          if (photoData) {
+            photoTile.classList.remove('empty-tile');
+            photoTile.innerHTML = '<img src="' + photoData + '" alt="">' +
+              '<button type="button" class="media-tile-remove" id="rec-photo-remove" ' +
+              'aria-label="사진 지우기">' + icon('x', 13) + '</button>';
+            photoTile.querySelector('#rec-photo-remove').onclick = function (e) {
+              e.stopPropagation(); photoData = null; paintPhotoTile();
+            };
+          } else {
+            photoTile.classList.add('empty-tile');
+            photoTile.innerHTML = icon('camera', 20) + '<span>사진</span>';
+          }
+          photoTile.onclick = function (e) {
+            if (e.target.closest('#rec-photo-remove')) return;
+            photoInput.click();
+          };
+        }
+        photoInput.addEventListener('change', function (e) {
           var file = e.target.files[0]; if (!file) return;
           UI.fileToDataURL(file, 800, function (url) {
             if (!url) { toast('이미지를 불러오지 못했어요', 'err'); return; }
             photoData = url;
-            root.querySelector('#rec-photo').innerHTML =
-              '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover">';
+            paintPhotoTile();
           });
         });
+        paintPhotoTile();
 
-        /* --- 영상 클립 (릴스) --- */
+        /* --- 영상 클립 (릴스) — 비어있을 땐 사진과 나란히 작은 타일, 촬영·검토 중엔 전체 영역 --- */
+        var clipTile = root.querySelector('#clip-tile');
+        var pickVideoBtn = root.querySelector('#cl-pickvideo');
+        var clipFileInput = root.querySelector('#cl-file');
         var sec = root.querySelector('#clip-sec');
+        pickVideoBtn.onclick = function () { clipFileInput.click(); };
+        clipFileInput.addEventListener('change', function (e) {
+          if (e.target.files[0]) onClipFile(e.target.files[0]);
+        });
         function stopStream() {
           if (CL.stream) { try { CL.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
           CL.stream = null; _clipStream = null;
@@ -462,25 +488,22 @@
         }
 
         function renderClip() {
+          if (CL.state === 'empty') {
+            clipTile.hidden = false;
+            clipTile.classList.add('empty-tile');
+            clipTile.innerHTML = icon('camera', 20) + '<span>영상</span>';
+            clipTile.onclick = function () { CL.state = 'capturing'; renderClip(); };
+            pickVideoBtn.hidden = false;
+            sec.hidden = true;
+            sec.innerHTML = '';
+            return;
+          }
+          clipTile.hidden = true;
+          pickVideoBtn.hidden = true;
+          sec.hidden = false;
           if (CL.state === 'loading') {
             sec.innerHTML = '<p class="faint" style="font-size:.84rem;padding:8px 0">' +
               '기존 영상을 불러오는 중…</p>';
-            return;
-          }
-          if (CL.state === 'empty') {
-            sec.innerHTML =
-              '<div class="clip-empty">' +
-                '<button type="button" class="btn btn-primary btn-sm" id="cl-rec">' +
-                  icon('camera', 15) + '짧은 영상 촬영</button>' +
-                '<button type="button" class="btn btn-ghost btn-sm" id="cl-up">' +
-                  icon('download', 15) + '영상 선택</button>' +
-                '<input type="file" id="cl-file" accept="video/*" hidden>' +
-              '</div>';
-            sec.querySelector('#cl-rec').onclick = function () { CL.state = 'capturing'; renderClip(); };
-            sec.querySelector('#cl-up').onclick = function () { sec.querySelector('#cl-file').click(); };
-            sec.querySelector('#cl-file').onchange = function (e) {
-              if (e.target.files[0]) onClipFile(e.target.files[0]);
-            };
             return;
           }
           if (CL.state === 'capturing') {
