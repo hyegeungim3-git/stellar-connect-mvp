@@ -274,14 +274,8 @@
     var photoData = rec.photo || null;
     var mood = rec.mood || 3;
 
-    // 영상 클립(릴스) 컨트롤러 상태
-    var CL = {
-      state: 'empty',    // empty | loading | capturing | review
-      blob: null, url: null, duration: 0,
-      isNew: false, removed: false,
-      stream: null, recorder: null, chunks: [], recording: false,
-      recT0: 0, recTimer: null
-    };
+    // 영상 클립 상태 (OS 피커로 첨부한 영상 blob 관리)
+    var CL = { blob: null, url: null, duration: 0, isNew: false, removed: false };
 
     var typeButtons = Object.keys(RT).map(function (k) {
       var meta = RT[k];
@@ -304,16 +298,13 @@
             '<input class="input" name="time" type="time" value="' + esc(rec.time || '') + '"></div>' +
         '</div>' +
         '<div class="field"><label>' + icon('camera', 14) +
-          ' 미디어 <span class="faint">사진과 영상을 함께 남길 수 있어요 · 영상은 최대 30초</span></label>' +
+          ' 미디어 <span class="faint">사진·영상을 카메라나 앨범에서 담을 수 있어요</span></label>' +
           '<div class="media-row">' +
             '<div class="media-tile" id="rec-photo"></div>' +
             '<div class="media-tile" id="clip-tile"></div>' +
           '</div>' +
-          '<button type="button" class="media-pickvideo" id="cl-pickvideo">' +
-            icon('download', 13) + '영상 파일에서 선택</button>' +
           '<input type="file" id="rec-photo-input" accept="image/*" hidden>' +
-          '<input type="file" id="cl-file" accept="video/*" hidden>' +
-          '<div id="clip-sec" class="clip-sec"></div></div>' +
+          '<input type="file" id="cl-file" accept="video/*" hidden></div>' +
         '<div class="field"><label>제목 <span class="req">*</span></label>' +
           '<div style="display:flex;gap:6px;align-items:center">' +
             '<input class="input" name="title" style="flex:1" value="' + esc(rec.title) + '" ' +
@@ -467,146 +458,33 @@
         });
         paintPhotoTile();
 
-        /* --- 영상 클립 (릴스) — 비어있을 땐 사진과 나란히 작은 타일, 촬영·검토 중엔 전체 영역 --- */
+        /* --- 영상 (미디어 타일) — 사진과 동일하게 OS 기본 촬영/앨범 피커로 첨부 --- */
         var clipTile = root.querySelector('#clip-tile');
-        var pickVideoBtn = root.querySelector('#cl-pickvideo');
         var clipFileInput = root.querySelector('#cl-file');
-        var sec = root.querySelector('#clip-sec');
-        pickVideoBtn.onclick = function () { clipFileInput.click(); };
-        clipFileInput.addEventListener('change', function (e) {
-          if (e.target.files[0]) onClipFile(e.target.files[0]);
-        });
-        function stopStream() {
-          if (CL.stream) { try { CL.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
-          CL.stream = null; _clipStream = null;
-        }
-        function cleanupClip() {
-          if (CL.recording) { CL.recording = false; }
-          if (CL.recTimer) clearInterval(CL.recTimer);
-          stopStream();
-          if (CL.url) { try { URL.revokeObjectURL(CL.url); } catch (e) {} }
-        }
-
-        function renderClip() {
-          if (CL.state === 'empty') {
-            clipTile.hidden = false;
+        function paintClipTile() {
+          if (CL.url) {
+            clipTile.classList.remove('empty-tile');
+            clipTile.innerHTML =
+              '<video src="' + CL.url + '" muted playsinline preload="metadata"></video>' +
+              '<span class="media-tile-badge">' + icon('camera', 11) +
+                (CL.duration ? ' ' + fmtClip(CL.duration) : '') + '</span>' +
+              '<button type="button" class="media-tile-remove" id="clip-remove" ' +
+              'aria-label="영상 지우기">' + icon('x', 13) + '</button>';
+            clipTile.querySelector('#clip-remove').onclick = function (e) {
+              e.stopPropagation();
+              if (CL.url) { try { URL.revokeObjectURL(CL.url); } catch (er) {} CL.url = null; }
+              CL.blob = null; CL.isNew = false; CL.removed = true;
+              paintClipTile();
+            };
+            clipTile.onclick = function (e) {
+              if (e.target.closest('#clip-remove')) return;
+              clipFileInput.click();
+            };
+          } else {
             clipTile.classList.add('empty-tile');
             clipTile.innerHTML = icon('camera', 20) + '<span>영상</span>';
-            clipTile.onclick = function () { CL.state = 'capturing'; renderClip(); };
-            pickVideoBtn.hidden = false;
-            sec.hidden = true;
-            sec.innerHTML = '';
-            return;
+            clipTile.onclick = function () { clipFileInput.click(); };
           }
-          clipTile.hidden = true;
-          pickVideoBtn.hidden = true;
-          sec.hidden = false;
-          if (CL.state === 'loading') {
-            sec.innerHTML = '<p class="faint" style="font-size:.84rem;padding:8px 0">' +
-              '기존 영상을 불러오는 중…</p>';
-            return;
-          }
-          if (CL.state === 'capturing') {
-            sec.innerHTML =
-              '<div class="reels-cap">' +
-                '<div class="reels-frame">' +
-                  '<video id="cl-cam" class="reels-video" autoplay muted playsinline></video>' +
-                  '<div class="reels-timer" id="cl-timer">0:00 / 0:' + CLIP_MAX + '</div>' +
-                '</div>' +
-                '<div class="reels-progress"><div id="cl-bar"></div></div>' +
-                '<div class="reels-ctrl"><button type="button" class="rec-btn" id="cl-toggle" ' +
-                  'aria-label="녹화"></button></div>' +
-                '<button type="button" class="btn btn-ghost btn-sm" id="cl-cancel">취소</button>' +
-              '</div>';
-            sec.querySelector('#cl-toggle').onclick = function () {
-              CL.recording ? stopRec() : startRec();
-            };
-            sec.querySelector('#cl-cancel').onclick = function () {
-              cleanupClip(); CL.state = 'empty'; renderClip();
-            };
-            initCam();
-            return;
-          }
-          // review
-          sec.innerHTML =
-            '<div class="reels-review">' +
-              '<div class="reels-frame">' +
-                '<video id="cl-rev" class="reels-video" controls playsinline></video></div>' +
-              '<div class="row gap-sm" style="justify-content:center;margin-top:8px;flex-wrap:wrap">' +
-                '<span class="badge ok dot">영상 클립 ' + fmtClip(CL.duration) + '</span>' +
-                '<button type="button" class="btn btn-ghost btn-sm" id="cl-redo">다시</button>' +
-                '<button type="button" class="btn btn-danger btn-sm" id="cl-rm">지우기</button>' +
-              '</div>' +
-            '</div>';
-          sec.querySelector('#cl-rev').src = CL.url;
-          sec.querySelector('#cl-redo').onclick = function () {
-            if (CL.url) { try { URL.revokeObjectURL(CL.url); } catch (e) {} CL.url = null; }
-            CL.blob = null; CL.isNew = false; CL.state = 'empty'; renderClip();
-          };
-          sec.querySelector('#cl-rm').onclick = function () {
-            if (CL.url) { try { URL.revokeObjectURL(CL.url); } catch (e) {} CL.url = null; }
-            CL.blob = null; CL.isNew = false; CL.removed = true;
-            CL.state = 'empty'; renderClip();
-          };
-        }
-
-        function initCam() {
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camFail(); return; }
-          navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 1280 } },
-            audio: true
-          }).catch(function () {
-            return navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          }).then(function (s) {
-            CL.stream = s; _clipStream = s;
-            var cam = sec.querySelector('#cl-cam');
-            if (!cam) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
-            cam.srcObject = s;
-          }).catch(camFail);
-        }
-        function camFail() {
-          toast('카메라를 사용할 수 없어요. 영상 선택을 이용해 주세요', 'err');
-          CL.state = 'empty'; renderClip();
-        }
-        function startRec() {
-          if (!CL.stream) return;
-          CL.chunks = [];
-          var ropts = {};
-          ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].some(function (m) {
-            if (global.MediaRecorder && MediaRecorder.isTypeSupported(m)) { ropts.mimeType = m; return true; }
-            return false;
-          });
-          try { CL.recorder = new MediaRecorder(CL.stream, ropts); }
-          catch (e) {
-            try { CL.recorder = new MediaRecorder(CL.stream); }
-            catch (e2) { toast('이 브라우저는 녹화를 지원하지 않아요', 'err'); return; }
-          }
-          CL.recorder.ondataavailable = function (e) { if (e.data.size) CL.chunks.push(e.data); };
-          CL.recorder.onstop = function () {
-            var blob = new Blob(CL.chunks, { type: CL.chunks[0] ? CL.chunks[0].type : 'video/webm' });
-            stopStream();
-            CL.blob = blob; CL.isNew = true; CL.removed = false;
-            CL.url = URL.createObjectURL(blob);
-            CL.state = 'review'; renderClip();
-          };
-          CL.recorder.start();
-          CL.recording = true; CL.recT0 = Date.now();
-          var tog = sec.querySelector('#cl-toggle');
-          if (tog) tog.classList.add('recording');
-          CL.recTimer = setInterval(function () {
-            var s = (Date.now() - CL.recT0) / 1000;
-            var tm = sec.querySelector('#cl-timer'), bar = sec.querySelector('#cl-bar');
-            if (tm) tm.textContent = fmtClip(s) + ' / 0:' + CLIP_MAX;
-            if (bar) bar.style.width = Math.min(100, s / CLIP_MAX * 100) + '%';
-            if (s >= CLIP_MAX) stopRec();
-          }, 150);
-        }
-        function stopRec() {
-          if (!CL.recording) return;
-          CL.recording = false;
-          CL.duration = (Date.now() - CL.recT0) / 1000;
-          clearInterval(CL.recTimer);
-          try { CL.recorder.stop(); } catch (e) {}
         }
         function onClipFile(file) {
           if (!file.type || file.type.indexOf('video') !== 0) {
@@ -623,29 +501,35 @@
             if (CL.duration > CLIP_MAX + 5) {
               toast('기록용 영상은 짧은 클립을 권장해요 (' + CLIP_MAX + '초 이내)', 'err');
             }
-            var b = sec.querySelector('.badge.ok');
-            if (b) b.textContent = '영상 클립 ' + fmtClip(CL.duration);
+            paintClipTile();
           };
           tmp.src = CL.url;
-          CL.state = 'review'; renderClip();
+          paintClipTile();
+        }
+        clipFileInput.addEventListener('change', function (e) {
+          if (e.target.files[0]) onClipFile(e.target.files[0]);
+        });
+        function cleanupClip() {
+          if (CL.url) { try { URL.revokeObjectURL(CL.url); } catch (e) {} }
         }
 
         // 기존 클립 불러오기 (수정 시)
         if (!isNew && rec.hasClip && rec.clipKey && VideoDB.available()) {
-          CL.state = 'loading'; renderClip();
+          clipTile.classList.add('empty-tile');
+          clipTile.innerHTML = '<span class="faint" style="font-size:.62rem">불러오는 중…</span>';
           VideoDB.get(rec.clipKey).then(function (blob) {
             if (blob) {
               CL.blob = blob; CL.isNew = false; CL.duration = rec.clipDuration || 0;
-              CL.url = URL.createObjectURL(blob); CL.state = 'review';
-            } else { CL.state = 'empty'; }
-            renderClip();
-          }).catch(function () { CL.state = 'empty'; renderClip(); });
+              CL.url = URL.createObjectURL(blob);
+            }
+            paintClipTile();
+          }).catch(function () { paintClipTile(); });
         } else {
-          renderClip();
-          if (opts.autoClip) { CL.state = 'capturing'; renderClip(); }
+          paintClipTile();
+          if (opts.autoClip) clipFileInput.click();
         }
 
-        // 모달이 닫힐 때 카메라 정리
+        // 모달이 닫힐 때 미리보기 URL 정리
         var host = UI.el('modal-host');
         var xb = host.querySelector('[data-mclose]');
         var bd = host.querySelector('[data-mbackdrop]');
@@ -654,9 +538,7 @@
           var ob = bd.onclick;
           bd.onclick = function (e) { if (e.target === e.currentTarget) cleanupClip(); if (ob) ob(e); };
         }
-        // onButton 에서 쓰도록 컨트롤러 노출
         CL._cleanup = cleanupClip;
-        CL._stopRec = stopRec;
       },
       buttons: [
         { label: '취소', value: 'cancelx', variant: 'ghost' },
@@ -665,7 +547,6 @@
       onButton: function (v, root) {
         if (v === 'cancelx') { if (CL._cleanup) CL._cleanup(); return; }
         if (v !== 'ok') return;
-        if (CL.recording) { toast('녹화를 먼저 정지해 주세요', 'err'); return 'keep'; }
         var f = readForm(root);
         if (!f.title) { toast('제목을 입력해 주세요', 'err'); return 'keep'; }
         rec.type = f.type; rec.date = f.date || todayStr(); rec.time = f.time || '';
