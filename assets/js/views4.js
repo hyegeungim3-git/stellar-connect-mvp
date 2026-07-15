@@ -158,8 +158,8 @@
               done + '/' + items.length + ' 완료</span></div>' +
           list +
           recoChips +
-          '<div class="add-item">' +
-            '<select class="select" id="plan-area" style="flex:none;width:150px">' + areaOpts + '</select>' +
+          '<div class="add-item add-item-select">' +
+            '<select class="select plan-area-select" id="plan-area">' + areaOpts + '</select>' +
             '<input class="input" id="plan-text" placeholder="직접 입력 — 예) 수영 배우기">' +
             '<button class="btn btn-soft" id="plan-add">' + icon('plus', 15) + '추가</button>' +
           '</div></div>';

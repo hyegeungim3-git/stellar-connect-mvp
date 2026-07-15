@@ -821,6 +821,14 @@ svg { vertical-align: middle; }
 
 .add-item { display: flex; gap: 9px; margin-top: 14px; align-items: flex-start; }
 .add-item .input, .add-item .textarea { flex: 1; }
+.plan-area-select { flex: none; width: 150px; }
+/* select(고정폭)+입력+버튼 조합은 좁은 화면에서 입력칸이 짓눌림 — 모바일엔 세로로 쌓아 입력칸을 충분히 넓게 */
+@media (max-width: 560px) {
+  .add-item-select { flex-wrap: wrap; }
+  .add-item-select select,
+  .add-item-select input,
+  .add-item-select button { width: 100%; flex: none; }
+}
 
 /* ---------- 14. 한 장 요약 (서포트북) ---------- */
 .summary-sheet {
