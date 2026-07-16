@@ -218,13 +218,6 @@
   function shareURL(token) {
     return location.origin + location.pathname + '#/v/' + token;
   }
-  /* 휘발성 QR — 주기마다 nonce가 바뀌어 QR 이미지가 갱신됨.
-     ?k= 쿼리는 SPA(해시 라우팅)가 무시하므로 링크는 그대로 열람 가능(데모: 실서비스는 서버에서 이전 QR 만료). */
-  function rotatingShareURL(token, nonce) {
-    return location.origin + location.pathname + '?k=' + nonce + '#/v/' + token;
-  }
-  /* QR 이미지 갱신 주기 옵션 (초). 0 = 고정(기본) — 열람 기간과는 무관한 보안 기능 */
-  var QR_PERIODS = [[0, '고정'], [30, '30초마다'], [60, '1분마다'], [300, '5분마다']];
 
   /* =====================================================================
    * 기록 (행동 / 치료 / 변화)
@@ -1641,11 +1634,8 @@
       document.querySelectorAll('[data-qr]').forEach(function (b) {
         b.onclick = function () {
           var token = b.dataset.qr, code = b.dataset.qrCode, name = b.dataset.qrName;
-          var period = 0;                  // 기본 고정 — 이미지 갱신은 원할 때만 (열람 기간과 혼동 방지)
-          var nonce = Date.now();
-          var remain = period;
-          var timer = null;
-          /* 열람 기간 — 공유에 설정한 기간을 QR 모달에서도 그대로 보여준다 */
+          /* 열람 기간 — 공유에 설정한 기간을 QR 모달에서도 그대로 보여준다.
+             보안은 인증번호 + 열람 기간 + 즉시 중단 3종으로 충분 (이미지 회전 기능은 제거, 2026-07-16) */
           var qShare = Store.getShareByToken(token);
           var qValidity = (qShare && qShare.expiresAt)
             ? '<b>' + UI.fmtDate(qShare.expiresAt) + '</b>까지 열람 가능 ' +
@@ -1653,11 +1643,6 @@
               Math.max(0, Math.ceil((new Date(qShare.expiresAt).getTime() - Date.now()) / 864e5)) +
               '</span>'
             : '기간 제한 없이 열람 가능';
-          function renderQRInto(host) {
-            var url = period ? rotatingShareURL(token, nonce) : shareURL(token);
-            var svg = QR.svg(url, { cell: 4, margin: 3, width: 196 });
-            host.innerHTML = svg || '<p class="muted">링크가 너무 길어 QR을 만들 수 없어요.</p>';
-          }
           Modal.open({
             title: 'QR 코드 · 키링 카드', icon: 'grid',
             body:
@@ -1668,59 +1653,20 @@
                   '<b style="letter-spacing:.15em;color:var(--primary-dark)">' + esc(code) + '</b></div>' +
                 '<div class="mt-1" style="font-size:.85rem">' + icon('clock', 13) + ' ' + qValidity + '</div>' +
               '</div>' +
-              '<div class="qr-rotate mt-2">' +
-                '<div class="qr-rotate-row">' +
-                  '<label class="qr-rotate-lbl">' + icon('grid', 14) + ' QR 이미지 갱신</label>' +
-                  '<select class="select" id="qr-period" style="max-width:130px">' +
-                    QR_PERIODS.map(function (o) {
-                      return '<option value="' + o[0] + '"' + (o[0] === period ? ' selected' : '') +
-                        '>' + o[1] + '</option>';
-                    }).join('') + '</select>' +
-                  '<span class="qr-countdown" id="qr-count"></span>' +
-                '</div>' +
-              '</div>' +
               '<div class="pill-info mt-2">' + icon('info', 16) +
-                '<div>열람 기간은 위 만료일까지예요. QR 이미지 갱신은 <b>화면 유출을 막는 보안 기능</b>으로, ' +
-                '열람 기간과는 무관해요. 인쇄해 <b>가방·키링</b>에 다는 안심 카드는 고정 QR로 만들어져요. ' +
-                '<span class="faint">(데모: 갱신 시 이전 QR도 열람됩니다. 실서비스에서는 서버에서 ' +
-                '이전 QR이 만료됩니다.)</span></div></div>',
+                '<div>QR을 스캔한 사람도 <b>인증번호</b>를 알아야 열람할 수 있고, 열람 기간이 지나면 ' +
+                '자동으로 닫혀요. 공유 목록에서 언제든 <b>즉시 중단</b>할 수 있어요. ' +
+                '인쇄해 <b>가방·키링</b>에 다는 안심 카드로도 만들 수 있어요.</div></div>',
             buttons: [
               { label: '닫기', value: 'cancel', variant: 'ghost' },
               { label: '키링 카드 인쇄', value: 'print', variant: 'primary' }
             ],
             onMount: function (root) {
               var box = root.querySelector('#qr-box');
-              var countEl = root.querySelector('#qr-count');
-              var sel = root.querySelector('#qr-period');
-              function paintCount() {
-                if (!period) { countEl.textContent = '갱신 안 함'; return; }
-                countEl.textContent = remain + '초 후 갱신';
-              }
-              function tick() {
-                if (!period) return;
-                remain--;
-                if (remain <= 0) { nonce = Date.now(); renderQRInto(box); remain = period; }
-                paintCount();
-              }
-              function restart() {
-                if (timer) { clearInterval(timer); timer = null; }
-                nonce = Date.now(); renderQRInto(box); remain = period; paintCount();
-                if (period) timer = setInterval(tick, 1000);
-              }
-              sel.addEventListener('change', function () {
-                period = parseInt(sel.value, 10); restart();
-              });
-              restart();
-              // 모달 닫힘 시 타이머 정리
-              var host = UI.el('modal-host');
-              var xb = host.querySelector('[data-mclose]');
-              var bd = host.querySelector('[data-mbackdrop]');
-              function stop() { if (timer) { clearInterval(timer); timer = null; } }
-              if (xb) { var ox = xb.onclick; xb.onclick = function () { stop(); if (ox) ox(); }; }
-              if (bd) { var ob = bd.onclick; bd.onclick = function (e) { if (e.target === e.currentTarget) stop(); if (ob) ob(e); }; }
+              var svg = QR.svg(shareURL(token), { cell: 4, margin: 3, width: 196 });
+              box.innerHTML = svg || '<p class="muted">링크가 너무 길어 QR을 만들 수 없어요.</p>';
             },
             onButton: function (v) {
-              if (timer) { clearInterval(timer); timer = null; }
               if (v !== 'print') return;
               var holder = document.createElement('div');
               holder.className = 'print-area keyring-print';
