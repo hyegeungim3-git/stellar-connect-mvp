@@ -1257,7 +1257,7 @@
                   (revoked ? ' <span class="badge danger">중단됨</span>'
                     : expired ? ' <span class="badge danger">기간 만료</span>'
                     : s.renewCycle ? ' <span class="badge">' + CYCLE_LABEL[s.renewCycle] +
-                        '마다 자동으로 닫혀요' + (dleft != null ? ' · D-' + dleft : '') + '</span>' : '') +
+                        ' 동안 열람' + (dleft != null ? ' · D-' + dleft : '') + '</span>' : '') +
                 '</div>' +
                 '<span class="faint" style="font-size:.8rem">' + icon('eye', 13) + ' ' +
                   (s.views || 0) + '번 봤어요</span>' +
@@ -1407,7 +1407,7 @@
               ['학교', '병원', '치료기관', '활동지원사', '가족·친척', '기타'].map(function (o) {
                 return '<option>' + o + '</option>';
               }).join('') + '</select></div>' +
-            '<div class="field"><label>공유 기간 <span class="faint">기간이 지나면 자동으로 닫혀요</span></label>' +
+            '<div class="field"><label>공유 기간 <span class="faint">기간이 끝나면 저절로 잠가 아이의 정보를 지켜요</span></label>' +
               '<select class="select" name="renewCycle">' +
               [['month', '1개월'], ['day', '1일'], ['week', '1주일'], ['year', '1년'], ['', '계속 유지']].map(function (o) {
                 return '<option value="' + o[0] + '"' + (o[0] === 'month' ? ' selected' : '') + '>' +
@@ -1442,7 +1442,7 @@
                 '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
                 '<div class="access-code">' + esc(s.accessCode) + '</div></div>' +
                 (s.renewCycle ? '<p class="faint" style="font-size:.8rem;text-align:center">' +
-                  CYCLE_LABEL[s.renewCycle] + ' 동안 열람할 수 있어요. 기간이 지나면 안전하게 자동으로 닫혀요.</p>' : ''),
+                  CYCLE_LABEL[s.renewCycle] + ' 동안 열람할 수 있어요. 기간이 끝나면 저절로 잠가 아이의 정보를 소중히 지켜 드려요.</p>' : ''),
               buttons: [
                 { label: '공유하기', value: 'share', variant: 'soft' },
                 { label: '링크 복사', value: 'copy', variant: 'soft' },
@@ -1654,8 +1654,8 @@
                 '<div class="mt-1" style="font-size:.85rem">' + icon('clock', 13) + ' ' + qValidity + '</div>' +
               '</div>' +
               '<div class="pill-info mt-2">' + icon('info', 16) +
-                '<div>QR을 스캔한 사람도 <b>인증번호</b>를 알아야 열람할 수 있고, 열람 기간이 지나면 ' +
-                '자동으로 닫혀요. 공유 목록에서 언제든 <b>즉시 중단</b>할 수 있어요. ' +
+                '<div>QR을 스캔한 사람도 <b>인증번호</b>를 알아야 열람할 수 있고, 열람 기간이 끝나면 ' +
+                '저절로 잠가 아이의 정보를 지켜요. 공유 목록에서 언제든 <b>즉시 중단</b>할 수 있어요. ' +
                 '인쇄해 <b>가방·키링</b>에 다는 안심 카드로도 만들 수 있어요.</div></div>',
             buttons: [
               { label: '닫기', value: 'cancel', variant: 'ghost' },
