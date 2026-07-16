@@ -1752,9 +1752,14 @@
         '<span>Stellar Connect · S:CON</span></div></div></div>';
 
       if (!share || share.revoked || Store.isShareExpired(share)) {
+        /* 승차권 전달처럼 — 기간 만료면 언제까지였는지 명확히 알려준다 */
+        var endMsg = (share && !share.revoked && share.expiresAt)
+          ? '이 설명서는 <b>' + UI.fmtDate(share.expiresAt) + '</b>까지 열람할 수 있었어요.<br>' +
+            '계속 보시려면 보호자에게 새 링크를 요청해 주세요.'
+          : '공유 기간이 끝났거나 중단됐어요. 보호자에게 새 링크를 요청해 주세요.';
         return topBar + '<div class="container narrow"><div class="card empty">' +
           '<div class="emoji">🔒</div><h3>지금은 열 수 없는 링크예요</h3>' +
-          '<p>공유 기간이 끝났거나 중단됐어요. 보호자에게 새 링크를 요청해 주세요.</p></div></div>';
+          '<p>' + endMsg + '</p></div></div>';
       }
       var child = Store.getChild(share.childId);
       var manual = child ? Store.getManual(child.id) : null;
@@ -1764,6 +1769,18 @@
       }
       var AUD = V._audienceMap(child.ownerId);
 
+      /* 열람 유효기간 — 승차권 전달처럼 받는 사람에게도 기간을 명확히 보여준다 */
+      var vd = null;
+      if (share.expiresAt) {
+        var _dl = Math.max(0, Math.ceil((new Date(share.expiresAt).getTime() - Date.now()) / 864e5));
+        vd = { until: UI.fmtDate(share.expiresAt), dleft: _dl };
+      }
+      var validityLine = vd
+        ? '<b>' + vd.until + '</b>까지 열람 가능 ' +
+          '<span class="badge ' + (vd.dleft <= 3 ? 'warn' : 'ok') + '">' +
+          (vd.dleft === 0 ? '오늘까지' : 'D-' + vd.dleft) + '</span>'
+        : '기간 제한 없이 열람 가능';
+
       if (!viewerAuthed[share.token]) {
         return topBar + '<div class="container narrow" style="padding-top:44px">' +
           '<div class="card card-pad" style="max-width:380px;margin:0 auto;text-align:center">' +
@@ -1771,6 +1788,8 @@
           '<h2 style="margin:10px 0 4px">인증번호 입력</h2>' +
           '<p class="muted mb-3" style="font-size:.9rem">보호자에게 전달받은 ' +
             '4자리 인증번호를 입력해 주세요.</p>' +
+          '<div class="pill-info mb-3" style="justify-content:center;font-size:.85rem;text-align:left">' +
+            icon('clock', 15) + '<div>' + validityLine + '</div></div>' +
           '<form id="vauth-form">' +
             '<input class="input" id="vauth-code" inputmode="numeric" maxlength="4" ' +
               'style="text-align:center;font-size:1.6rem;letter-spacing:.4em;font-weight:800" ' +
@@ -1797,7 +1816,8 @@
       return topBar + '<div class="container">' +
         '<div class="pill-info mb-2">' + icon('eye', 16) +
           '<div><b>' + esc(share.viewerName || '받는 분') + '</b> 님에게 공유된 ' +
-          '<b>' + esc(audLabel) + '</b> 설명서입니다.</div></div>' +
+          '<b>' + esc(audLabel) + '</b> 설명서입니다.' +
+          '<div style="margin-top:3px;font-size:.86rem">' + validityLine + '</div></div></div>' +
         '<div class="print-area">' + V._summarySheet(child, manual,
           { audience: share.audience, scope: share.scope, safe: !!share.safeNumber, token: share.token }) + '</div>' +
         '<div class="row no-print" style="justify-content:center;margin-top:18px">' +
