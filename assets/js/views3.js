@@ -223,8 +223,8 @@
   function rotatingShareURL(token, nonce) {
     return location.origin + location.pathname + '?k=' + nonce + '#/v/' + token;
   }
-  /* QR 갱신 주기 옵션 (초). 0 = 고정(갱신 안 함) */
-  var QR_PERIODS = [[30, '30초'], [60, '1분'], [300, '5분'], [0, '고정']];
+  /* QR 이미지 갱신 주기 옵션 (초). 0 = 고정(기본) — 열람 기간과는 무관한 보안 기능 */
+  var QR_PERIODS = [[0, '고정'], [30, '30초마다'], [60, '1분마다'], [300, '5분마다']];
 
   /* =====================================================================
    * 기록 (행동 / 치료 / 변화)
@@ -1641,10 +1641,18 @@
       document.querySelectorAll('[data-qr]').forEach(function (b) {
         b.onclick = function () {
           var token = b.dataset.qr, code = b.dataset.qrCode, name = b.dataset.qrName;
-          var period = 60;                 // 기본 갱신 주기 60초
+          var period = 0;                  // 기본 고정 — 이미지 갱신은 원할 때만 (열람 기간과 혼동 방지)
           var nonce = Date.now();
           var remain = period;
           var timer = null;
+          /* 열람 기간 — 공유에 설정한 기간을 QR 모달에서도 그대로 보여준다 */
+          var qShare = Store.getShareByToken(token);
+          var qValidity = (qShare && qShare.expiresAt)
+            ? '<b>' + UI.fmtDate(qShare.expiresAt) + '</b>까지 열람 가능 ' +
+              '<span class="badge ok">D-' +
+              Math.max(0, Math.ceil((new Date(qShare.expiresAt).getTime() - Date.now()) / 864e5)) +
+              '</span>'
+            : '기간 제한 없이 열람 가능';
           function renderQRInto(host) {
             var url = period ? rotatingShareURL(token, nonce) : shareURL(token);
             var svg = QR.svg(url, { cell: 4, margin: 3, width: 196 });
@@ -1658,10 +1666,11 @@
                   'border-radius:14px;background:#fff"></div>' +
                 '<div class="mt-1"><span class="faint" style="font-size:.8rem">인증번호</span> ' +
                   '<b style="letter-spacing:.15em;color:var(--primary-dark)">' + esc(code) + '</b></div>' +
+                '<div class="mt-1" style="font-size:.85rem">' + icon('clock', 13) + ' ' + qValidity + '</div>' +
               '</div>' +
               '<div class="qr-rotate mt-2">' +
                 '<div class="qr-rotate-row">' +
-                  '<label class="qr-rotate-lbl">' + icon('clock', 14) + ' 자동 갱신</label>' +
+                  '<label class="qr-rotate-lbl">' + icon('grid', 14) + ' QR 이미지 갱신</label>' +
                   '<select class="select" id="qr-period" style="max-width:130px">' +
                     QR_PERIODS.map(function (o) {
                       return '<option value="' + o[0] + '"' + (o[0] === period ? ' selected' : '') +
@@ -1671,9 +1680,10 @@
                 '</div>' +
               '</div>' +
               '<div class="pill-info mt-2">' + icon('info', 16) +
-                '<div>보안을 위해 QR을 <b>주기적으로 새로 고칩니다</b>. 인쇄해 <b>가방·키링</b>에 다는 ' +
-                '안심 카드는 고정 QR로 만들어져요. <span class="faint">(데모: 갱신 시 이전 QR도 ' +
-                '열람됩니다. 실서비스에서는 서버에서 이전 QR이 만료됩니다.)</span></div></div>',
+                '<div>열람 기간은 위 만료일까지예요. QR 이미지 갱신은 <b>화면 유출을 막는 보안 기능</b>으로, ' +
+                '열람 기간과는 무관해요. 인쇄해 <b>가방·키링</b>에 다는 안심 카드는 고정 QR로 만들어져요. ' +
+                '<span class="faint">(데모: 갱신 시 이전 QR도 열람됩니다. 실서비스에서는 서버에서 ' +
+                '이전 QR이 만료됩니다.)</span></div></div>',
             buttons: [
               { label: '닫기', value: 'cancel', variant: 'ghost' },
               { label: '키링 카드 인쇄', value: 'print', variant: 'primary' }
@@ -1751,12 +1761,23 @@
         '<div class="wordmark"><b>내 아이 설명서</b>' +
         '<span>Stellar Connect · S:CON</span></div></div></div>';
 
-      if (!share || share.revoked || Store.isShareExpired(share)) {
+      /* 프로토타입 정직성 — '못 찾음'(다른 기기)과 '중단·만료'를 구분해 안내한다.
+         공유 데이터는 만든 기기의 브라우저(localStorage)에만 저장되므로,
+         QR을 다른 기기에서 스캔하면 여기로 온다. 실서비스는 서버 조회라 문제 없음. */
+      if (!share) {
+        return topBar + '<div class="container narrow"><div class="card empty">' +
+          '<div class="emoji">🔍</div><h3>이 기기에서 공유 정보를 찾을 수 없어요</h3>' +
+          '<p>지금은 시연용 프로토타입이라 공유 데이터가 <b>공유를 만든 기기의 브라우저</b>에만 ' +
+          '저장돼요.<br>공유를 만든 기기에서 열어 보시거나, 보호자에게 링크를 다시 요청해 주세요.<br>' +
+          '<span class="faint">정식 서비스에서는 서버에서 조회되어 어느 기기에서나 열람할 수 있습니다.</span></p>' +
+          '</div></div>';
+      }
+      if (share.revoked || Store.isShareExpired(share)) {
         /* 승차권 전달처럼 — 기간 만료면 언제까지였는지 명확히 알려준다 */
-        var endMsg = (share && !share.revoked && share.expiresAt)
+        var endMsg = (!share.revoked && share.expiresAt)
           ? '이 설명서는 <b>' + UI.fmtDate(share.expiresAt) + '</b>까지 열람할 수 있었어요.<br>' +
             '계속 보시려면 보호자에게 새 링크를 요청해 주세요.'
-          : '공유 기간이 끝났거나 중단됐어요. 보호자에게 새 링크를 요청해 주세요.';
+          : '보호자가 공유를 중단했어요. 보호자에게 새 링크를 요청해 주세요.';
         return topBar + '<div class="container narrow"><div class="card empty">' +
           '<div class="emoji">🔒</div><h3>지금은 열 수 없는 링크예요</h3>' +
           '<p>' + endMsg + '</p></div></div>';
