@@ -243,7 +243,9 @@
       '순서 기다리기를 연습했어요', '새로운 음식을 한 입 먹어봤어요'
     ],
     treatment: [
-      '언어치료 수업', '감각통합 치료', '놀이치료 수업', '병원 정기 진료'
+      '언어치료 수업', '감각통합 치료', '놀이치료 수업', '병원 정기 진료',
+      /* 의료·처치 이력도 치료 기록으로 — 내부리뷰 0721: 발작·주사 등 특수 상황 예시 */
+      '발작·경련이 있었어요', '주사·처치를 받았어요'
     ],
     medication: [
       '아침 약 복용', '저녁 약 복용', '취침 전 약 복용', '약 복용 후 컨디션'
@@ -258,6 +260,9 @@
     ]
   };
 
+  /* 기본 제공 태그 — 자주 쓰는 주제를 바로 탭해서 넣도록 (양육자 자문 0721) */
+  var DEFAULT_TAGS = ['사회성', '의사소통', '행동', '감각', '루틴', '일상'];
+
   function recordModal(childId, rec, opts) {
     opts = opts || {};
     var isNew = !rec;
@@ -266,6 +271,17 @@
     if (isNew) { rec.id = Store.uid('rec'); rec.createdAt = Store.nowISO(); }
     var photoData = rec.photo || null;
     var mood = rec.mood || 3;
+
+    /* 태그 칩 — 기본 제공 + 이 아이 기록에서 자주 쓴 태그 (양육자 자문 0721: 기본 제공 선호 + 직접 추가) */
+    var tagFreq = {};
+    Store.recordsOf(childId).forEach(function (r) {
+      (r.tags || []).forEach(function (t) { tagFreq[t] = (tagFreq[t] || 0) + 1; });
+    });
+    var tagSet = [];
+    Object.keys(tagFreq).sort(function (a, b) { return tagFreq[b] - tagFreq[a]; })
+      .concat(DEFAULT_TAGS)
+      .forEach(function (t) { if (tagSet.indexOf(t) === -1) tagSet.push(t); });
+    tagSet = tagSet.slice(0, 12);
 
     // 영상 클립 상태 (OS 피커로 첨부한 영상 blob 관리)
     var CL = { blob: null, url: null, duration: 0, isNew: false, removed: false };
@@ -298,7 +314,8 @@
           '</div>' +
           '<input type="file" id="rec-photo-input" accept="image/*" hidden>' +
           '<input type="file" id="cl-file" accept="video/*" hidden></div>' +
-        '<div class="field"><label>제목 <span class="req">*</span></label>' +
+        '<div class="field"><label>제목 <span class="req">*</span> ' +
+          '<span class="faint">' + icon('mic', 12) + ' 마이크로 말하면 자동으로 입력돼요</span></label>' +
           '<div style="display:flex;gap:6px;align-items:center">' +
             '<input class="input" name="title" style="flex:1" value="' + esc(rec.title) + '" ' +
             'placeholder="예) 처음으로 친구에게 먼저 인사했어요">' +
@@ -321,15 +338,22 @@
             '<span class="faint" style="font-size:.78rem">불러올 약물을 골라 기록 내용에 넣어요</span>' +
           '</div>' +
           '<div id="rec-med-picker" class="med-picker" hidden></div></div>' +
-        '<div class="field"><label>태그 <span class="faint">(쉼표로 구분)</span></label>' +
+        '<div class="field"><label>태그 ' +
+          '<span class="faint">칩을 탭해 넣거나, 쉼표로 직접 적어요 — 내가 쓴 태그는 다음부터 칩으로 나와요</span></label>' +
           '<input class="input" name="tags" value="' + esc((rec.tags || []).join(', ')) +
-          '" placeholder="예) 사회성, 의사소통"></div>' +
+          '" placeholder="예) 사회성, 의사소통">' +
+          '<div class="quick-chips" id="tag-chips" style="margin-top:7px">' +
+            tagSet.map(function (t) {
+              return '<button type="button" class="chip sm" data-tagchip="' + esc(t) + '">#' +
+                esc(t) + '</button>';
+            }).join('') +
+          '</div></div>' +
         '<div class="field"><label>컨디션</label>' +
-          '<div id="mood-pick" style="display:flex;gap:6px">' +
-            [1, 2, 3, 4, 5].map(function (i) {
-              return '<button type="button" class="btn btn-ghost" data-mood="' + i + '" ' +
-                'style="font-size:1.3rem;padding:6px 12px">' +
-                ['😣', '😕', '😐', '🙂', '😊'][i - 1] + '</button>';
+          '<div id="mood-pick" class="mood-pick">' +
+            UI.MOODS.map(function (m, ix) {
+              var i = ix + 1;
+              return '<button type="button" class="mood-btn m' + i + '" data-mood="' + i + '">' +
+                m.e + '<small>' + m.label + '</small></button>';
             }).join('') +
           '</div></div>',
       onMount: function (root) {
@@ -407,18 +431,38 @@
           };
         });
 
-        /* --- 컨디션 --- */
+        /* --- 컨디션 — 선택한 감정 하나만 감정색으로 강조 (표시 칩과 동일 색, 내부리뷰 0721 통일) --- */
         function paintMood() {
           root.querySelectorAll('[data-mood]').forEach(function (b) {
-            var on = parseInt(b.dataset.mood, 10) <= mood;
-            b.style.opacity = on ? '1' : '.35';
-            b.style.background = parseInt(b.dataset.mood, 10) === mood ? 'var(--primary-soft)' : '';
+            b.classList.toggle('on', parseInt(b.dataset.mood, 10) === mood);
           });
         }
         root.querySelectorAll('[data-mood]').forEach(function (b) {
           b.onclick = function () { mood = parseInt(b.dataset.mood, 10); paintMood(); };
         });
         paintMood();
+
+        /* --- 태그 칩 — 탭하면 입력창에 추가·해제 --- */
+        var tagsInput = root.querySelector('[name="tags"]');
+        function curTags() {
+          return tagsInput.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+        }
+        function paintTagChips() {
+          var cur = curTags();
+          root.querySelectorAll('[data-tagchip]').forEach(function (c) {
+            c.classList.toggle('on', cur.indexOf(c.dataset.tagchip) !== -1);
+          });
+        }
+        root.querySelectorAll('[data-tagchip]').forEach(function (c) {
+          c.onclick = function () {
+            var cur = curTags(), t = c.dataset.tagchip, ix = cur.indexOf(t);
+            if (ix === -1) cur.push(t); else cur.splice(ix, 1);
+            tagsInput.value = cur.join(', ');
+            paintTagChips();
+          };
+        });
+        tagsInput.addEventListener('input', paintTagChips);
+        paintTagChips();
 
         /* --- 사진 (미디어 타일) --- */
         var photoTile = root.querySelector('#rec-photo');

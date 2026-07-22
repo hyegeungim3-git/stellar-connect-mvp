@@ -271,13 +271,19 @@
       bar + '</div><div class="legend" style="margin-top:10px">' + legend + '</div>';
   }
 
+  /* 컨디션 5단계 — 이모지·라벨·감정색을 입력과 표시에 동일하게 사용
+     (내부리뷰 0721: 디자인 통일 + 양육자 자문: 인사이드아웃식 감정별 색상) */
+  var MOODS = [
+    { e: '😣', label: '힘들어요' },
+    { e: '😕', label: '아쉬워요' },
+    { e: '😐', label: '보통이에요' },
+    { e: '🙂', label: '좋아요' },
+    { e: '😊', label: '아주 좋아요' }
+  ];
   function moodStars(n) {
-    var out = '<span class="mood">';
-    for (var i = 1; i <= 5; i++) {
-      out += '<span class="' + (i <= n ? 'on' : '') + '">' +
-        (i <= n ? '😊' : '·') + '</span>';
-    }
-    return out + '</span>';
+    var i = Math.min(5, Math.max(1, n || 3));
+    var m = MOODS[i - 1];
+    return '<span class="mood-chip m' + i + '">' + m.e + ' ' + m.label + '</span>';
   }
 
   /* ---------- 파일 → dataURL ---------- */
@@ -393,7 +399,8 @@
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, timeAgo: timeAgo,
     calcAge: calcAge, initials: initials,
     toast: toast, Modal: Modal,
-    barChart: barChart, lineChart: lineChart, distBar: distBar, moodStars: moodStars,
+    barChart: barChart, lineChart: lineChart, distBar: distBar,
+    MOODS: MOODS, moodStars: moodStars,
     fileToDataURL: fileToDataURL, copyText: copyText,
     speechSupported: speechSupported, attachVoiceInput: attachVoiceInput,
     webShare: webShare

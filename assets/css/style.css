@@ -88,6 +88,13 @@
   --c-routine:  #2da195;  --c-routine-bg: #e0f3f0;   /* 성장 틸 */
   --c-safety:   #d6584e;  --c-safety-bg:  #fbe9e7;   /* 안전 주의사항 */
 
+  /* 컨디션 감정색 (1 힘듦 → 5 아주 좋음) — 입력 피커·표시 칩 공용 (내부리뷰 0721 통일) */
+  --mood-1: #d6584e;  --mood-1-bg: #fbe9e7;
+  --mood-2: #d68a18;  --mood-2-bg: #fbf0d7;
+  --mood-3: #a89114;  --mood-3-bg: #f7f3d9;
+  --mood-4: #4a7bd9;  --mood-4-bg: #e8effc;
+  --mood-5: #1f9d6b;  --mood-5-bg: #e6f5ee;
+
   /* 상태 색 */
   --ok:     #1f9d6b;
   --warn:   #d68a18;
@@ -816,6 +823,7 @@ svg { vertical-align: middle; }
 .add-item { display: flex; gap: 9px; margin-top: 14px; align-items: flex-start; }
 .add-item .input, .add-item .textarea { flex: 1; }
 .plan-area-select { flex: none; width: 150px; }
+.plan-term-select { flex: none; width: 108px; }
 /* select(고정폭)+입력+버튼 조합은 좁은 화면에서 입력칸이 짓눌림 — 모바일엔 세로로 쌓아 입력칸을 충분히 넓게 */
 @media (max-width: 560px) {
   .add-item-select { flex-wrap: wrap; }
@@ -910,9 +918,38 @@ svg { vertical-align: middle; }
 .rec-card .rec-date { font-size: .8rem; color: var(--text-faint); margin-left: auto; }
 .rec-card .rec-title { font-weight: 700; }
 .rec-card .rec-content { font-size: .89rem; color: var(--text-muted); margin-top: 4px; }
-.mood { display: inline-flex; gap: 1px; }
-.mood span { font-size: .92rem; filter: grayscale(1); opacity: .3; }
-.mood span.on { filter: none; opacity: 1; }
+/* 컨디션 표시 칩 — 기록 카드·상세에서 입력 피커와 같은 이모지·감정색 사용 */
+.mood-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700;
+}
+.mood-chip.m1 { background: var(--mood-1-bg); color: var(--mood-1); }
+.mood-chip.m2 { background: var(--mood-2-bg); color: var(--mood-2); }
+.mood-chip.m3 { background: var(--mood-3-bg); color: var(--mood-3); }
+.mood-chip.m4 { background: var(--mood-4-bg); color: var(--mood-4); }
+.mood-chip.m5 { background: var(--mood-5-bg); color: var(--mood-5); }
+
+/* 컨디션 입력 피커 — 감정별 색 버튼 (탭 한 번 선택) */
+.mood-pick { display: flex; gap: 6px; }
+.mood-btn {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 4px 7px; border: 1.5px solid var(--border); border-radius: 12px;
+  background: var(--surface); cursor: pointer; font-size: 1.32rem;
+  transition: .14s var(--ease); opacity: .62;
+}
+.mood-btn small { font-size: .64rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.mood-btn:hover { opacity: 1; }
+.mood-btn.on { opacity: 1; transform: translateY(-1px); }
+.mood-btn.m1.on { background: var(--mood-1-bg); border-color: var(--mood-1); }
+.mood-btn.m2.on { background: var(--mood-2-bg); border-color: var(--mood-2); }
+.mood-btn.m3.on { background: var(--mood-3-bg); border-color: var(--mood-3); }
+.mood-btn.m4.on { background: var(--mood-4-bg); border-color: var(--mood-4); }
+.mood-btn.m5.on { background: var(--mood-5-bg); border-color: var(--mood-5); }
+.mood-btn.m1.on small { color: var(--mood-1); }
+.mood-btn.m2.on small { color: var(--mood-2); }
+.mood-btn.m3.on small { color: var(--mood-3); }
+.mood-btn.m4.on small { color: var(--mood-4); }
+.mood-btn.m5.on small { color: var(--mood-5); }
 
 /* ---------- 16. 차트 ---------- */
 .chart-bars { display: flex; align-items: flex-end; gap: 12px; height: 178px; padding-top: 12px; }

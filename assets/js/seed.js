@@ -104,8 +104,8 @@
           note: '편식이 있어 영양 보충 중이에요.' }
       ],
       allergies: [
-        { name: '땅콩', reaction: '두드러기·호흡곤란', severity: '중증' },
-        { name: '우유', reaction: '복통·발진', severity: '경증' }
+        { name: '땅콩', reaction: '두드러기·호흡곤란', severity: '심함' },
+        { name: '우유', reaction: '복통·발진', severity: '약함' }
       ],
       emergency: {
         protocol: '발작·심한 자해 행동 시: ① 주변 위험물 제거 후 안전 확보 ② 억지로 제지하지 말 것 ③ 5분 이상 지속 시 119 신고 ④ 보호자에게 즉시 연락',
@@ -149,7 +149,7 @@
         sensory: '청각 — 보통 / 촉각 — 특정 옷 라벨·솔기 불편 / 전정감각 추구(빙글빙글 도는 활동 선호)'
       },
       medications: [],
-      allergies: [{ name: '계란', reaction: '발진', severity: '경증' }],
+      allergies: [{ name: '계란', reaction: '발진', severity: '약함' }],
       emergency: {
         protocol: '낯선 환경에서 심하게 울 때: 익숙한 인형(토끼)을 건네고 조용한 곳으로 이동',
         hospital: '○○대학교병원 재활의학과',

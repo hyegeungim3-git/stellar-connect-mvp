@@ -111,10 +111,17 @@
               return '<button type="button" data-pstat="' + it.id + ':' + s2.id + '"' +
                 (it.status === s2.id ? ' class="on"' : '') + '>' + s2.label + '</button>';
             }).join('');
+            /* 단기/장기 배지 — 탭하면 단기 → 장기 → 없음 순환 (양육자 자문 0721) */
+            var termBadge = '<span class="badge ' +
+              (it.term === 'short' ? 'ok' : it.term === 'long' ? 'brand' : '') +
+              '" data-pterm="' + it.id + '" style="font-size:.68rem;cursor:pointer" ' +
+              'title="탭해서 단기·장기 구분을 바꿔요">' +
+              (it.term === 'short' ? '단기' : it.term === 'long' ? '장기' : '기간 지정') + '</span>';
             return '<div class="item-row' + (it.status === 'done' ? ' plan-done' : '') + '">' +
               '<span class="bullet" style="background:' + a.color + '">' + icon('check', 12) + '</span>' +
               '<div class="txt"><span class="badge" style="font-size:.68rem">' + esc(a.label) +
-                '</span><div style="margin-top:3px">' + esc(it.text) + '</div></div>' +
+                '</span> ' + termBadge +
+                '<div style="margin-top:3px">' + esc(it.text) + '</div></div>' +
               '<div class="row gap-sm" style="flex:none;align-items:center">' +
                 '<span class="seg" style="padding:3px">' + segBtns + '</span>' +
                 '<button class="btn-icon" data-pdel2="' + it.id + '">' + icon('trash', 14) + '</button>' +
@@ -160,6 +167,10 @@
           recoChips +
           '<div class="add-item add-item-select">' +
             '<select class="select plan-area-select" id="plan-area">' + areaOpts + '</select>' +
+            '<select class="select plan-term-select" id="plan-term" aria-label="단기·장기 구분">' +
+              '<option value="">기간 무관</option>' +
+              '<option value="short">단기</option>' +
+              '<option value="long">장기</option></select>' +
             '<input class="input" id="plan-text" placeholder="직접 입력 — 예) 수영 배우기">' +
             '<button class="btn btn-soft" id="plan-add">' + icon('plus', 15) + '추가</button>' +
           '</div></div>';
@@ -179,9 +190,20 @@
       UI.el('plan-add').onclick = function () {
         var t = UI.el('plan-text').value.trim();
         if (!t) { toast('내용을 입력해 주세요', 'err'); return; }
-        Store.addPlanItem(child.id, S.planStage, UI.el('plan-area').value, t);
+        Store.addPlanItem(child.id, S.planStage, UI.el('plan-area').value, t,
+          UI.el('plan-term').value);
         App.refresh();
       };
+      // 단기 → 장기 → 없음 순환 토글
+      document.querySelectorAll('[data-pterm]').forEach(function (b) {
+        b.onclick = function () {
+          var items2 = Store.plansOf(child.id);
+          var it = items2.filter(function (x) { return x.id === b.dataset.pterm; })[0];
+          var next = !it || !it.term ? 'short' : it.term === 'short' ? 'long' : '';
+          Store.setPlanTerm(b.dataset.pterm, next);
+          App.refresh();
+        };
+      });
       UI.el('plan-text').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); UI.el('plan-add').click(); }
       });
@@ -218,9 +240,9 @@
     });
     Store.recordsOf(child.id).forEach(function (r) {
       if (r.photo) items.push({ kind: 'record', type: 'photo', src: r.photo,
-                                date: r.date, label: r.title, recId: r.id });
+                                date: r.date, label: r.title, recId: r.id, recType: r.type });
       if (r.clipKey) items.push({ kind: 'record', type: 'video', clipKey: r.clipKey,
-                                  date: r.date, label: r.title, recId: r.id });
+                                  date: r.date, label: r.title, recId: r.id, recType: r.type });
     });
     items.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     return items;
@@ -255,10 +277,13 @@
               ? '<video data-galclip="' + esc(it.clipKey) + '" muted playsinline preload="metadata"></video>' +
                 '<span class="gal-play">' + icon('eye', 18) + '</span>'
               : '<img src="' + it.src + '" alt="" loading="lazy">';
+            /* 어떤 기록에서 온 미디어인지 유형을 배지로 — 데이터 혼재 방지 (양육자 자문 0721) */
+            var typeLabel = { behavior: '행동', treatment: '치료', medication: '복약',
+                              change: '변화', assessment: '검사' }[it.recType] || '기록';
             return '<button class="gal-tile" data-gv="' + i + '">' + media +
               (it.kind === 'safe'
                 ? '<span class="gal-badge safe">안심</span>'
-                : '<span class="gal-badge">기록</span>') +
+                : '<span class="gal-badge">' + typeLabel + '</span>') +
               (it.type === 'video' ? '<span class="gal-badge vid">영상</span>' : '') +
               '<span class="gal-date">' + UI.fmtDate(it.date) + '</span>' +
             '</button>';

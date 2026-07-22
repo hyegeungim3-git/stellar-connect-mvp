@@ -277,12 +277,19 @@
   function plansOf(childId) {
     return getDB().plans.filter(function (p) { return p.childId === childId; });
   }
-  function addPlanItem(childId, stage, area, text) {
+  function addPlanItem(childId, stage, area, text, term) {
     var db = getDB();
+    /* term: 'short'(단기) | 'long'(장기) | ''(미지정) — 양육자 자문 0721 요청 */
     var it = { id: uid('plan'), childId: childId, stage: stage, area: area,
-               text: text, status: 'todo', createdAt: nowISO() };
+               text: text, term: term || '', status: 'todo', createdAt: nowISO() };
     db.plans.push(it);
     setDB(db);
+    return it;
+  }
+  function setPlanTerm(id, term) {
+    var db = getDB();
+    var it = db.plans.filter(function (p) { return p.id === id; })[0];
+    if (it) { it.term = term || ''; setDB(db); }
     return it;
   }
   function setPlanStatus(id, status) {
@@ -527,7 +534,7 @@
     medChecksFor: medChecksFor, toggleMedCheck: toggleMedCheck,
     dailyCheckFor: dailyCheckFor, setDailyCheck: setDailyCheck,
     // 성장 플랜
-    plansOf: plansOf, addPlanItem: addPlanItem,
+    plansOf: plansOf, addPlanItem: addPlanItem, setPlanTerm: setPlanTerm,
     setPlanStatus: setPlanStatus, deletePlanItem: deletePlanItem,
     // 방문 노트 / 장소 제보
     addVisitNote: addVisitNote, visitNotesOfShare: visitNotesOfShare,

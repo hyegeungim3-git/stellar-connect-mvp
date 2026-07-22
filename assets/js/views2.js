@@ -133,6 +133,18 @@
       '<button type="button" class="chip sm" data-medsearch="1">' + icon('search', 13) +
       ' 약학정보원 검색</button></div>';
   }
+  /* 알레르기 정도 표기 — 장애 정도의 '중증/경증'과 겹쳐 혼동된다는 양육자 의견(0721)으로
+     '심함/보통/약함'으로 순화. 예전 저장값(중증·중등도·경증)도 새 표현으로 보여준다. */
+  function sevLabel(s) {
+    if (s === '중증' || s === '심함') return '심함';
+    if (s === '중등도' || s === '보통') return '보통';
+    return '약함';
+  }
+  function sevClass(s) {
+    var l = sevLabel(s);
+    return l === '심함' ? 'danger' : l === '보통' ? 'warn' : '';
+  }
+
   /* 약 정보 검색 링크 — 약학정보원 통합검색으로 바로 연결 (2차 리뷰 요청) */
   function drugInfoURL(name) {
     return 'https://www.health.kr/searchDrug/search_total_result.asp?search_word=' +
@@ -147,11 +159,26 @@
     var isNew = idx == null;
     var vals = isNew ? {} : (child.medications[idx] || {});
     var root = null;
+    var rxPhoto = vals.rxPhoto || null;   // 처방전 사진 (양육자 자문 0721: 촬영 등록 요청)
     Modal.open({
       title: isNew ? '약물 등록' : '약물 수정',
       icon: 'pill', wide: true,
       body: '<div class="med-item" style="margin:0">' +
         dynRow(MED_FIELDS, vals, { noDel: true }) + medQuickBar(vals) + '</div>' +
+        '<div class="row gap-sm" style="margin-top:10px;align-items:center;flex-wrap:wrap">' +
+          '<button type="button" class="btn btn-soft btn-sm" id="rx-attach">' +
+            icon('camera', 14) + '처방전 사진</button>' +
+          '<span class="faint" id="rx-state" style="font-size:.78rem">' +
+            (rxPhoto ? '첨부돼 있어요' : '카메라로 찍거나 앨범에서 올려요') + '</span>' +
+          '<input type="file" id="rx-file" accept="image/*" hidden>' +
+        '</div>' +
+        '<div id="rx-prev" style="margin-top:8px;position:relative;display:inline-block"' +
+          (rxPhoto ? '' : ' hidden') + '>' +
+          '<img id="rx-img" src="' + (rxPhoto || '') + '" alt="처방전 사진" ' +
+            'style="max-height:130px;max-width:100%;border-radius:10px;border:1px solid var(--border);display:block">' +
+          '<button type="button" class="media-tile-remove" id="rx-rm" aria-label="처방전 사진 지우기">' +
+            icon('x', 13) + '</button>' +
+        '</div>' +
         '<p class="faint" style="font-size:.8rem;margin-top:10px">약 이름이나 용량이 확실하지 않다면 ' +
         '<b style="color:var(--primary)">약학정보원 검색</b>으로 바로 확인할 수 있어요. ' +
         '종료일을 비워 두면 ‘계속 복용’으로 표시돼요.</p>',
@@ -190,6 +217,27 @@
             window.open(drugInfoURL(q), '_blank', 'noopener');
           }
         });
+        /* 처방전 사진 첨부 — OS 촬영/앨범 피커, 리사이즈 압축 저장 */
+        var rxFile = r.querySelector('#rx-file');
+        var rxPrev = r.querySelector('#rx-prev');
+        var rxState = r.querySelector('#rx-state');
+        r.querySelector('#rx-attach').onclick = function () { rxFile.click(); };
+        rxFile.addEventListener('change', function (e2) {
+          var f = e2.target.files[0];
+          if (!f) return;
+          UI.fileToDataURL(f, 1100, function (data) {
+            if (!data) { toast('사진을 불러오지 못했어요', 'err'); return; }
+            rxPhoto = data;
+            r.querySelector('#rx-img').src = data;
+            rxPrev.hidden = false;
+            rxState.textContent = '첨부돼 있어요';
+          });
+        });
+        r.querySelector('#rx-rm').onclick = function () {
+          rxPhoto = null;
+          rxPrev.hidden = true;
+          rxState.textContent = '카메라로 찍거나 앨범에서 올려요';
+        };
       },
       onButton: function (v) {
         if (v !== 'save') return;
@@ -198,6 +246,7 @@
           var el = root && root.querySelector('[data-f="' + k + '"]');
           m[k] = el ? el.value.trim() : '';
         });
+        if (rxPhoto) m.rxPhoto = rxPhoto;
         if (!m.name) { toast('약 이름을 입력해 주세요', 'err'); return 'keep'; }
         var c = Store.getChild(childId);
         if (!c) return;
@@ -500,10 +549,10 @@
 
       var allg = child.allergies.length
         ? child.allergies.map(function (a) {
-            var sevCls = a.severity === '중증' ? 'danger' : a.severity === '중등도' ? 'warn' : '';
+            var sevCls = sevClass(a.severity);
             return '<div class="item-row"><span class="bullet" style="background:var(--danger)">!</span>' +
               '<div class="txt"><b>' + esc(a.name) + '</b> ' +
-              '<span class="badge ' + sevCls + '">' + esc(a.severity || '경증') + '</span>' +
+              '<span class="badge ' + sevCls + '">' + sevLabel(a.severity) + '</span>' +
               (a.reaction ? '<div class="resp">' + esc(a.reaction) + '</div>' : '') + '</div></div>';
           }).join('')
         : '<p class="muted" style="font-size:.9rem">등록된 알레르기가 없습니다.</p>';
@@ -811,11 +860,12 @@
       var d = child.disability;
       var allgRows = child.allergies.length
         ? child.allergies.map(function (a) {
+            /* 예전 저장값(중증 등)도 새 표현으로 정규화해 select가 올바르게 선택되도록 */
             return dynRow([
               { k: 'name', ph: '알레르기 항목', flex: 1.2 },
               { k: 'reaction', ph: '증상/반응', flex: 1.6 },
-              { k: 'severity', type: 'select', opts: ['경증', '중등도', '중증'] }
-            ], a);
+              { k: 'severity', type: 'select', opts: ['약함', '보통', '심함'] }
+            ], { name: a.name, reaction: a.reaction, severity: sevLabel(a.severity) });
           }).join('')
         : '';
       var ctRows = child.emergency.contacts.length
@@ -978,7 +1028,7 @@
       bindAdd('add-allg', 'allg-rows', [
         { k: 'name', ph: '알레르기 항목', flex: 1.2 },
         { k: 'reaction', ph: '증상/반응', flex: 1.6 },
-        { k: 'severity', type: 'select', opts: ['경증', '중등도', '중증'] }
+        { k: 'severity', type: 'select', opts: ['약함', '보통', '심함'] }
       ]);
       bindAdd('add-ct', 'ct-rows', [
         { k: 'name', ph: '이름' }, { k: 'relation', type: 'select', opts: V._REL_OPTS },
@@ -1065,6 +1115,8 @@
             (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
             (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
           '<div class="item-actions">' +
+            (m.rxPhoto ? '<button class="btn-icon" data-rxview="' + i + '" title="처방전 사진 보기" ' +
+              'aria-label="처방전 사진 보기">' + icon('image', 15) + '</button>' : '') +
             '<button class="btn-icon" data-einfo="' + i + '" title="e약은요 (식약처 개요정보)" ' +
               'aria-label="e약은요 정보 보기">' + icon('info', 15) + '</button>' +
             '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
@@ -1092,8 +1144,10 @@
           (summary ? summary + '<div class="divider"></div>' : '') +
           list +
           '<p class="faint" style="font-size:.78rem;margin-top:10px">처방약·영양제·일반약을 구분해 두면 ' +
-            '병원용 설명서와 돌봄 인수인계에 그대로 담겨요. ⓘ는 <b>식약처 e약은요</b>(효능·사용법·주의사항)를 ' +
-            '앱 안에서 바로 보여 드리고, 돋보기는 약학정보원 검색을 새 창으로 열어요.</p>' +
+            '병원용 설명서와 돌봄 인수인계에 그대로 담겨요.<br>' +
+            'ⓘ와 돋보기는 역할이 달라요 — ⓘ는 <b>식약처 e약은요</b> 요약(효능·사용법·주의사항)을 앱 안에서 ' +
+            '바로 보여 드려요. 다만 e약은요에는 전문의약품이 실려 있지 않아, 처방약이나 더 자세한 정보는 ' +
+            '돋보기(<b>약학정보원</b> 통합검색, 새 창)로 찾아보실 수 있어요.</p>' +
           '</div></div>' +
         '<div class="card card-pad" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
           '<span style="color:var(--primary);flex:none">' + icon('note', 18) + '</span>' +
@@ -1112,6 +1166,20 @@
         b.onclick = function () { S.medKindFilter = b.dataset.mkf; App.refresh(); };
       });
       root.addEventListener('click', function (e) {
+        var rx = e.target.closest('[data-rxview]');
+        if (rx) {
+          var cr = Store.getChild(child.id);
+          var mr = cr && (cr.medications || [])[Number(rx.dataset.rxview)];
+          if (mr && mr.rxPhoto) {
+            Modal.open({
+              title: mr.name + ' — 처방전 사진', icon: 'pill', wide: true,
+              body: '<img src="' + mr.rxPhoto + '" alt="처방전 사진" ' +
+                'style="max-width:100%;border-radius:12px;display:block;margin:0 auto">',
+              buttons: [{ label: '닫기', value: 'close', variant: 'primary' }]
+            });
+          }
+          return;
+        }
         var ei = e.target.closest('[data-einfo]');
         if (ei) {
           var c0 = Store.getChild(child.id);
@@ -1599,7 +1667,7 @@
     }
     (child.allergies || []).forEach(function (a) {
       items += '<li><span class="em-k">알레르기</span><b>' + esc(a.name) + '</b> (' +
-        esc(a.severity || '경증') + ')' +
+        sevLabel(a.severity) + ')' +
         (a.reaction ? ' — ' + esc(a.reaction) : '') + '</li>';
     });
     if (e.protocol) items += '<li><span class="em-k">응급 대응</span>' + nl2br(e.protocol) + '</li>';
