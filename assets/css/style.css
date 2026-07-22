@@ -88,12 +88,12 @@
   --c-routine:  #2da195;  --c-routine-bg: #e0f3f0;   /* 성장 틸 */
   --c-safety:   #d6584e;  --c-safety-bg:  #fbe9e7;   /* 안전 주의사항 */
 
-  /* 컨디션 감정색 (1 힘듦 → 5 아주 좋음) — 입력 피커·표시 칩 공용 (내부리뷰 0721 통일) */
-  --mood-1: #d6584e;  --mood-1-bg: #fbe9e7;
-  --mood-2: #d68a18;  --mood-2-bg: #fbf0d7;
-  --mood-3: #a89114;  --mood-3-bg: #f7f3d9;
-  --mood-4: #4a7bd9;  --mood-4-bg: #e8effc;
-  --mood-5: #1f9d6b;  --mood-5-bg: #e6f5ee;
+  /* 컨디션 감정색 — Inside Out 벤치마킹(슬픔 파랑 → 기쁨 노랑 정서 곡선), 입력 피커·표시 칩 공용 */
+  --mood-1: #376ca9;  --mood-1-bg: #e9f1fb;  /* 힘들어요 — 슬픔 파랑 */
+  --mood-2: #7159b0;  --mood-2-bg: #ede8f9;  /* 아쉬워요 — 소심 보라 */
+  --mood-3: #616d76;  --mood-3-bg: #eef1f4;  /* 보통이에요 — 잔잔한 회청 */
+  --mood-4: #237851;  --mood-4-bg: #e4f4ec;  /* 좋아요 — 산뜻한 초록 */
+  --mood-5: #8a6909;  --mood-5-bg: #fbf3d0;  /* 아주 좋아요 — 기쁨 노랑 */
 
   /* 상태 색 */
   --ok:     #1f9d6b;
