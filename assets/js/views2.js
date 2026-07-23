@@ -162,26 +162,12 @@
     var isNew = idx == null;
     var vals = isNew ? {} : (child.medications[idx] || {});
     var root = null;
-    var rxPhoto = vals.rxPhoto || null;   // 처방전 사진 (양육자 자문 0721: 촬영 등록 요청)
+    /* 처방전 사진 촬영·자동 인식은 2차 전용 — MVP는 반영하지 않는다 (사용자 지시) */
     Modal.open({
       title: isNew ? '약물 등록' : '약물 수정',
       icon: 'pill', wide: true,
       body: '<div class="med-item" style="margin:0">' +
         dynRow(MED_FIELDS, vals, { noDel: true }) + medQuickBar(vals) + '</div>' +
-        '<div class="row gap-sm" style="margin-top:10px;align-items:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-soft btn-sm" id="rx-attach">' +
-            icon('camera', 14) + '처방전 사진</button>' +
-          '<span class="faint" id="rx-state" style="font-size:.78rem">' +
-            (rxPhoto ? '첨부돼 있어요' : '카메라로 찍거나 앨범에서 올려요') + '</span>' +
-          '<input type="file" id="rx-file" accept="image/*" hidden>' +
-        '</div>' +
-        '<div id="rx-prev" style="margin-top:8px;position:relative;display:inline-block"' +
-          (rxPhoto ? '' : ' hidden') + '>' +
-          '<img id="rx-img" src="' + (rxPhoto || '') + '" alt="처방전 사진" ' +
-            'style="max-height:130px;max-width:100%;border-radius:10px;border:1px solid var(--border);display:block">' +
-          '<button type="button" class="media-tile-remove" id="rx-rm" aria-label="처방전 사진 지우기">' +
-            icon('x', 13) + '</button>' +
-        '</div>' +
         '<p class="faint" style="font-size:.8rem;margin-top:10px">약 이름이나 용량이 확실하지 않다면 ' +
         '<b style="color:var(--primary)">약학정보원 검색</b>으로 바로 확인할 수 있어요. ' +
         '종료일을 비워 두면 ‘계속 복용’으로 표시돼요.</p>',
@@ -220,27 +206,6 @@
             window.open(drugInfoURL(q), '_blank', 'noopener');
           }
         });
-        /* 처방전 사진 첨부 — OS 촬영/앨범 피커, 리사이즈 압축 저장 */
-        var rxFile = r.querySelector('#rx-file');
-        var rxPrev = r.querySelector('#rx-prev');
-        var rxState = r.querySelector('#rx-state');
-        r.querySelector('#rx-attach').onclick = function () { rxFile.click(); };
-        rxFile.addEventListener('change', function (e2) {
-          var f = e2.target.files[0];
-          if (!f) return;
-          UI.fileToDataURL(f, 1100, function (data) {
-            if (!data) { toast('사진을 불러오지 못했어요', 'err'); return; }
-            rxPhoto = data;
-            r.querySelector('#rx-img').src = data;
-            rxPrev.hidden = false;
-            rxState.textContent = '첨부돼 있어요';
-          });
-        });
-        r.querySelector('#rx-rm').onclick = function () {
-          rxPhoto = null;
-          rxPrev.hidden = true;
-          rxState.textContent = '카메라로 찍거나 앨범에서 올려요';
-        };
       },
       onButton: function (v) {
         if (v !== 'save') return;
@@ -249,7 +214,6 @@
           var el = root && root.querySelector('[data-f="' + k + '"]');
           m[k] = el ? el.value.trim() : '';
         });
-        if (rxPhoto) m.rxPhoto = rxPhoto;
         if (!m.name) { toast('약 이름을 입력해 주세요', 'err'); return 'keep'; }
         var c = Store.getChild(childId);
         if (!c) return;
@@ -1118,8 +1082,6 @@
             (m.dosing ? '<div class="resp">💊 복용 정보 · ' + esc(m.dosing) + '</div>' : '') +
             (m.note ? '<div class="resp">💬 ' + esc(m.note) + '</div>' : '') + '</div>' +
           '<div class="item-actions">' +
-            (m.rxPhoto ? '<button class="btn-icon" data-rxview="' + i + '" title="처방전 사진 보기" ' +
-              'aria-label="처방전 사진 보기">' + icon('image', 15) + '</button>' : '') +
             '<button class="btn-icon" data-einfo="' + i + '" title="e약은요 (식약처 개요정보)" ' +
               'aria-label="e약은요 정보 보기">' + icon('info', 15) + '</button>' +
             '<a class="btn-icon" href="' + drugInfoURL(m.name) + '" target="_blank" rel="noopener" ' +
@@ -1169,20 +1131,6 @@
         b.onclick = function () { S.medKindFilter = b.dataset.mkf; App.refresh(); };
       });
       root.addEventListener('click', function (e) {
-        var rx = e.target.closest('[data-rxview]');
-        if (rx) {
-          var cr = Store.getChild(child.id);
-          var mr = cr && (cr.medications || [])[Number(rx.dataset.rxview)];
-          if (mr && mr.rxPhoto) {
-            Modal.open({
-              title: mr.name + ' — 처방전 사진', icon: 'pill', wide: true,
-              body: '<img src="' + mr.rxPhoto + '" alt="처방전 사진" ' +
-                'style="max-width:100%;border-radius:12px;display:block;margin:0 auto">',
-              buttons: [{ label: '닫기', value: 'close', variant: 'primary' }]
-            });
-          }
-          return;
-        }
         var ei = e.target.closest('[data-einfo]');
         if (ei) {
           var c0 = Store.getChild(child.id);
