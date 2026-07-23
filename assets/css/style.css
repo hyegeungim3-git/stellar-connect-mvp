@@ -1022,7 +1022,11 @@ table.tbl td.actions { white-space: nowrap; }
 .modal {
   background: var(--surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg); width: 100%; max-width: 490px;
-  max-height: 90vh; overflow-y: auto; animation: modalIn .24s var(--ease);
+  max-height: 90vh;
+  /* 헤더·본문·푸터 3단 — 스크롤은 본문(.modal-body)만.
+     모달 자체가 스크롤되면 스크롤바가 둥근 모서리를 가로질러 영역 밖으로 나가 보인다. */
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: modalIn .24s var(--ease);
 }
 .modal.wide { max-width: 700px; }
 .preview-modal .summary-sheet { box-shadow: none; }
@@ -1068,7 +1072,7 @@ table.tbl td.actions { white-space: nowrap; }
   position: sticky; top: 0; background: var(--surface); z-index: 1;
 }
 .modal-head h3 { flex: 1; }
-.modal-body { padding: 24px; }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
 .modal-foot {
   padding: 15px 24px; border-top: 1px solid var(--border);
   display: flex; gap: 10px; justify-content: flex-end;
