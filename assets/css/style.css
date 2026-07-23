@@ -810,7 +810,7 @@ svg { vertical-align: middle; }
   display: grid; place-items: center; color: #fff;
 }
 .item-row .bullet svg { width: 13px; height: 13px; }
-.item-row .txt { flex: 1; line-height: 1.58; }
+.item-row .txt { flex: 1; line-height: 1.72; }
 .item-row .txt .resp { color: var(--text-muted); font-size: .9rem; margin-top: 3px; }
 .item-actions { display: flex; gap: 4px; opacity: 0; transition: .14s var(--ease); }
 .item-row:hover .item-actions { opacity: 1; }
@@ -877,7 +877,7 @@ svg { vertical-align: middle; }
 }
 .summary-block .blk-title .dot { width: 13px; height: 13px; border-radius: 5px; flex: none; }
 .summary-block ul li {
-  padding: 7px 0 7px 19px; position: relative; font-size: .92rem; line-height: 1.58;
+  padding: 7px 0 7px 19px; position: relative; font-size: .92rem; line-height: 1.72;
   border-bottom: 1px dotted var(--border);
 }
 .summary-block ul li:last-child { border-bottom: none; }
