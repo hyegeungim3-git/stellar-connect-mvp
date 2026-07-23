@@ -156,13 +156,12 @@ h3 { font-size: 1.05rem; }
 small { font-size: .82rem; }
 b, strong { font-weight: 700; }
 
-/* 가독성(2차 리뷰 §3-④) — 읽기 영역 줄 간격·간격 여유, 정보 밀집 시 시각 구분 */
-.summary-block ul li,
-.item-row .txt,
-.kv-card p,
+/* 가독성(2차 리뷰 §3-④) — 읽기 영역 줄 간격.
+   .summary-block ul li·.item-row .txt는 뒤쪽 컴포넌트 규칙(880·814행)이 line-height를 확정하므로
+   여기서 제외해 죽은 선언을 없앤다. .kv-card는 존재하지 않는 셀렉터라 삭제.
+   한 장 요약 항목 구분선은 880행의 점선 하나로 통일 — 예전 'li + li' 실선이 점선과 겹쳐
+   항목마다 이중 구분선이 그려지던 결함을 제거. */
 p.muted { line-height: 1.72; }
-.summary-block ul li { padding: 3px 0; }
-.summary-block ul li + li { border-top: 1px solid var(--border); margin-top: 2px; padding-top: 7px; }
 
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -971,7 +970,11 @@ svg { vertical-align: middle; }
 .line-chart { width: 100%; height: 180px; }
 
 /* ---------- 17. 테이블 ---------- */
-.table-wrap { overflow-x: auto; border-radius: var(--radius); }
+/* 스크롤 컨테이너에 radius를 주면 가로 스크롤바가 둥근 모서리를 가로질러 나간다(.modal과 같은 결함).
+   라운드는 실제로 보이는 헤더 밴드로 옮긴다 — 바깥 라운드는 감싸는 .card가 이미 제공. */
+.table-wrap { overflow-x: auto; }
+table.tbl thead th:first-child { border-top-left-radius: var(--radius); }
+table.tbl thead th:last-child  { border-top-right-radius: var(--radius); }
 table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.tbl th, table.tbl td {
   padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border);
@@ -1390,7 +1393,10 @@ table.tbl td.actions { white-space: nowrap; }
 }
 .rec-search-clear:hover { background: var(--surface-2); color: var(--primary); }
 .rec-filterbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.rec-filterbar .seg { overflow-x: auto; max-width: 100%; }
+/* 라운드(10px)+테두리 컨트롤이라 가로 스크롤바가 모서리를 가로지르고 버튼 높이까지 잠식한다.
+   같은 가로 스크롤러인 칩 바(.ctx-chips)·카테고리 탭(.manual-tabs)과 동일하게 스크롤바를 숨긴다. */
+.rec-filterbar .seg { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.rec-filterbar .seg::-webkit-scrollbar { display: none; }
 .rec-filterbar .select.sm { min-height: 40px; padding: 6px 30px 6px 11px; font-size: .84rem; width: auto; }
 .rec-filterbar #rec-reset { margin-left: auto; }
 .rec-daterange { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

@@ -46,8 +46,11 @@
     opts = opts || {};
     var inner = fields.map(function (f) {
       var labeled = !!f.label;
-      /* 라벨 있는 필드(약물 등)는 컬럼 셀로 정렬 — 라벨 없는 필드는 인라인 입력 */
-      var inlineStyle = labeled ? '' : ' style="flex:' + (f.flex || 1) + ';min-width:118px"';
+      /* 라벨 있는 필드(약물 등)는 컬럼 셀로 정렬 — 라벨 없는 필드는 인라인 입력.
+         셀렉트는 좌14+우36(화살표)+테두리=53px가 텍스트 밖으로 나가므로 바닥폭을 따로 준다.
+         (118px면 최장 옵션 '활동지원사'가 폭 440~520px 구간에서 잘림) */
+      var minW = (f.type === 'select') ? 133 : 118;
+      var inlineStyle = labeled ? '' : ' style="flex:' + (f.flex || 1) + ';min-width:' + minW + 'px"';
       var val = esc(vals[f.k] || '');
       var ctrl;
       if (f.type === 'select') {

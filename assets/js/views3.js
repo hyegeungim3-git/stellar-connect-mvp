@@ -209,6 +209,15 @@
   function dynRow(fields, vals) {
     vals = vals || {};
     var inner = fields.map(function (f) {
+      /* type:'select'을 무시하면 '관계' 같은 표준 선택값이 자유입력으로 렌더돼
+         아이 정보 편집(드롭다운)과 표기가 어긋난다. 셀렉트 분기 필수. */
+      if (f.type === 'select') {
+        return '<select class="select" data-f="' + f.k + '" style="flex:' + (f.flex || 1) +
+          ';min-width:133px">' +
+          (f.opts || []).map(function (o) {
+            return '<option' + (vals[f.k] === o ? ' selected' : '') + '>' + esc(o) + '</option>';
+          }).join('') + '</select>';
+      }
       return '<input class="input" data-f="' + f.k + '" placeholder="' + esc(f.ph || '') +
         '" value="' + esc(vals[f.k] || '') + '" style="flex:' + (f.flex || 1) + '">';
     }).join('');
