@@ -823,7 +823,7 @@ svg { vertical-align: middle; }
 
 .add-item { display: flex; gap: 9px; margin-top: 14px; align-items: flex-start; }
 .add-item .input, .add-item .textarea { flex: 1; }
-.plan-area-select { flex: none; width: 150px; }
+.plan-area-select { flex: none; width: auto; min-width: 164px; }  /* '재정·법적 준비' 99px + 패딩 50px */
 /* 셀렉트는 좌 14 + 우 36(화살표) = 50px가 패딩이라, 내용 폭 + 50 이상이어야 안 잘린다 */
 .plan-term-select { flex: none; width: auto; min-width: 126px; }
 /* select(고정폭)+입력+버튼 조합은 좁은 화면에서 입력칸이 짓눌림 — 모바일엔 세로로 쌓아 입력칸을 충분히 넓게 */
