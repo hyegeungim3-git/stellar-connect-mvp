@@ -1050,6 +1050,8 @@ table.tbl td.actions { white-space: nowrap; }
 .tour-tip .tour-prog { height: 4px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 8px 0 10px; }
 .tour-tip .tour-prog-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width .25s var(--ease); }
 .tour-tip .tour-alt { margin-top: 12px; width: 100%; justify-content: center; }
+/* 짚어준 요소를 카드가 가리게 되면 위쪽 자리로 옮긴다 (tour.js place()) */
+.tour-tip.at-top { top: calc(74px + env(safe-area-inset-top, 0px)); bottom: auto; }
 .tour-tip .tour-x {
   position: absolute; right: 11px; top: 11px; width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
