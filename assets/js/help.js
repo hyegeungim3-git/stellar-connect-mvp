@@ -64,15 +64,20 @@
       h.rows.map(function (r) {
         return '<div class="help-row"><b>' + esc(r[0]) + '</b><span>' + esc(r[1]) + '</span></div>';
       }).join('');
+    /* 이 화면에 메뉴별 튜토리얼이 있으면 도움말에서 바로 이어가게 한다 */
+    var hasTut = global.Tutorial && global.Tutorial.has(view);
     UI.Modal.open({
       title: h.t, icon: 'help',
       body: body,
       buttons: [
-        { label: '전체 둘러보기', value: 'tour', variant: 'ghost', icon: 'info' },
+        hasTut
+          ? { label: '이 화면 튜토리얼', value: 'tut', variant: 'ghost', icon: 'book' }
+          : { label: '전체 둘러보기', value: 'tour', variant: 'ghost', icon: 'info' },
         { label: '확인', value: 'close', variant: 'primary' }
       ],
       onButton: function (v) {
         if (v === 'tour' && global.Tour) setTimeout(function () { global.Tour.start(); }, 60);
+        if (v === 'tut' && global.Tutorial) setTimeout(function () { global.Tutorial.start(view); }, 60);
       }
     });
   }

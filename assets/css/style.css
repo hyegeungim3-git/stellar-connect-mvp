@@ -1045,7 +1045,11 @@ table.tbl td.actions { white-space: nowrap; }
 @keyframes tourIn { from { opacity: 0; transform: translate(-50%, 14px); } }
 .tour-tip .tour-step { font-size: .7rem; font-weight: 800; letter-spacing: .08em; color: var(--primary); }
 .tour-tip h3 { font-size: 1.06rem; margin: 5px 0 7px; padding-right: 26px; }
-.tour-tip p { font-size: .9rem; color: var(--text-muted); line-height: 1.6; margin: 0; }
+.tour-tip p { font-size: .9rem; color: var(--text-muted); line-height: 1.72; margin: 0; }
+/* 진행 막대 — 몇 단계 남았는지 보이면 끝까지 따라오기 쉬워진다 */
+.tour-tip .tour-prog { height: 4px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 8px 0 10px; }
+.tour-tip .tour-prog-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width .25s var(--ease); }
+.tour-tip .tour-alt { margin-top: 12px; width: 100%; justify-content: center; }
 .tour-tip .tour-x {
   position: absolute; right: 11px; top: 11px; width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
@@ -1060,6 +1064,42 @@ table.tbl td.actions { white-space: nowrap; }
 @keyframes tourPulse { 0%, 100% { outline-color: var(--primary); } 50% { outline-color: rgba(53, 102, 205, .15); } }
 @media (max-width: 960px) { .tour-tip { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .tour-pulse, .tour-tip { animation: none; } }
+
+/* 메뉴별 튜토리얼 센터 */
+.tut-prog-wrap { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+.tut-prog { flex: 1; min-width: 0; height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.tut-prog-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width .3s var(--ease); }
+.tut-prog-tx { flex: none; font-size: .78rem; font-weight: 800; color: var(--text-muted); }
+.tut-group {
+  font-size: .72rem; font-weight: 800; letter-spacing: .06em; color: var(--text-muted);
+  margin: 16px 0 7px;
+}
+.tut-group:first-of-type { margin-top: 0; }
+.tut-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 12px 13px; margin-bottom: 7px; min-height: 56px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .14s var(--ease), background .14s var(--ease);
+}
+.tut-row:hover, .tut-row:focus-visible { border-color: var(--primary); background: var(--primary-soft); }
+.tut-row .tut-ic {
+  flex: none; width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-soft); color: var(--primary);
+}
+.tut-row .tut-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tut-row .tut-tx b { font-size: .92rem; line-height: 1.35; }
+.tut-row .tut-tx > span { font-size: .8rem; color: var(--text-muted); line-height: 1.5; }
+.tut-row .tut-st {
+  flex: none; display: flex; align-items: center; gap: 4px;
+  font-size: .76rem; font-weight: 700; color: var(--text-muted);
+}
+.tut-row.done .tut-ic { background: var(--mood-4-bg); color: var(--ok); }
+.tut-row.done .tut-st { color: var(--ok); }
+@media (max-width: 560px) {
+  .tut-row .tut-st-tx { display: none; }
+  .tut-row .tut-tx > span { font-size: .78rem; }
+}
 
 /* 화면별 도움말 (?) */
 .app-bar .app-help { flex: none; }

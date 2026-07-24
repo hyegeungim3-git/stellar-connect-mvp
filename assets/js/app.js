@@ -122,6 +122,7 @@
         icon('chevD', 15) + '</button>' +
         '<div class="dropdown hide" id="user-dropdown">' +
           '<button id="menu-tour">' + icon('info', 16) + '둘러보기 가이드</button>' +
+          '<button id="menu-tutorial">' + icon('book', 16) + '메뉴별 튜토리얼</button>' +
           '<button data-go="#/caregiver">' + icon('user', 16) + '양육자 정보</button>' +
           (u.role === 'admin'
             ? '<button data-go="#/admin">' + icon('settings', 16) + '백오피스</button>' : '') +
@@ -164,6 +165,8 @@
     });
     var mt = UI.el('menu-tour');
     if (mt) mt.onclick = function () { dd.classList.add('hide'); if (global.Tour) Tour.start(); };
+    var mtu = UI.el('menu-tutorial');
+    if (mtu) mtu.onclick = function () { dd.classList.add('hide'); if (global.Tutorial) Tutorial.openCenter(); };
     var hb = UI.el('help-btn');
     if (hb) hb.onclick = function () { if (global.Help) Help.open(r.view); };
     UI.el('menu-logout').onclick = function () {
