@@ -310,14 +310,6 @@
       revoked: false, views: 3
     });
 
-    /* ---------- 방문 노트 (열람자가 남긴 한마디) ---------- */
-    db.visitNotes.push({
-      id: 'vn-demo', shareId: 'shr-demo', childId: child1.id,
-      author: '햇살초 1학년 담임', role: '교사',
-      text: '설명서 잘 읽었습니다. 오늘 음악 시간에 소리가 커지자 스스로 귀를 막고 제게 와서 도움을 청했어요. 설명서 덕분에 바로 조용한 교실로 안내할 수 있었습니다.',
-      createdAt: new Date(_now - 4 * 864e5).toISOString()   // 공유 생성 이후(4일 전)
-    });
-
     /* ---------- 성장 플랜 (학령기 예시) ---------- */
     db.plans.push(
       { id: 'plan-1', childId: child1.id, stage: 'school', area: 'edu',

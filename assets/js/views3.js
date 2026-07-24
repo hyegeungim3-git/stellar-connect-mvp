@@ -1353,29 +1353,6 @@
               '<h3>아직 만든 공유가 없어요</h3>' +
               '<p>인증 링크를 만들어 학교·병원·치료실에 안전하게 전달하세요.</p></div>');
 
-      // 방문 노트 — 열람자들이 남긴 기록 (협업 1단계: 읽기 공유 → 한마디 참여)
-      var notes = Store.visitNotesOfChild(child.id);
-      var noteSec = '<div class="card mt-2"><div class="card-head">' +
-        '<span style="color:var(--brand-grow)">' + icon('message', 18) + '</span>' +
-        '<h3>방문 노트</h3><span class="badge">' + notes.length + '개</span></div>' +
-        '<div class="card-body">' +
-        '<p class="muted mb-2" style="font-size:.88rem">공유 링크로 설명서를 본 선생님·치료사가 ' +
-        '남긴 한마디입니다. 치료사·교사가 직접 기록에 참여하는 팀 기능은 2차 개발에서 확장됩니다.</p>' +
-        (notes.length
-          ? notes.map(function (n) {
-              return '<div class="item-row">' +
-                '<span class="bullet" style="background:var(--brand-grow)">' + icon('message', 12) + '</span>' +
-                '<div class="txt"><b>' + esc(n.author) + '</b>' +
-                (n.role ? ' <span class="badge">' + esc(n.role) + '</span>' : '') +
-                ' <span class="faint" style="font-size:.78rem">' + UI.fmtDateTime(n.createdAt) + '</span>' +
-                '<div style="margin-top:3px">' + nl2br(n.text) + '</div></div>' +
-                '<div class="item-actions"><button class="btn-icon" data-vndel="' + n.id + '">' +
-                  icon('trash', 15) + '</button></div></div>';
-            }).join('')
-          : '<p class="faint" style="font-size:.88rem">아직 받은 노트가 없어요. 공유 링크를 받은 ' +
-            '설명서를 본 분이 노트를 남기면 여기에 모여요.</p>') +
-        '</div></div>';
-
       // 대상 선택 카드 — 기본 4종 + 직접 만든 대상. 각 카드에서 바로 편집할 수 있고, 새 대상도 추가할 수 있다.
       // (편집 버튼을 카드 안에 중첩해야 해서 카드 자체는 button이 아닌 div로 구성)
       var audPicker = Object.keys(AUD).map(function (k) {
@@ -1420,7 +1397,7 @@
       return childContextBar(child, 'share') +
         pageHead('대상별 설명서', child.name + ' 설명서 공유',
           '대상에 맞는 「내 아이 설명서」를 만들어 학교·병원·치료실에 바로 전달하세요.') +
-        hub + listSection + noteSec;
+        hub + listSection;
     },
     mount: function (p) {
       var child = ownedChild(p.childId); if (!child) return;
@@ -1658,15 +1635,6 @@
           App.refresh();
         };
       });
-      // 방문 노트 삭제 (보호자 권한)
-      document.querySelectorAll('[data-vndel]').forEach(function (b) {
-        b.onclick = function () {
-          Modal.confirm({ title: '노트 삭제', message: '이 방문 노트를 삭제할까요?',
-            okLabel: '삭제', danger: true }).then(function (ok) {
-            if (ok) { Store.deleteVisitNote(b.dataset.vndel); toast('삭제했어요', 'ok'); App.refresh(); }
-          });
-        };
-      });
 
       // QR 코드 + 키링 카드 인쇄 (6/10 회의: 가방·키링에 다는 QR 응급 카드)
       function keyringCardHTML(name, token, code) {
@@ -1820,17 +1788,6 @@
       }
 
       // 인증 통과 → 설명서 노출
-      var myNotes = Store.visitNotesOfShare(share.id);
-      var notesList = myNotes.length
-        ? myNotes.map(function (n) {
-            return '<div class="item-row"><span class="bullet" style="background:var(--brand-grow)">' +
-              icon('message', 12) + '</span>' +
-              '<div class="txt"><b>' + esc(n.author) + '</b>' +
-              (n.role ? ' <span class="badge">' + esc(n.role) + '</span>' : '') +
-              ' <span class="faint" style="font-size:.78rem">' + UI.fmtDateTime(n.createdAt) + '</span>' +
-              '<div style="margin-top:3px">' + nl2br(n.text) + '</div></div></div>';
-          }).join('')
-        : '';
       var audLabel = (share.audience && AUD[share.audience]) ? AUD[share.audience].label
         : (SCOPE_META[share.scope] || SCOPE_META.summary).t;
       return topBar + '<div class="container">' +
@@ -1843,30 +1800,6 @@
         '<div class="row no-print" style="justify-content:center;margin-top:18px">' +
           '<button class="btn btn-ghost" onclick="window.print()">' + icon('print', 16) +
             'PDF로 저장 / 인쇄</button></div>' +
-
-        /* 방문 노트 — 열람자가 보호자에게 남기는 한마디 (협업 1단계) */
-        '<div class="card mt-2 no-print"><div class="card-head">' +
-          '<span style="color:var(--brand-grow)">' + icon('message', 18) + '</span>' +
-          '<h3>방문 노트 남기기</h3></div><div class="card-body">' +
-          '<p class="muted mb-2" style="font-size:.88rem">설명서를 확인하셨다면, 오늘 아이의 모습이나 ' +
-          '전하고 싶은 말을 보호자에게 남겨 주세요. 이름과 함께 보호자 화면에 전달됩니다.</p>' +
-          notesList +
-          '<div class="field-row" style="margin-top:10px">' +
-            '<div class="field"><label>이름</label>' +
-              '<input class="input" id="vn-author" value="' + esc(share.viewerName || '') +
-              '" placeholder="예) 김◯◯ 선생님"></div>' +
-            '<div class="field"><label>역할</label><select class="select" id="vn-role">' +
-              ['치료사', '교사', '의료진', '가족·친척', '활동지원사', '기타'].map(function (r) {
-                return '<option' + (share.viewerRole === r ? ' selected' : '') + '>' + r + '</option>';
-              }).join('') + '</select></div>' +
-          '</div>' +
-          '<div class="field"><label>내용</label>' +
-            '<textarea class="textarea" id="vn-text" ' +
-            'placeholder="예) 오늘 수업에서 차례 기다리기를 잘했어요. 가정에서도 칭찬해 주세요!"></textarea></div>' +
-          '<div class="row" style="justify-content:flex-end">' +
-            '<button class="btn btn-primary btn-sm" id="vn-save">' + icon('check', 14) +
-              '노트 남기기</button></div>' +
-        '</div></div>' +
 
         '<p class="center faint" style="margin-top:20px;font-size:.8rem">' +
           '본 설명서는 보호자의 동의 하에 공유되었으며, 열람자는 정보를 외부에 공유할 수 없습니다.</p>' +
@@ -1888,19 +1821,6 @@
           }
         });
       }
-      // 방문 노트 저장
-      var vnSave = UI.el('vn-save');
-      if (vnSave) vnSave.onclick = function () {
-        var share = Store.getShareByToken(p.token);
-        if (!share) return;
-        var author = UI.el('vn-author').value.trim();
-        var text = UI.el('vn-text').value.trim();
-        if (!author || !text) { toast('이름과 내용을 입력해 주세요', 'err'); return; }
-        Store.addVisitNote({ shareId: share.id, childId: share.childId,
-          author: author, role: UI.el('vn-role').value, text: text });
-        toast('노트를 보호자에게 전해 드렸어요. 고맙습니다!', 'ok');
-        App.refresh();
-      };
     }
   };
 

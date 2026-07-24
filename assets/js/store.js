@@ -304,29 +304,6 @@
     setDB(db);
   }
 
-  /* ---------- 방문 노트 (공유 열람자가 남기는 한마디 — 협업 1단계) ---------- */
-  function addVisitNote(opts) {
-    var db = getDB();
-    var n = { id: uid('vn'), shareId: opts.shareId, childId: opts.childId,
-              author: opts.author || '열람자', role: opts.role || '',
-              text: opts.text, createdAt: nowISO() };
-    db.visitNotes.push(n);
-    setDB(db);
-    return n;
-  }
-  function visitNotesOfShare(shareId) {
-    return getDB().visitNotes.filter(function (n) { return n.shareId === shareId; })
-      .sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
-  }
-  function visitNotesOfChild(childId) {
-    return getDB().visitNotes.filter(function (n) { return n.childId === childId; })
-      .sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
-  }
-  function deleteVisitNote(id) {
-    var db = getDB();
-    db.visitNotes = db.visitNotes.filter(function (n) { return n.id !== id; });
-    setDB(db);
-  }
 
   /* ---------- 친화 장소 제보 ---------- */
   function addPlaceReport(r) {
@@ -536,9 +513,7 @@
     // 성장 플랜
     plansOf: plansOf, addPlanItem: addPlanItem, setPlanTerm: setPlanTerm,
     setPlanStatus: setPlanStatus, deletePlanItem: deletePlanItem,
-    // 방문 노트 / 장소 제보
-    addVisitNote: addVisitNote, visitNotesOfShare: visitNotesOfShare,
-    visitNotesOfChild: visitNotesOfChild, deleteVisitNote: deleteVisitNote,
+    // 장소 제보
     addPlaceReport: addPlaceReport,
     // 공유
     createShare: createShare, sharesOf: sharesOf, getShareByToken: getShareByToken,
