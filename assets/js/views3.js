@@ -1229,7 +1229,10 @@
       var expired = !revoked && Store.isShareExpired(s);
       var am = (s.audience && AUD[s.audience]) || null;
       var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
-      var statusBadge = revoked ? '<span class="badge danger">중단됨</span>'
+      var statusBadge = revoked
+        ? (s.revokedReason === 'authfail'
+            ? '<span class="badge danger">인증 5회 실패로 잠김</span>'
+            : '<span class="badge danger">중단됨</span>')
         : expired ? '<span class="badge danger">기간 만료</span>'
         : '<span class="badge ok">사용 중</span>';
       var period = UI.fmtDate(s.createdAt) + ' ~ ' + (s.expiresAt ? UI.fmtDate(s.expiresAt) : '계속');
@@ -1241,7 +1244,8 @@
             '<span class="badge brand">' + esc(label) + '</span>' +
           '</div>' +
           '<div class="faint" style="font-size:.78rem;margin-top:3px">' + period +
-            ' · ' + icon('eye', 12) + ' ' + (s.views || 0) + '번 봤어요</div>' +
+            ' · ' + icon('eye', 12) + ' ' + (s.views || 0) + '번 봤어요' +
+            (Store.shareNeedsCode(s) ? '' : ' · 인증번호 미사용') + '</div>' +
         '</div>' +
         (expired
           ? '<button class="btn btn-soft btn-sm" data-histrenew="' + s.id + '">' +
@@ -1299,6 +1303,7 @@
             var inactive = revoked || expired;
             var am = (s.audience && AUD[s.audience]) || null;
             var label = am ? am.label : (SCOPE_META[s.scope] || SCOPE_META.summary).t;
+            var needCode = Store.shareNeedsCode(s);
             var dleft = (!inactive && s.expiresAt)
               ? Math.max(0, Math.ceil((new Date(s.expiresAt).getTime() - Date.now()) / 864e5)) : null;
             return '<div class="card card-pad mb-2" data-share-card="' + s.id + '"' + (inactive ? ' style="opacity:.55"' : '') + '>' +
@@ -1307,7 +1312,11 @@
                   '<span class="badge">' + esc(s.viewerRole) + '</span> ' +
                   '<span class="badge brand">' + esc(label) + '</span>' +
                   (s.safeNumber ? ' <span class="badge ok">안심번호</span>' : '') +
-                  (revoked ? ' <span class="badge danger">중단됨</span>'
+                  (needCode ? ' <span class="badge ok">인증번호 필요</span>'
+                    : ' <span class="badge warn">인증번호 없이 열람</span>') +
+                  (revoked ? (s.revokedReason === 'authfail'
+                      ? ' <span class="badge danger">인증 5회 실패로 잠김</span>'
+                      : ' <span class="badge danger">중단됨</span>')
                     : expired ? ' <span class="badge danger">기간 만료</span>'
                     : s.renewCycle ? ' <span class="badge">' + CYCLE_LABEL[s.renewCycle] +
                         ' 동안 열람' + (dleft != null ? ' · D-' + dleft : '') + '</span>' : '') +
@@ -1322,8 +1331,10 @@
                     '<button class="btn btn-soft btn-sm" data-copy="' + esc(shareURL(s.token)) + '">' +
                       icon('copy', 14) + '복사</button>') + '</div>' +
                 '<div style="text-align:center"><div class="faint" style="font-size:.74rem">인증번호</div>' +
-                  '<div style="font-weight:800;letter-spacing:.15em;color:var(--primary-dark)">' +
-                  esc(s.accessCode) + '</div></div>' +
+                  (needCode
+                    ? '<div style="font-weight:800;letter-spacing:.15em;color:var(--primary-dark)">' +
+                      esc(s.accessCode) + '</div>'
+                    : '<div class="faint" style="font-weight:700">사용 안 함</div>') + '</div>' +
                 (expired ?
                   '<button class="btn btn-primary btn-sm" data-renew="' + s.id + '">' +
                     icon('check', 14) + CYCLE_LABEL[s.renewCycle] + ' 더 열어두기</button>' : '') +
@@ -1390,8 +1401,9 @@
             '전체 기록 ' + shares.length + '</button>'
           : '') + '</div>' +
         '<div class="pill-info mb-2">' + icon('lock', 16) +
-          '<div>공유 링크는 <b>4자리 인증번호</b>를 입력해야 열람할 수 있고, 비상연락처는 ' +
-          '<b>안심번호(050)</b>로 표시됩니다. 필요 없어지면 ‘공유 중단’으로 차단하세요.</div></div>' +
+          '<div>공유를 만들 때 <b>4자리 인증번호</b> 사용 여부를 고를 수 있어요. 인증번호를 쓰면 ' +
+          '번호를 아는 분만 열람할 수 있고, <b>5번 틀리면 링크가 저절로 잠겨요</b>. ' +
+          '비상연락처는 <b>안심번호(050)</b>로 표시되고, 필요 없어지면 ‘공유 중단’으로 차단하세요.</div></div>' +
         list;
 
       return childContextBar(child, 'share') +
@@ -1446,8 +1458,26 @@
             '<label class="checkline"><input type="checkbox" name="safeNumber" checked>' +
               '<span>비상연락처를 <b>안심번호(050)</b>로 표시 ' +
               '<span class="faint" style="font-size:.8rem">— 실제 번호는 보호자만</span></span></label>' +
-            '<div class="pill-info" style="margin-top:10px">' + icon('info', 16) +
-              '<div>만들면 4자리 인증번호가 함께 만들어져요. 링크와 인증번호를 같이 전해 주세요.</div></div>',
+            /* 인증번호 사용 여부 — 켜면 번호를 아는 분만, 끄면 링크만으로 바로 열람 */
+            '<label class="checkline"><input type="checkbox" name="requireCode" id="sh-need-code" checked>' +
+              '<span><b>4자리 인증번호</b>를 입력해야 열람할 수 있게 하기 ' +
+              '<span class="faint" style="font-size:.8rem">— 권장</span></span></label>' +
+            '<div class="pill-info" style="margin-top:10px" id="sh-code-hint">' + icon('info', 16) +
+              '<div></div></div>',
+          onMount: function (root) {
+            /* 체크 상태에 따라 안내 문구를 바꿔, 만들기 전에 무엇이 달라지는지 보이게 한다 */
+            var cb = root.querySelector('#sh-need-code');
+            var hint = root.querySelector('#sh-code-hint div');
+            function paint() {
+              hint.innerHTML = cb.checked
+                ? '만들면 4자리 인증번호가 함께 만들어져요. 링크와 인증번호를 같이 전해 주세요. ' +
+                  '인증번호를 <b>5번 틀리면</b> 링크가 저절로 잠겨 아이의 정보를 지켜 드려요.'
+                : '<b>링크를 아는 사람은 누구나</b> 바로 열람할 수 있어요. 급할 때 곁의 분이 ' +
+                  '바로 볼 수 있어 편하지만, 링크가 곧 열쇠가 되니 공유 기간을 짧게 두시길 권해요.';
+            }
+            cb.addEventListener('change', paint);
+            paint();
+          },
           buttons: [
             { label: '취소', value: 'cancel', variant: 'ghost' },
             { label: '공유 만들기', value: 'ok', variant: 'primary' }
@@ -1457,20 +1487,28 @@
             var f = readForm(root);
             var s = Store.createShare({
               childId: child.id, audience: audience, safeNumber: f.safeNumber,
-              viewerName: f.viewerName, viewerRole: f.viewerRole, renewCycle: f.renewCycle
+              viewerName: f.viewerName, viewerRole: f.viewerRole, renewCycle: f.renewCycle,
+              requireCode: f.requireCode
             });
+            var needCode = Store.shareNeedsCode(s);
             Modal.close();
             var qrSvg = QR.svg(shareURL(s.token), { cell: 4, margin: 3, width: 180 });
             Modal.open({
               title: '공유 링크가 만들어졌어요', icon: 'check',
               body: '<p class="muted mb-2">' + esc(a.label) +
-                ' 설명서 링크와 인증번호를 함께 전달하세요.</p>' +
+                (needCode ? ' 설명서 링크와 인증번호를 함께 전달하세요.'
+                          : ' 설명서 링크를 전달하세요. 이 링크는 인증번호 없이 바로 열려요.') + '</p>' +
                 '<div style="text-align:center;margin-bottom:12px">' +
                   '<div style="display:inline-block;padding:10px;border:1px solid var(--border);' +
                   'border-radius:14px;background:#fff">' + (qrSvg || '') + '</div></div>' +
                 '<div class="code-box mb-2"><span>' + esc(shareURL(s.token)) + '</span></div>' +
-                '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
-                '<div class="access-code">' + esc(s.accessCode) + '</div></div>' +
+                (needCode
+                  ? '<div class="callout center mb-2"><div class="faint" style="font-size:.8rem">인증번호</div>' +
+                    '<div class="access-code">' + esc(s.accessCode) + '</div>' +
+                    '<div class="faint" style="font-size:.78rem;margin-top:4px">5번 틀리면 링크가 저절로 잠겨요</div></div>'
+                  : '<div class="pill-info mb-2">' + icon('info', 16) +
+                    '<div>인증번호 없이 열리는 링크예요. 링크를 받은 분이라면 누구나 볼 수 있으니 ' +
+                    '전달하실 곳을 한 번 더 확인해 주세요.</div></div>') +
                 (s.renewCycle ? '<p class="faint" style="font-size:.8rem;text-align:center">' +
                   CYCLE_LABEL[s.renewCycle] + ' 동안 열람할 수 있어요. 기간이 끝나면 저절로 잠가 아이의 정보를 소중히 지켜 드려요.</p>' : ''),
               buttons: [
@@ -1479,23 +1517,27 @@
                 { label: '확인', value: 'ok', variant: 'primary' }
               ],
               onButton: function (vv) {
+                var codeSuffix = needCode ? ' (인증번호: ' + s.accessCode + ')' : '';
                 if (vv === 'share') {
                   var url = shareURL(s.token);
                   UI.webShare({
                     title: 'Stellar Connect — ' + child.name + ' 설명서',
-                    text: child.name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + s.accessCode,
+                    text: child.name + ' 설명서를 공유합니다. (Stellar Connect)' +
+                      (needCode ? ' — 인증번호: ' + s.accessCode : ''),
                     url: url
                   }).then(function (ok) {
                     if (!ok) {
-                      UI.copyText(url + ' (인증번호: ' + s.accessCode + ')')
+                      UI.copyText(url + codeSuffix)
                         .then(function () { toast('공유가 지원되지 않아 링크를 복사했어요', 'ok'); });
                     }
                   });
                   return 'keep';
                 }
                 if (vv === 'copy') {
-                  UI.copyText(shareURL(s.token) + ' (인증번호: ' + s.accessCode + ')')
-                    .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
+                  UI.copyText(shareURL(s.token) + codeSuffix)
+                    .then(function () {
+                      toast(needCode ? '링크와 인증번호를 복사했어요' : '링크를 복사했어요', 'ok');
+                    });
                   return 'keep';
                 }
                 S.focusShareId = s.id;   // 목록에서 새로 만든 공유로 스크롤·강조
@@ -1609,12 +1651,16 @@
         b.onclick = function () {
           var url = shareURL(b.dataset.token);
           var name = b.dataset.name || '아이';
-          var text = name + ' 설명서를 공유합니다. (Stellar Connect) — 인증번호: ' + b.dataset.code;
+          var code = b.dataset.code || '';   // 인증번호를 쓰지 않는 공유는 빈 값
+          var text = name + ' 설명서를 공유합니다. (Stellar Connect)' +
+            (code ? ' — 인증번호: ' + code : '');
           UI.webShare({ title: 'Stellar Connect — ' + name + ' 설명서', text: text, url: url })
             .then(function (ok) {
               if (!ok) {
-                UI.copyText(url + ' (인증번호: ' + b.dataset.code + ')')
-                  .then(function () { toast('링크와 인증번호를 복사했어요', 'ok'); });
+                UI.copyText(url + (code ? ' (인증번호: ' + code + ')' : ''))
+                  .then(function () {
+                    toast(code ? '링크와 인증번호를 복사했어요' : '링크를 복사했어요', 'ok');
+                  });
               }
             });
         };
@@ -1646,8 +1692,9 @@
           '<div class="kc-body">' +
             '<div class="kc-brand">STELLAR CONNECT 안심 카드</div>' +
             '<div class="kc-name">' + esc(name) + '</div>' +
-            '<div class="kc-guide">QR을 스캔하고 인증번호 <b>' + esc(code) + '</b>를 입력하면 ' +
-              '아이의 응급 정보를 볼 수 있어요.</div>' +
+            '<div class="kc-guide">' + (code
+              ? 'QR을 스캔하고 인증번호 <b>' + esc(code) + '</b>를 입력하면 아이의 응급 정보를 볼 수 있어요.'
+              : 'QR을 스캔하면 아이의 응급 정보를 바로 볼 수 있어요.') + '</div>' +
             (contact ? '<div class="kc-contact">' +
               '보호자 ' + esc(contact.name) + ' · ' + esc(contact.phone) + '</div>' : '') +
           '</div></div>';
@@ -1670,13 +1717,18 @@
               '<div style="text-align:center">' +
                 '<div id="qr-box" style="display:inline-block;padding:10px;border:1px solid var(--border);' +
                   'border-radius:14px;background:#fff"></div>' +
-                '<div class="mt-1"><span class="faint" style="font-size:.8rem">인증번호</span> ' +
-                  '<b style="letter-spacing:.15em;color:var(--primary-dark)">' + esc(code) + '</b></div>' +
+                '<div class="mt-1">' + (code
+                  ? '<span class="faint" style="font-size:.8rem">인증번호</span> ' +
+                    '<b style="letter-spacing:.15em;color:var(--primary-dark)">' + esc(code) + '</b>'
+                  : '<span class="badge warn">인증번호 없이 열람</span>') + '</div>' +
                 '<div class="mt-1" style="font-size:.85rem">' + icon('clock', 13) + ' ' + qValidity + '</div>' +
               '</div>' +
               '<div class="pill-info mt-2">' + icon('info', 16) +
-                '<div>QR을 스캔한 사람도 <b>인증번호</b>를 알아야 열람할 수 있고, 열람 기간이 끝나면 ' +
-                '저절로 잠가 아이의 정보를 지켜요. 공유 목록에서 언제든 <b>즉시 중단</b>할 수 있어요. ' +
+                '<div>' + (code
+                  ? 'QR을 스캔한 사람도 <b>인증번호</b>를 알아야 열람할 수 있고(5번 틀리면 저절로 잠겨요), '
+                  : 'QR을 스캔하면 인증번호 없이 바로 열람할 수 있고, ') +
+                '열람 기간이 끝나면 저절로 잠가 아이의 정보를 지켜요. ' +
+                '공유 목록에서 언제든 <b>즉시 중단</b>할 수 있어요. ' +
                 '인쇄해 <b>가방·키링</b>에 다는 안심 카드로도 만들 수 있어요.</div></div>',
             buttons: [
               { label: '닫기', value: 'cancel', variant: 'ghost' },
@@ -1744,7 +1796,10 @@
         var endMsg = (!share.revoked && share.expiresAt)
           ? '이 설명서는 <b>' + UI.fmtDate(share.expiresAt) + '</b>까지 열람할 수 있었어요.<br>' +
             '계속 보시려면 보호자에게 새 링크를 요청해 주세요.'
-          : '보호자가 공유를 중단했어요. 보호자에게 새 링크를 요청해 주세요.';
+          : share.revokedReason === 'authfail'
+            ? '인증번호를 <b>5번</b> 잘못 입력해 이 링크는 안전을 위해 잠겼어요.<br>' +
+              '보호자에게 새 링크를 요청해 주세요.'
+            : '보호자가 공유를 중단했어요. 보호자에게 새 링크를 요청해 주세요.';
         return topBar + '<div class="container narrow"><div class="card empty">' +
           '<div class="emoji">🔒</div><h3>지금은 열 수 없는 링크예요</h3>' +
           '<p>' + endMsg + '</p></div></div>';
@@ -1769,15 +1824,21 @@
           (vd.dleft === 0 ? '오늘까지' : 'D-' + vd.dleft) + '</span>'
         : '기간 제한 없이 열람 가능';
 
-      if (!viewerAuthed[share.token]) {
+      /* 인증번호를 쓰지 않는 공유는 잠금 화면 없이 바로 설명서로 (보호자가 만들 때 선택) */
+      if (Store.shareNeedsCode(share) && !viewerAuthed[share.token]) {
+        var leftTry = Math.max(0, (Store.SHARE_FAIL_LIMIT || 5) - (share.failCount || 0));
         return topBar + '<div class="container narrow" style="padding-top:44px">' +
           '<div class="card card-pad" style="max-width:380px;margin:0 auto;text-align:center">' +
           '<div style="color:var(--primary)">' + icon('lock', 36) + '</div>' +
           '<h2 style="margin:10px 0 4px">인증번호 입력</h2>' +
           '<p class="muted mb-3" style="font-size:.9rem">보호자에게 전달받은 ' +
             '4자리 인증번호를 입력해 주세요.</p>' +
-          '<div class="pill-info mb-3" style="justify-content:center;font-size:.85rem;text-align:left">' +
+          '<div class="pill-info mb-2" style="justify-content:center;font-size:.85rem;text-align:left">' +
             icon('clock', 15) + '<div>' + validityLine + '</div></div>' +
+          '<div class="pill-info mb-3" style="justify-content:center;font-size:.85rem;text-align:left">' +
+            icon('lock', 15) + '<div>' + (share.failCount
+              ? '남은 입력 기회 <b>' + leftTry + '번</b>이에요. 모두 틀리면 링크가 잠겨요.'
+              : '인증번호를 <b>5번</b> 틀리면 안전을 위해 링크가 잠겨요.') + '</div></div>' +
           '<form id="vauth-form">' +
             '<input class="input" id="vauth-code" inputmode="numeric" maxlength="4" ' +
               'style="text-align:center;font-size:1.6rem;letter-spacing:.4em;font-weight:800" ' +
@@ -1806,6 +1867,14 @@
         '</div>';
     },
     mount: function (p) {
+      /* 인증번호 없이 열리는 공유 — 잠금 화면이 없으므로 여기서 열람 1회를 집계한다 */
+      var open = Store.getShareByToken(p.token);
+      if (open && !open.revoked && !Store.isShareExpired(open) &&
+          !Store.shareNeedsCode(open) && !viewerAuthed[open.token]) {
+        viewerAuthed[open.token] = true;
+        Store.bumpShareViews(open.id);
+      }
+
       var form = UI.el('vauth-form');
       if (form) {
         form.addEventListener('submit', function (e) {
@@ -1814,8 +1883,19 @@
           var code = UI.el('vauth-code').value.trim();
           if (share && code === String(share.accessCode)) {
             viewerAuthed[share.token] = true;
+            Store.resetShareFail(share.id);
             Store.bumpShareViews(share.id);
             App.refresh();
+          } else if (share) {
+            /* 5회 연속 실패 → 링크 자동 잠금. 남은 기회를 미리 알려 준다 */
+            var r = Store.failShareAuth(share.id);
+            if (r.locked) {
+              toast('인증번호를 5번 틀려 링크가 잠겼어요', 'err');
+              App.refresh();
+            } else {
+              toast('인증번호가 맞지 않아요. 남은 기회 ' + r.left + '번', 'err');
+              App.refresh();
+            }
           } else {
             toast('인증번호가 맞지 않아요. 다시 한번 확인해 주세요', 'err');
           }

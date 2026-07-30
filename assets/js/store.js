@@ -352,6 +352,9 @@
   function createShare(opts) {
     var db = getDB();
     var days = shareCycleDays(opts.renewCycle);
+    /* 인증번호는 기본 ON. 끄면(requireCode:false) 링크만으로 바로 열람 —
+       급할 때 곁의 분이 바로 볼 수 있게 하되, 링크가 곧 열쇠가 되므로 선택은 보호자가 한다. */
+    var needCode = opts.requireCode !== false;
     var share = {
       id: uid('shr'),
       token: Math.random().toString(36).slice(2, 8).toUpperCase(),
@@ -361,11 +364,16 @@
       viewerName: opts.viewerName || '',
       viewerRole: opts.viewerRole || '기타',
       safeNumber: opts.safeNumber !== false,   // 비상연락처를 안심번호(050)로 표시 (기본 ON)
-      accessCode: opts.accessCode || String(Math.floor(1000 + Math.random() * 9000)),
+      requireCode: needCode,                   // 인증번호 입력 후 열람 여부 (기본 ON)
+      accessCode: needCode
+        ? (opts.accessCode || String(Math.floor(1000 + Math.random() * 9000)))
+        : '',
       createdAt: nowISO(),
       renewCycle: opts.renewCycle || null,   // week | month | year | null(계속 유지)
       expiresAt: days ? new Date(Date.now() + days * 864e5).toISOString() : (opts.expiresAt || null),
       revoked: false,
+      revokedReason: null,     // 'owner'(보호자 중단) | 'authfail'(인증번호 5회 실패)
+      failCount: 0,            // 연속 인증번호 실패 횟수
       views: 0
     };
     db.shares.push(share);
@@ -395,15 +403,39 @@
       return s.token === String(token).toUpperCase();
     })[0] || null;
   }
-  function revokeShare(id) {
+  function revokeShare(id, reason) {
     var db = getDB();
     var s = db.shares.filter(function (x) { return x.id === id; })[0];
-    if (s) { s.revoked = true; setDB(db); }
+    if (s) { s.revoked = true; s.revokedReason = reason || 'owner'; setDB(db); }
   }
   function bumpShareViews(id) {
     var db = getDB();
     var s = db.shares.filter(function (x) { return x.id === id; })[0];
     if (s) { s.views = (s.views || 0) + 1; setDB(db); }
+  }
+  /* 인증번호가 필요한 공유인지 — 레거시(requireCode 없는) 공유는 인증번호가 있으면 필요로 본다 */
+  function shareNeedsCode(s) {
+    if (!s) return false;
+    if (s.requireCode === false) return false;
+    return !!s.accessCode;
+  }
+  /* 인증번호 오입력 — 5회 연속 실패하면 링크를 자동으로 잠근다(무단 열람 방어) */
+  var SHARE_FAIL_LIMIT = 5;
+  function failShareAuth(id) {
+    var db = getDB();
+    var s = db.shares.filter(function (x) { return x.id === id; })[0];
+    if (!s) return { count: 0, left: SHARE_FAIL_LIMIT, locked: false };
+    s.failCount = (s.failCount || 0) + 1;
+    var locked = s.failCount >= SHARE_FAIL_LIMIT;
+    if (locked && !s.revoked) { s.revoked = true; s.revokedReason = 'authfail'; }
+    setDB(db);
+    return { count: s.failCount, left: Math.max(0, SHARE_FAIL_LIMIT - s.failCount), locked: locked };
+  }
+  /* 인증 성공 시 실패 카운터 초기화 (연속 실패만 잠금 대상) */
+  function resetShareFail(id) {
+    var db = getDB();
+    var s = db.shares.filter(function (x) { return x.id === id; })[0];
+    if (s && s.failCount) { s.failCount = 0; setDB(db); }
   }
 
   /* ---------- 대상별 공유 커스텀 ---------- */
@@ -519,6 +551,8 @@
     createShare: createShare, sharesOf: sharesOf, getShareByToken: getShareByToken,
     revokeShare: revokeShare, bumpShareViews: bumpShareViews,
     renewShare: renewShare, isShareExpired: isShareExpired, shareCycleDays: shareCycleDays,
+    shareNeedsCode: shareNeedsCode, failShareAuth: failShareAuth, resetShareFail: resetShareFail,
+    SHARE_FAIL_LIMIT: SHARE_FAIL_LIMIT,
     listAudienceTemplates: listAudienceTemplates, saveAudienceTemplate: saveAudienceTemplate,
     deleteAudienceTemplate: deleteAudienceTemplate,
     // 백오피스
