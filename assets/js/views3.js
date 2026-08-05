@@ -10,7 +10,10 @@
   var notFound = V._notFound, manualCount = V._manualCount;
   var childContextBar = V._childContextBar, pageHead = V._pageHead;
 
-  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  /* 오늘 날짜(로컬 기준) — 복약 체크 키·기록 기본 날짜가 여기에 걸려 있다.
+     toISOString은 UTC라 한국 시간 00:00~08:59가 전날로 묶여, 하루 경계가 자정이 아닌
+     오전 9시가 되는 문제가 있었다(데이터정의서 개선목록 P5). */
+  function todayStr() { return UI.todayISO(); }
   /* 현재 시각 HH:MM (로컬) — 기록 시간 기본값 */
   function nowHM() {
     var d = new Date();
