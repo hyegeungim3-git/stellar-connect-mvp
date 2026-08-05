@@ -847,7 +847,9 @@
       return pageHead(isNew ? '아이 등록' : '아이 정보 수정',
           isNew ? '아이를 등록해 주세요' : child.name + ' 정보 수정',
           '입력한 정보는 설명서와 한 장 요약에 함께 활용됩니다.') +
-        '<form id="child-form">' +
+        /* novalidate — required는 보조기술용으로 남기고, 안내 문구는 앱 토스트로 통일한다.
+           (브라우저 기본 말풍선 '이 입력란을 작성하세요.'가 앱 안내를 가로채던 문제) */
+        '<form id="child-form" novalidate>' +
         '<div class="card mb-2"><div class="card-head"><span style="color:var(--primary)">' +
           icon('user', 18) + '</span><h3>기본 정보</h3></div><div class="card-body">' +
           '<div class="row mb-2" style="gap:14px">' +
@@ -860,9 +862,10 @@
           '<div class="field"><label>이름 <span class="req">*</span></label>' +
             '<input class="input" name="name" required value="' + esc(child.name) + '"></div>' +
           '<div class="field-row">' +
-            '<div class="field"><label>생년월일</label>' +
+            '<div class="field"><label>생년월일 <span class="req">*</span></label>' +
               /* 오늘 이후 날짜는 고를 수 없게 — 미래 날짜가 들어가면 나이가 음수로 계산된다 */
-              '<input class="input" name="birthDate" type="date" max="' + UI.todayISO() +
+              '<input class="input" name="birthDate" type="date" required ' +
+              'min="1900-01-01" max="' + UI.todayISO() +
               '" value="' + esc(child.birthDate) + '"></div>' +
             '<div class="field"><label>성별</label><select class="select" name="gender">' +
               ['', '남', '여'].map(function (g) {
@@ -1020,12 +1023,25 @@
       UI.el('child-form').addEventListener('submit', function (e) {
         e.preventDefault();
         var f = readForm(e.target);
-        if (!f.name) { toast('이름을 입력해 주세요.', 'err'); return; }
-        /* 직접 입력·붙여넣기로 max를 우회할 수 있어 저장 직전에 한 번 더 본다 */
-        if (f.birthDate && f.birthDate > UI.todayISO()) {
-          toast('생년월일은 오늘까지만 고를 수 있어요', 'err');
-          var bd = e.target.querySelector('[name=birthDate]');
-          if (bd) bd.focus();
+        /* 필수값·범위 검증 — 안내 후 해당 칸으로 포커스를 옮겨 어디를 고쳐야 하는지 보이게 한다.
+           (직접 입력·붙여넣기로 min/max를 우회할 수 있어 저장 직전에 값으로 한 번 더 본다) */
+        function invalid(sel, msg) {
+          toast(msg, 'err');
+          var el = e.target.querySelector(sel);
+          if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }
+        if (!f.name) { invalid('[name=name]', '이름을 입력해 주세요.'); return; }
+        if (!f.birthDate) {
+          /* 생년월일 필수 — 연령 4단계(영유아·학령기·청소년·성인) 안내와 미래 준비가 이 값에 걸려 있다 */
+          invalid('[name=birthDate]', '생년월일을 입력해 주세요. 나이에 맞는 안내를 위해 필요해요');
+          return;
+        }
+        if (f.birthDate > UI.todayISO()) {
+          invalid('[name=birthDate]', '생년월일은 오늘까지만 고를 수 있어요');
+          return;
+        }
+        if (f.birthDate < '1900-01-01') {
+          invalid('[name=birthDate]', '생년월일을 다시 확인해 주세요');
           return;
         }
         base.name = f.name;
