@@ -111,13 +111,21 @@
     if (diff < 2592000) return Math.floor(diff / 86400) + '일 전';
     return fmtDate(iso);
   }
+  /* 오늘 날짜 (YYYY-MM-DD) — 생년월일 입력 상한 등에 사용 */
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
   function calcAge(birthDate) {
     if (!birthDate) return null;
     var b = new Date(birthDate), n = new Date();
+    if (isNaN(b.getTime())) return null;
     var age = n.getFullYear() - b.getFullYear();
     var m = n.getMonth() - b.getMonth();
     if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age--;
-    return age;
+    /* 미래 날짜가 저장돼 있으면 '만 -4세'처럼 보이므로 표시하지 않는다(2026-07-31) */
+    return age < 0 ? null : age;
   }
   function initials(name) {
     if (!name) return '?';
@@ -397,7 +405,7 @@
   global.UI = {
     el: el, esc: esc, nl2br: nl2br, icon: icon, brandMark: brandMark,
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, timeAgo: timeAgo,
-    calcAge: calcAge, initials: initials,
+    calcAge: calcAge, initials: initials, todayISO: todayISO,
     toast: toast, Modal: Modal,
     barChart: barChart, lineChart: lineChart, distBar: distBar,
     MOODS: MOODS, moodStars: moodStars,

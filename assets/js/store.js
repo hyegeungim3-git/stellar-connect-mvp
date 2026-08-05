@@ -53,13 +53,17 @@
     }
   }
 
+  /* 저장 실패(용량 초과 등)는 false로 알린다 — 호출부는 반드시 반환값을 확인해
+     '저장했어요'가 잘못 뜨지 않게 한다. 안내는 브라우저 alert 대신 앱 토스트로. */
   function setDB(db) {
     try {
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       return true;
     } catch (e) {
       console.error('DB 저장 실패', e);
-      alert('저장 공간이 부족합니다. 사진 용량을 줄이거나 일부 기록을 삭제해 주세요.');
+      if (global.UI && UI.toast) {
+        UI.toast('저장 공간이 부족해요. 사진 용량을 줄이거나 지난 기록을 정리해 주세요', 'err');
+      }
       return false;
     }
   }
@@ -165,6 +169,7 @@
   function getChild(id) {
     return getDB().children.filter(function (c) { return c.id === id; })[0] || null;
   }
+  /* 저장에 실패하면 null — 호출부가 성공 토스트·화면 이동을 하지 않도록 */
   function saveChild(child) {
     var db = getDB();
     child.updatedAt = nowISO();
@@ -172,7 +177,7 @@
     db.children.forEach(function (c, i) { if (c.id === child.id) idx = i; });
     if (idx >= 0) db.children[idx] = child;
     else db.children.push(child);
-    setDB(db);
+    if (!setDB(db)) return null;
     // 설명서가 없으면 빈 설명서 생성
     if (!getManual(child.id)) {
       var m = emptyManual(child.id);
@@ -244,6 +249,9 @@
     db.manuals.forEach(function (m, i) { if (m.id === manual.id) idx = i; });
     if (idx >= 0) db.manuals[idx] = manual;
     else db.manuals.push(manual);
+    /* 설명서는 텍스트뿐이라 용량 초과 위험이 낮고, 화면 진입 시 자동 생성 경로
+       (getManual() || saveManual(emptyManual()))가 있어 null을 반환하면 렌더가 깨진다.
+       저장 실패 안내는 setDB의 토스트로 충분. */
     setDB(db);
     return manual;
   }
@@ -264,7 +272,7 @@
     db.records.forEach(function (r, i) { if (r.id === rec.id) idx = i; });
     if (idx >= 0) db.records[idx] = rec;
     else db.records.push(rec);
-    setDB(db);
+    if (!setDB(db)) return null;   // 사진·영상이 큰 기록에서 용량 초과가 나기 쉽다
     return rec;
   }
   function deleteRecord(id) {

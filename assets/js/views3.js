@@ -602,17 +602,18 @@
         rec.mood = mood; rec.photo = photoData;
 
         // 영상 클립 처리
+        var saved;
         if (CL.removed && !CL.blob) {
           rec.hasClip = false; rec.clipKey = null;
           rec.clipMime = ''; rec.clipDuration = 0; rec.clipSize = 0;
           if (VideoDB.available()) VideoDB.del(rec.id).catch(function () {});
-          Store.saveRecord(rec);
+          saved = Store.saveRecord(rec);
         } else if (CL.blob && CL.isNew) {
           rec.hasClip = true; rec.clipKey = rec.id;
           rec.clipMime = CL.blob.type; rec.clipDuration = CL.duration || 0;
           rec.clipSize = CL.blob.size;
-          Store.saveRecord(rec);
-          if (VideoDB.available()) {
+          saved = Store.saveRecord(rec);
+          if (saved && VideoDB.available()) {
             VideoDB.put(rec.id, CL.blob).catch(function () {
               var r2 = Store.getRecord(rec.id);
               if (r2) { r2.hasClip = false; r2.clipKey = null; Store.saveRecord(r2); }
@@ -620,8 +621,11 @@
             });
           }
         } else {
-          Store.saveRecord(rec);
+          saved = Store.saveRecord(rec);
         }
+        /* 저장 실패(용량 초과)면 안내는 Store가 이미 띄웠으니 성공 토스트·닫기를 하지 않는다
+           — 사진·영상을 줄이고 다시 시도할 수 있게 모달에 머문다 */
+        if (!saved) return 'keep';
         if (CL._cleanup) CL._cleanup();
         toast(isNew ? '기록을 남겼어요' : '수정했어요', 'ok');
         App.refresh();

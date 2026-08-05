@@ -397,6 +397,41 @@
 
   window.addEventListener('hashchange', function () { App._scroll = 0; route(); });
 
+  /* ---------- 다른 탭에서의 변경 반영 ----------
+     DB가 localStorage 단일 JSON이라, 두 탭이 각자의 옛 스냅샷을 저장하면 나중 저장이
+     앞의 변경을 통째로 덮어쓴다. 다른 탭의 저장을 감지해 이 탭을 즉시 최신 상태로 맞춘다.
+     (입력 중에는 작성 내용이 날아가지 않도록 새로고침을 미룬다) */
+  function busyEditing() {
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return true;
+    var mh = document.getElementById('modal-host');
+    return !!(mh && mh.children.length);
+  }
+  /* 미뤄 둔 최신화 반영 — 입력·모달이 끝난 어느 시점에든 안전하게 적용 */
+  function flushStaleDB() {
+    if (!App._staleDB || busyEditing()) return;
+    App._staleDB = false;
+    App.refresh();
+    UI.toast('다른 탭에서 변경한 내용을 불러왔어요');
+  }
+  window.addEventListener('storage', function (e) {
+    if (!e.key) return;
+    if (e.key === 'ichild.session.v1') {   // 다른 탭에서 로그인·로그아웃
+      App.lastChildId = null;
+      route();
+      return;
+    }
+    if (e.key !== 'ichild.db.v1') return;
+    App._staleDB = true;
+    flushStaleDB();   // 입력 중이면 아래 이벤트들에서 다시 시도한다
+  });
+  /* 입력·모달이 끝나는 순간을 여러 경로로 잡는다 (환경에 따라 focusout이 오지 않기도 함) */
+  document.addEventListener('focusout', function () { setTimeout(flushStaleDB, 120); });
+  document.addEventListener('click', function () { setTimeout(flushStaleDB, 0); }, true);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) flushStaleDB();
+  });
+
   /* ---------- 하이브리드(Capacitor) — Android 하드웨어 뒤로가기 ---------- */
   function setupHybridBackButton() {
     var cap = global.Capacitor;

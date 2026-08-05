@@ -861,7 +861,9 @@
             '<input class="input" name="name" required value="' + esc(child.name) + '"></div>' +
           '<div class="field-row">' +
             '<div class="field"><label>생년월일</label>' +
-              '<input class="input" name="birthDate" type="date" value="' + esc(child.birthDate) + '"></div>' +
+              /* 오늘 이후 날짜는 고를 수 없게 — 미래 날짜가 들어가면 나이가 음수로 계산된다 */
+              '<input class="input" name="birthDate" type="date" max="' + UI.todayISO() +
+              '" value="' + esc(child.birthDate) + '"></div>' +
             '<div class="field"><label>성별</label><select class="select" name="gender">' +
               ['', '남', '여'].map(function (g) {
                 return '<option' + (child.gender === g ? ' selected' : '') + '>' + g + '</option>';
@@ -1019,6 +1021,13 @@
         e.preventDefault();
         var f = readForm(e.target);
         if (!f.name) { toast('이름을 입력해 주세요.', 'err'); return; }
+        /* 직접 입력·붙여넣기로 max를 우회할 수 있어 저장 직전에 한 번 더 본다 */
+        if (f.birthDate && f.birthDate > UI.todayISO()) {
+          toast('생년월일은 오늘까지만 고를 수 있어요', 'err');
+          var bd = e.target.querySelector('[name=birthDate]');
+          if (bd) bd.focus();
+          return;
+        }
         base.name = f.name;
         base.birthDate = f.birthDate;
         base.gender = f.gender;
@@ -1038,7 +1047,9 @@
           protocol: f.eprotocol, hospital: f.ehospital, doctor: f.edoctor,
           contacts: readRows(UI.el('ct-rows'), ['name', 'relation', 'phone'])
         };
-        Store.saveChild(base);
+        /* 저장 실패(용량 초과)면 안내는 Store가 이미 띄웠으니, 성공 토스트·화면 이동을
+           하지 않고 폼에 머문다 — 사진을 줄이거나 지우고 다시 시도할 수 있게 */
+        if (!Store.saveChild(base)) return;
         toast(isNew ? '아이를 등록했어요' : '저장했어요', 'ok');
         App.navigate(isNew ? '#/manual/' + base.id : '#/child/' + base.id);
       });
