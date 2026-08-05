@@ -966,7 +966,9 @@
         '</div></div>' +
 
         '<div class="row" style="justify-content:flex-end;gap:10px;margin-top:18px">' +
-          '<button type="button" class="btn btn-ghost btn-lg" id="btn-cancel">취소</button>' +
+          /* 등록 화면은 잠긴 메뉴에서 바로 넘어오기도 해서, 빠져나갈 길을 부드럽게 열어 둔다 */
+          '<button type="button" class="btn btn-ghost btn-lg" id="btn-cancel">' +
+            (isNew ? '나중에 하기' : '취소') + '</button>' +
           '<button type="submit" class="btn btn-primary btn-lg">' + icon('check', 17) +
             (isNew ? '아이 등록' : '저장') + '</button>' +
         '</div>' +

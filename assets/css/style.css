@@ -270,6 +270,12 @@ p.muted { line-height: 1.72; }
   content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
   width: 4px; height: 22px; background: var(--primary); border-radius: 0 4px 4px 0;
 }
+/* 아이 미등록 — 메뉴는 보이되 잠금. 클릭하면 등록 화면으로 안내한다(무반응 금지) */
+.nav-item.locked { opacity: .45; cursor: default; text-align: left; }
+.nav-item.locked:hover { background: none; color: var(--text-muted); }
+.nav-item.locked:hover svg { color: var(--text-faint); }
+.nav-item.locked svg:last-child { margin-left: auto; width: 13px; height: 13px; }
+.nav-item.locked:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .sidebar .side-foot {
   margin-top: auto; padding: 14px 12px 4px; font-size: .72rem;
   color: var(--text-faint); line-height: 1.5;
@@ -1218,6 +1224,12 @@ table.tbl td.actions { white-space: nowrap; }
   }
   .bottom-nav a svg, .bottom-nav button svg { width: 23px; height: 23px; }
   .bottom-nav a.active { color: var(--primary); }
+  /* 아이 미등록 — 탭 구조는 그대로 두고 잠금 표시만 (등록 후 위치가 바뀌지 않게) */
+  .bottom-nav button.locked { opacity: .45; position: relative; }
+  .bottom-nav button.locked svg:last-child {
+    position: absolute; top: 4px; right: 50%; margin-right: -17px;
+    width: 11px; height: 11px;
+  }
 
   /* 앱바 컴팩트 */
   .app-bar { padding: env(safe-area-inset-top, 0px) 14px 0; gap: 9px; }

@@ -50,28 +50,58 @@
     meds: 'meds', gallery: 'gallery', plan: 'plan', caregiver: 'caregiver', admin: 'admin'
   };
 
-  function currentChildId(r) {
-    if (r.params.childId) return r.params.childId;
-    if (r.params.id && (r.view === 'childProfile' || r.view === 'childEdit')) return r.params.id;
-    if (App.lastChildId) return App.lastChildId;
-    var u = Store.currentUser();
-    if (u) { var kids = Store.childrenOf(u.id); if (kids[0]) return kids[0].id; }
-    return null;
+  /* 아이가 있어야만 열리는 화면 — 아이 등록 화면(#/child/new)은 제외 */
+  var CHILD_VIEWS = ['childProfile', 'manual', 'summary', 'records', 'meds',
+    'gallery', 'plan', 'share'];
+  function needsChild(r) {
+    if (r.view === 'childEdit') return !!r.params.id;   // 수정은 아이 필요, 신규 등록은 아님
+    return CHILD_VIEWS.indexOf(r.view) >= 0;
   }
 
-  function navItems(cur) {
+  /* 현재 아이 — 반드시 '로그인한 보호자가 소유한 아이'만 반환한다.
+     계정을 바꿔도 이전 사용자의 childId가 메뉴 링크에 남지 않도록 소유권을 검증(2026-07-31). */
+  function currentChildId(r) {
+    var u = Store.currentUser();
+    if (!u) return null;
+    function owned(id) {
+      if (!id) return null;
+      var c = Store.getChild(id);
+      return (c && c.ownerId === u.id) ? id : null;
+    }
+    var byRoute = owned(r.params.childId) ||
+      ((r.view === 'childProfile' || r.view === 'childEdit') ? owned(r.params.id) : null);
+    if (byRoute) return byRoute;
+    var remembered = owned(App.lastChildId);
+    if (remembered) return remembered;
+    var kids = Store.childrenOf(u.id);
+    return kids[0] ? kids[0].id : null;
+  }
+
+  /* 아이 미등록(locked) — 메뉴는 그대로 보이되 잠그고, 클릭하면 등록 화면으로 보낸다.
+     숨기면 서비스 범위를 알 수 없고, 등록 후 메뉴가 늘어나 화면 구조가 바뀐 것처럼 느껴진다. */
+  function navItems(cur, locked) {
     var c = cur || '';
     return [
       { key: 'dashboard', label: '홈',          icon: 'home',  hash: '#/dashboard' },
-      { key: 'profile',   label: '아이 프로필', icon: 'smile', hash: cur ? '#/child/' + c : '#/dashboard' },
-      { key: 'manual',    label: '설명서',      icon: 'book',  hash: cur ? '#/manual/' + c : '#/dashboard' },
-      { key: 'records',   label: '기록',        icon: 'note',  hash: cur ? '#/records/' + c : '#/dashboard' },
-      { key: 'meds',      label: '복용 관리',   icon: 'pill',  hash: cur ? '#/meds/' + c : '#/dashboard' },
-      { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: cur ? '#/gallery/' + c : '#/dashboard' },
-      { key: 'plan',      label: '미래 준비',   icon: 'flag',  hash: cur ? '#/plan/' + c : '#/dashboard' },
-      { key: 'share',     label: '대상별 공유', icon: 'share', hash: cur ? '#/share/' + c : '#/dashboard' }
+      { key: 'profile',   label: '아이 프로필', icon: 'smile', hash: '#/child/' + c,   locked: locked },
+      { key: 'manual',    label: '설명서',      icon: 'book',  hash: '#/manual/' + c,  locked: locked },
+      { key: 'records',   label: '기록',        icon: 'note',  hash: '#/records/' + c, locked: locked },
+      { key: 'meds',      label: '복용 관리',   icon: 'pill',  hash: '#/meds/' + c,    locked: locked },
+      { key: 'gallery',   label: '갤러리',      icon: 'camera', hash: '#/gallery/' + c, locked: locked },
+      { key: 'plan',      label: '미래 준비',   icon: 'flag',  hash: '#/plan/' + c,    locked: locked },
+      { key: 'share',     label: '대상별 공유', icon: 'share', hash: '#/share/' + c,   locked: locked }
       /* 양육자 정보는 좌측/더보기 메뉴에서 제외 — 우측 계정 드롭다운에만 유지(사용자 의견) */
     ];
+  }
+  /* 잠금 항목은 <a>가 아닌 <button> — href가 없어야 주소창 변화·새 탭 열기가 원천 차단된다.
+     disabled 대신 aria-disabled + tabindex 유지 (포커스가 빠지면 잠긴 이유를 들을 수 없다) */
+  function navItemHTML(it, active) {
+    if (it.locked) {
+      return '<button class="nav-item locked" aria-disabled="true" data-lock="' + esc(it.label) + '">' +
+        icon(it.icon, 19) + '<span>' + esc(it.label) + '</span>' + icon('lock', 13) + '</button>';
+    }
+    return '<a class="nav-item' + (active === it.key ? ' active' : '') + '" href="' + it.hash + '">' +
+      icon(it.icon, 19) + '<span>' + esc(it.label) + '</span></a>';
   }
   /* 모바일 하단 탭 4개 고정 (나머지는 더보기) */
   var BOTTOM_KEYS = ['dashboard', 'manual', 'records', 'gallery'];
@@ -81,15 +111,12 @@
     var u = Store.currentUser();
     var cur = currentChildId(r);
     var active = NAV_MAP[r.view] || '';
-    var items = navItems(cur);
     var kids = Store.childrenOf(u.id);
+    var items = navItems(cur, !kids.length);
 
     // 사이드바
     var sideNav = '<div class="nav-group-label">메뉴</div>' +
-      items.map(function (it) {
-        return '<a class="nav-item' + (active === it.key ? ' active' : '') + '" href="' + it.hash + '">' +
-          icon(it.icon, 19) + '<span>' + esc(it.label) + '</span></a>';
-      }).join('');
+      items.map(function (it) { return navItemHTML(it, active); }).join('');
     if (u.role === 'admin') {
       sideNav += '<div class="nav-group-label">운영</div>' +
         '<a class="nav-item' + (active === 'admin' ? ' active' : '') + '" href="#/admin">' +
@@ -135,6 +162,10 @@
     // 하단 탭바 (모바일)
     var bottom = '<nav class="bottom-nav">' +
       items.filter(function (it) { return BOTTOM_KEYS.indexOf(it.key) >= 0; }).map(function (it) {
+        if (it.locked) {
+          return '<button class="locked" aria-disabled="true" data-lock="' + esc(it.label) + '">' +
+            icon(it.icon, 22) + '<span>' + esc(it.label) + '</span>' + icon('lock', 11) + '</button>';
+        }
         return '<a href="' + it.hash + '" class="' + (active === it.key ? 'active' : '') + '">' +
           icon(it.icon, 22) + '<span>' + esc(it.label) + '</span></a>';
       }).join('') +
@@ -170,7 +201,8 @@
     var hb = UI.el('help-btn');
     if (hb) hb.onclick = function () { if (global.Help) Help.open(r.view); };
     UI.el('menu-logout').onclick = function () {
-      Store.logout(); UI.toast('로그아웃했어요', 'ok'); App.navigate('#/');
+      Store.logout(); App.lastChildId = null;   // 계정 전환 시 이전 아이 컨텍스트 잔류 방지
+      UI.toast('로그아웃했어요', 'ok'); App.navigate('#/');
     };
     UI.el('menu-reset').onclick = function () {
       UI.Modal.confirm({ title: '데모 데이터 초기화', danger: true,
@@ -217,16 +249,29 @@
 
     var more = UI.el('more-btn');
     if (more) more.onclick = function () { openDrawer(r); };
+
+    // 잠금 메뉴(사이드·하단탭) — 이동 대신 무엇이 잠겼는지 알리고 등록 화면으로
+    document.querySelectorAll('[data-lock]').forEach(function (b) {
+      b.onclick = function () { lockedNudge(b.dataset.lock); };
+    });
+  }
+
+  /* 잠금 메뉴 클릭 — 왜 등록 화면으로 왔는지 알려주고 바로 이동.
+     replace로 이동해야 뒤로가기 시 잠긴 메뉴로 되돌아갔다 다시 튕기는 루프가 생기지 않는다. */
+  function lockedNudge(label) {
+    UI.toast('아이를 등록하면 「' + label + '」을 사용할 수 있어요');
+    App.replace('#/child/new');
   }
 
   function openDrawer(r) {
     var u = Store.currentUser();
     var cur = currentChildId(r);
+    var lock = !Store.childrenOf(u.id).length;
     var links = [
-      { t: '아이 프로필', i: 'smile', h: cur ? '#/child/' + cur : '#/dashboard' },
-      { t: '복용 관리', i: 'pill', h: cur ? '#/meds/' + cur : '#/dashboard' },
-      { t: '미래 준비', i: 'flag', h: cur ? '#/plan/' + cur : '#/dashboard' },
-      { t: '대상별 공유', i: 'share', h: cur ? '#/share/' + cur : '#/dashboard' }
+      { t: '아이 프로필', i: 'smile', h: '#/child/' + cur, lock: lock },
+      { t: '복용 관리', i: 'pill', h: '#/meds/' + cur, lock: lock },
+      { t: '미래 준비', i: 'flag', h: '#/plan/' + cur, lock: lock },
+      { t: '대상별 공유', i: 'share', h: '#/share/' + cur, lock: lock }
       /* 양육자 정보는 계정 드롭다운에만 유지 */
     ];
     if (u.role === 'admin') links.push({ t: '백오피스', i: 'settings', h: '#/admin' });
@@ -238,6 +283,10 @@
     dr.innerHTML = '<div class="row between mb-2"><b>전체 메뉴</b>' +
       '<button class="btn-icon" id="drawer-x">' + icon('x', 18) + '</button></div>' +
       links.map(function (l) {
+        if (l.lock) {
+          return '<button class="nav-item locked" aria-disabled="true" data-lock="' + esc(l.t) + '">' +
+            icon(l.i, 19) + '<span>' + esc(l.t) + '</span>' + icon('lock', 13) + '</button>';
+        }
         return '<a class="nav-item" href="' + l.h + '">' + icon(l.i, 19) +
           '<span>' + esc(l.t) + '</span></a>';
       }).join('') +
@@ -249,8 +298,11 @@
     bd.onclick = close;
     dr.querySelector('#drawer-x').onclick = close;
     dr.querySelectorAll('a').forEach(function (a) { a.onclick = close; });
+    dr.querySelectorAll('[data-lock]').forEach(function (b) {
+      b.onclick = function () { close(); lockedNudge(b.dataset.lock); };
+    });
     dr.querySelector('#drawer-logout').onclick = function () {
-      close(); Store.logout(); App.navigate('#/');
+      close(); Store.logout(); App.lastChildId = null; App.navigate('#/');
     };
   }
 
@@ -269,6 +321,13 @@
     // 앱 레이아웃은 로그인 필요
     if (view.layout === 'app' && !loggedIn) {
       location.hash = '#/login'; return;
+    }
+    /* 아이 종속 화면 가드 — 아이가 한 명도 없으면 URL·북마크·QR로 들어와도 홈으로.
+       replace라 뒤로가기 무한 루프가 생기지 않는다. */
+    if (loggedIn && needsChild(r) &&
+        !Store.childrenOf(Store.currentUser().id).length) {
+      UI.toast('먼저 아이를 등록해 주세요');
+      App.replace('#/dashboard'); return;
     }
     // 현재 아이 기억
     var cc = currentChildId(r);
@@ -322,6 +381,11 @@
     navigate: function (hash) {
       if (location.hash === hash) route();
       else location.hash = hash;
+    },
+    /* 히스토리에 남기지 않고 이동 — 가드·잠금 메뉴처럼 '되돌아가면 안 되는' 이동에 사용 */
+    replace: function (hash) {
+      if (location.hash === hash) { route(); return; }
+      location.replace(location.pathname + location.search + hash);
     },
     refresh: function () {
       App._scroll = window.scrollY || window.pageYOffset || 0;
