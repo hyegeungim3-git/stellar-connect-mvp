@@ -270,6 +270,15 @@ p.muted { line-height: 1.72; }
   content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
   width: 4px; height: 22px; background: var(--primary); border-radius: 0 4px 4px 0;
 }
+/* 가입 심사 큐 — SLA 초과 건은 색으로 바로 눈에 띄게 */
+.admin-over { color: var(--danger); font-weight: 800; }
+/* 제출 서류 뷰어 — 심사 동안만 보관하는 사진 */
+.admin-doc {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); padding: 8px; text-align: center;
+}
+.admin-doc img { max-width: 100%; max-height: 46vh; border-radius: 8px; }
+
 /* 회원가입 5단계 표시 — 지금 어디까지 왔는지 늘 보이게 (긴 절차의 이탈 방지) */
 .su-steps {
   display: flex; gap: 4px; flex-wrap: wrap;

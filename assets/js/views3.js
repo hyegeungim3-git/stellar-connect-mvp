@@ -2060,11 +2060,21 @@
   function adminPanel(tab, db) {
     if (tab === 'stats') {
       var st = Store.stats();
+      /* 가입 심사가 생기면서 '대기 건수'만으로는 운영이 안 된다 —
+         SLA 초과·반려·중단(서류 미제출)과 평균 처리 시간을 함께 본다 */
       var cards = [
-        ['전체 회원', st.users + '명', 'users'], ['활성 회원', st.activeUsers + '명', 'user'],
-        ['등록 아이', st.children + '명', 'smile'], ['인증 완료', st.verifiedChildren + '명', 'shield'],
-        ['작성된 설명서', st.manuals + '건', 'book'], ['전체 기록', st.records + '건', 'note'],
-        ['공유 링크', st.shares + '개', 'share'], ['인증 대기', st.pendingChildren + '건', 'clock']
+        ['가입 심사 대기', st.pendingUsers + '건', 'clock'],
+        ['24시간 초과', st.overdueUsers + '건', 'alert'],
+        ['반려', st.rejectedUsers + '건', 'x'],
+        ['서류 미제출', st.nodocUsers + '건', 'note'],
+        ['평균 심사 소요', st.avgReviewHours == null ? '—' : st.avgReviewHours + '시간', 'trend'],
+        ['활성 회원', st.activeUsers + '명', 'user'],
+        ['등록 아이', st.children + '명', 'smile'],
+        ['인증 완료 아이', st.verifiedChildren + '명', 'shield'],
+        ['작성된 설명서', st.manuals + '건', 'book'],
+        ['전체 기록', st.records + '건', 'note'],
+        ['공유 링크', st.shares + '개', 'share'],
+        ['인증 5회 실패 잠김', st.lockedShares + '건', 'lock']
       ];
       var byMonth = [];
       var d = new Date();
@@ -2116,8 +2126,30 @@
     }
 
     if (tab === 'verify') {
-      var crows = db.children.map(function (c) {
-        var owner = db.users.filter(function (u) { return u.id === c.ownerId; })[0];
+      /* 가입 심사 큐 — 대기 건을 위로, 오래 기다린 순으로. 접수 후 경과와 재제출 여부를
+         함께 보여야 SLA(영업일 1~2일)를 지킬 수 있다. */
+      var vf = S.verifyFilter || 'pending';
+      var all = db.children.map(function (c) {
+        var owner = db.users.filter(function (u) { return u.id === c.ownerId; })[0] || null;
+        var sibs = db.children.filter(function (x) { return x.ownerId === c.ownerId; });
+        return { c: c, owner: owner,
+          first: sibs.length ? sibs[0].id === c.id : true,   // 가입 때 등록한 첫 아이인지
+          at: c.verifySubmittedAt || (owner && owner.submittedAt) || c.createdAt };
+      });
+      var counts = {
+        pending: all.filter(function (x) { return x.c.verifyStatus === 'pending'; }).length,
+        rejected: all.filter(function (x) { return x.c.verifyStatus === 'rejected'; }).length,
+        verified: all.filter(function (x) { return x.c.verifyStatus === 'verified'; }).length
+      };
+      var list = all.filter(function (x) {
+        return vf === 'all' ? true : x.c.verifyStatus === vf;
+      }).sort(function (a, b) {
+        var rank = { pending: 0, rejected: 1, verified: 2, none: 3 };
+        var d = (rank[a.c.verifyStatus] || 3) - (rank[b.c.verifyStatus] || 3);
+        return d !== 0 ? d : (a.at || '') > (b.at || '') ? 1 : -1;   // 오래 기다린 순
+      });
+      var crows = list.map(function (x) {
+        var c = x.c, owner = x.owner;
         var sb = c.verifyStatus === 'verified' ? '<span class="badge ok dot">인증 완료</span>'
           : c.verifyStatus === 'pending' ? '<span class="badge warn dot">검토 중</span>'
           : c.verifyStatus === 'rejected' ? '<span class="badge danger dot">반려</span>'
@@ -2129,22 +2161,47 @@
           : c.verifyStatus === 'verified'
             ? '<button class="btn btn-ghost btn-sm" data-vreject="' + c.id + '">인증 해제</button>'
             : '<span class="faint" style="font-size:.8rem">요청 대기</span>';
-        var ownerState = owner && owner.status === 'pending' ? ' <span class="badge warn">로그인 대기</span>'
-          : owner && owner.status === 'rejected' ? ' <span class="badge danger">반려</span>' : '';
-        return '<tr><td><b>' + esc(c.name) + '</b></td>' +
-          '<td>' + esc(owner ? owner.name : '-') + ownerState + '</td>' +
+        var elapsed = '';
+        if (c.verifyStatus === 'pending' && x.at) {
+          var h = Math.floor((Date.now() - new Date(x.at).getTime()) / 36e5);
+          var over = h >= 24;
+          elapsed = '<div class="' + (over ? 'admin-over' : 'faint') + '" style="font-size:.78rem">' +
+            (h < 1 ? '방금 접수' : h < 24 ? h + '시간 경과' : Math.floor(h / 24) + '일 ' + (h % 24) + '시간 경과') +
+            (over ? ' · SLA 초과' : '') + '</div>';
+        }
+        return '<tr><td><b>' + esc(c.name) + '</b>' +
+            (x.first ? ' <span class="badge">가입 심사</span>' : ' <span class="badge">추가 아이</span>') +
+            ((c.verifyTries || 0) > 1 ? ' <span class="badge warn">재제출 ' + c.verifyTries + '회</span>' : '') +
+          '</td>' +
+          '<td>' + esc(owner ? owner.name : '-') +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></td>' +
           '<td>' + esc((c.verifyDocs || []).join(', ') || '-') +
+            (c.verifyDocImage
+              ? ' <button class="btn btn-ghost btn-sm" data-vdoc="' + c.id + '">' + icon('eye', 13) + '서류 보기</button>'
+              : '<div class="faint" style="font-size:.76rem">사진 파기됨</div>') +
             (c.verifyStatus === 'rejected' && owner && owner.rejectReason
               ? '<div class="faint" style="font-size:.78rem">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
           '</td>' +
+          '<td>' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
       }).join('');
-      return '<div class="card"><div class="card-head"><h3>아이 정보 인증</h3>' +
-        '<span class="badge warn">대기 ' + Store.stats().pendingChildren + '건</span></div>' +
+      var segs = [['pending', '심사 대기 ' + counts.pending], ['rejected', '반려 ' + counts.rejected],
+        ['verified', '인증 완료 ' + counts.verified], ['all', '전체 ' + all.length]];
+      return '<div class="card"><div class="card-head"><h3>가입 심사</h3>' +
+        '<span class="badge warn">대기 ' + counts.pending + '건</span>' +
+        '<span class="faint" style="margin-left:auto;font-size:.8rem">확인 목표 영업일 1~2일</span></div>' +
+        '<div class="card-body" style="padding-bottom:0">' +
+          '<div class="seg">' + segs.map(function (s) {
+            return '<button class="' + (vf === s[0] ? 'on' : '') + '" data-vfilter="' + s[0] + '">' +
+              esc(s[1]) + '</button>';
+          }).join('') + '</div></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-        '<th>아이</th><th>양육자</th><th>제출 서류</th><th>상태</th><th>처리</th>' +
-        '</tr></thead><tbody>' + (crows || '<tr><td colspan="5" class="muted">대상이 없습니다.</td></tr>') +
-        '</tbody></table></div></div>';
+        '<th>아이</th><th>양육자</th><th>제출 서류</th><th>접수</th><th>상태</th><th>처리</th>' +
+        '</tr></thead><tbody>' + (crows || '<tr><td colspan="6" class="muted">해당하는 건이 없습니다.</td></tr>') +
+        '</tbody></table></div></div>' +
+        '<p class="faint mt-2" style="font-size:.82rem">' +
+        '서류 사진은 심사하는 동안만 보관하고, 승인·반려로 처리하는 즉시 파기합니다. ' +
+        '열람·처리 이력은 계정별로 기록됩니다.</p>';
     }
 
     if (tab === 'contents') {
@@ -2238,9 +2295,47 @@
         b.onclick = function () {
           var c = Store.getChild(b.dataset.vapprove);
           if (!c) return;
-          Store.reviewGuardian(c.ownerId, true);
+          var me = Store.currentUser();
+          Store.reviewGuardian(c.ownerId, true, '', me ? me.name : '관리자');
           toast('승인했습니다. 보호자에게 알림톡이 발송됩니다(시연)', 'ok');
           App.refresh();
+        };
+      });
+      /* 심사 대기·반려 필터 */
+      document.querySelectorAll('[data-vfilter]').forEach(function (b) {
+        b.onclick = function () { S.verifyFilter = b.dataset.vfilter; App.refresh(); };
+      });
+      /* 서류 사진 열람 — 민감정보라 열람 자체를 이력에 남긴다 */
+      document.querySelectorAll('[data-vdoc]').forEach(function (b) {
+        b.onclick = function () {
+          var c = Store.getChild(b.dataset.vdoc);
+          if (!c || !c.verifyDocImage) { toast('보관된 서류 사진이 없어요', 'err'); return; }
+          var me = Store.currentUser();
+          Store.logDocView(c.ownerId, me ? me.name : '관리자');
+          var logs = Store.verifyLogsOf(c.ownerId).slice(0, 5);
+          Modal.open({
+            title: esc(c.name) + ' — 제출 서류', icon: 'shield', wide: true,
+            body: '<div class="pill-info mb-2">' + icon('lock', 16) +
+                '<div>이 사진은 <b>심사하는 동안만</b> 보관하고, 승인·반려로 처리하는 즉시 파기합니다. ' +
+                '열람 기록이 남습니다.</div></div>' +
+              '<div class="admin-doc"><img src="' + c.verifyDocImage + '" alt="제출 서류 사진"></div>' +
+              '<div class="row between wrap mt-2" style="gap:8px;font-size:.85rem">' +
+                '<span class="muted">서류 종류</span><b>' + esc((c.verifyDocs || []).join(', ') || '-') + '</b></div>' +
+              '<div class="row between wrap" style="gap:8px;font-size:.85rem">' +
+                '<span class="muted">제출 횟수</span><b>' + (c.verifyTries || 1) + '회</b></div>' +
+              '<div class="divider"></div>' +
+              '<div class="muted" style="font-size:.8rem;font-weight:800;margin-bottom:6px">최근 이력</div>' +
+              (logs.length
+                ? logs.map(function (l) {
+                    var lab = l.action === 'view' ? '열람' : l.action === 'approve' ? '승인' : '반려';
+                    return '<div class="row between wrap" style="gap:8px;font-size:.82rem;padding:3px 0">' +
+                      '<span>' + esc(l.reviewer) + ' · ' + lab +
+                      (l.reason ? ' (' + esc(l.reason) + ')' : '') + '</span>' +
+                      '<span class="muted">' + UI.fmtDateTime(l.at) + '</span></div>';
+                  }).join('')
+                : '<p class="muted" style="font-size:.82rem">기록이 없습니다.</p>'),
+            buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }]
+          });
         };
       });
       /* 반려는 사유가 반드시 남아야 한다 — 보호자 화면에 그대로 표시된다 */
@@ -2263,7 +2358,8 @@
             onButton: function (v, root) {
               if (v !== 'ok') return;
               var f = readForm(root);
-              Store.reviewGuardian(c.ownerId, false, f.reason);
+              var me = Store.currentUser();
+              Store.reviewGuardian(c.ownerId, false, f.reason, me ? me.name : '관리자');
               toast('반려했습니다. 사유가 보호자에게 전달됩니다(시연)', 'ok');
               App.refresh();
             }

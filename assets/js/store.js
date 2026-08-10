@@ -26,6 +26,7 @@
     return {
       users: [], children: [], manuals: [], records: [],
       shares: [], contents: [], popups: [], notifications: [],
+      verifyLogs: [],   // 보호자 인증 심사 이력 {id,userId,userName,action(view|approve|reject),reason,reviewer,at}
       medChecks: {},    // '아이id|YYYY-MM-DD' -> [복용 완료한 약 이름]
       dailyChecks: {},  // '아이id|YYYY-MM-DD' -> { mood, sleep, meal } (오늘의 체크인)
       plans: [],        // 성장 플랜 항목 {id, childId, stage, area, text, status, createdAt}
@@ -143,6 +144,11 @@
     child.disability.type = opts.disabilityType || '자폐 스펙트럼 장애';
     child.verifyStatus = 'pending';
     child.verifyDocs = [opts.docType + (opts.fileName ? ' (' + opts.fileName + ')' : '')];
+    child.verifySubmittedAt = nowISO();
+    child.verifyTries = (child.verifyTries || 0) + 1;   // 재제출 횟수 — 심사 큐에서 배지로 표시
+    /* 서류 사진은 심사 동안만 보관한다 — 승인·반려로 처리되는 순간 파기(reviewGuardian).
+       원본을 남기지 않는다는 개인정보 설계 원칙을 화면과 데이터 양쪽에서 지킨다. */
+    child.verifyDocImage = opts.docImage || '';
     u.status = 'pending';
     u.submittedAt = nowISO();
     u.rejectReason = '';
@@ -151,21 +157,46 @@
     return { ok: true, user: u, child: child };
   }
 
-  /* 관리자 심사 — 승인하면 계정이 열리고 아이가 인증 완료로, 반려하면 사유와 함께 되돌린다 */
-  function reviewGuardian(userId, approved, reason) {
+  /* 관리자 심사 — 승인하면 계정이 열리고 아이가 인증 완료로, 반려하면 사유와 함께 되돌린다.
+     처리와 동시에 서류 사진을 파기하고, 누가 언제 처리했는지 이력을 남긴다. */
+  function reviewGuardian(userId, approved, reason, reviewer) {
     var db = getDB();
     var u = db.users.filter(function (x) { return x.id === userId; })[0];
     if (!u) return null;
+    var at = nowISO();
     u.status = approved ? 'active' : 'rejected';
-    u.reviewedAt = nowISO();
+    u.reviewedAt = at;
+    u.reviewedBy = reviewer || '관리자';
     u.rejectReason = approved ? '' : (reason || '');
     db.children.forEach(function (c) {
       if (c.ownerId !== userId) return;
-      if (approved) { if (c.verifyStatus === 'pending') c.verifyStatus = 'verified'; }
-      else if (c.verifyStatus === 'pending') c.verifyStatus = 'rejected';
+      if (c.verifyStatus === 'pending') c.verifyStatus = approved ? 'verified' : 'rejected';
+      c.verifyDocImage = '';        // 서류 사진 파기
+      c.verifyDocPurgedAt = at;
+    });
+    db.verifyLogs = db.verifyLogs || [];
+    db.verifyLogs.push({
+      id: uid('vlog'), userId: userId, userName: u.name,
+      action: approved ? 'approve' : 'reject', reason: approved ? '' : (reason || ''),
+      reviewer: reviewer || '관리자', at: at
     });
     setDB(db);
     return u;
+  }
+  /* 서류 열람 기록 — 민감정보라 누가 언제 봤는지 남긴다 */
+  function logDocView(userId, reviewer) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    db.verifyLogs = db.verifyLogs || [];
+    db.verifyLogs.push({
+      id: uid('vlog'), userId: userId, userName: u ? u.name : '',
+      action: 'view', reason: '', reviewer: reviewer || '관리자', at: nowISO()
+    });
+    setDB(db);
+  }
+  function verifyLogsOf(userId) {
+    return (getDB().verifyLogs || []).filter(function (l) { return l.userId === userId; })
+      .sort(function (a, b) { return a.at < b.at ? 1 : -1; });
   }
 
   function login(email, password) {
@@ -572,15 +603,37 @@
       return s.canDo.length + s.needHelp.length + s.like.length +
         s.dislike.length + s.problem.length + s.comm.length > 0;
     });
+    /* 가입 심사 지표 — 대기 건수만으로는 SLA(영업일 1~2일)를 지킬 수 없어
+       접수 후 경과와 평균 처리 시간을 함께 낸다 */
+    var byStatus = function (s) {
+      return parents.filter(function (u) { return u.status === s; }).length;
+    };
+    var pend = parents.filter(function (u) { return u.status === 'pending'; });
+    var DAY = 864e5;
+    var overdue = pend.filter(function (u) {
+      return u.submittedAt && (Date.now() - new Date(u.submittedAt).getTime()) > DAY;
+    }).length;
+    var done = parents.filter(function (u) { return u.submittedAt && u.reviewedAt; });
+    var avgH = done.length
+      ? Math.round(done.reduce(function (a, u) {
+          return a + (new Date(u.reviewedAt).getTime() - new Date(u.submittedAt).getTime());
+        }, 0) / done.length / 36e5 * 10) / 10
+      : null;
     return {
       users: parents.length,
-      activeUsers: parents.filter(function (u) { return u.status === 'active'; }).length,
+      activeUsers: byStatus('active'),
+      pendingUsers: pend.length,          // 가입 심사 대기
+      overdueUsers: overdue,              // 접수 24시간 초과
+      rejectedUsers: byStatus('rejected'),
+      nodocUsers: byStatus('nodoc'),      // 서류 미제출로 중단된 가입
+      avgReviewHours: avgH,               // 평균 심사 소요(시간)
       children: db.children.length,
       verifiedChildren: db.children.filter(function (c) { return c.verifyStatus === 'verified'; }).length,
       pendingChildren: db.children.filter(function (c) { return c.verifyStatus === 'pending'; }).length,
       manuals: manualsFilled.length,
       records: db.records.length,
-      shares: db.shares.length
+      shares: db.shares.length,
+      lockedShares: db.shares.filter(function (s) { return s.revokedReason === 'authfail'; }).length
     };
   }
 
@@ -594,6 +647,7 @@
     getSession: getSession, currentUser: currentUser,
     signup: signup, login: login, logout: logout,
     submitGuardianDocs: submitGuardianDocs, reviewGuardian: reviewGuardian,
+    logDocView: logDocView, verifyLogsOf: verifyLogsOf,
     updateUser: updateUser, withdraw: withdraw, findUserByEmail: findUserByEmail,
     // 아이
     emptyChild: emptyChild, childrenOf: childrenOf, getChild: getChild,
