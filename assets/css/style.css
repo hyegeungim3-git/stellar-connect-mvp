@@ -270,6 +270,31 @@ p.muted { line-height: 1.72; }
   content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
   width: 4px; height: 22px; background: var(--primary); border-radius: 0 4px 4px 0;
 }
+/* 회원가입 5단계 표시 — 지금 어디까지 왔는지 늘 보이게 (긴 절차의 이탈 방지) */
+.su-steps {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin: -4px 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+}
+.su-step {
+  display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0;
+  font-size: .72rem; font-weight: 700; color: var(--text-faint); white-space: nowrap;
+}
+.su-step b {
+  display: grid; place-items: center; flex: none;
+  width: 19px; height: 19px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text-faint); font-size: .68rem;
+}
+.su-step.on { color: var(--primary-dark); }
+.su-step.on b { background: var(--primary); color: #fff; }
+.su-step.done { color: var(--text-muted); }
+.su-step.done b { background: var(--primary-soft); color: var(--primary-dark); }
+.su-all { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 13px; }
+.su-c { align-items: flex-start; }
+@media (max-width: 520px) {
+  .su-step span, .su-step { font-size: 0; gap: 0; }   /* 좁은 화면에서는 번호만 */
+  .su-step b { font-size: .68rem; }
+}
+
 /* 아이 미등록 — 메뉴는 보이되 잠금. 클릭하면 등록 화면으로 안내한다(무반응 금지) */
 .nav-item.locked { opacity: .45; cursor: default; text-align: left; }
 .nav-item.locked:hover { background: none; color: var(--text-muted); }

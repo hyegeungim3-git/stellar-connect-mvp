@@ -318,6 +318,9 @@
     if (loggedIn && (r.view === 'login' || r.view === 'signup')) {
       location.hash = '#/dashboard'; return;
     }
+    // 가입 화면에 처음 들어오면 1단계부터
+    if (r.view === 'signup' && App._lastView !== 'signup' && Views._resetSignup) Views._resetSignup();
+    App._lastView = r.view;
     // 앱 레이아웃은 로그인 필요
     if (view.layout === 'app' && !loggedIn) {
       location.hash = '#/login'; return;

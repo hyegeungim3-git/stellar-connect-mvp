@@ -2104,16 +2104,23 @@
         var owner = db.users.filter(function (u) { return u.id === c.ownerId; })[0];
         var sb = c.verifyStatus === 'verified' ? '<span class="badge ok dot">인증 완료</span>'
           : c.verifyStatus === 'pending' ? '<span class="badge warn dot">검토 중</span>'
+          : c.verifyStatus === 'rejected' ? '<span class="badge danger dot">반려</span>'
           : '<span class="badge dot">미인증</span>';
-        var act = c.verifyStatus === 'pending'
+        /* 승인·반려는 계정 상태(로그인 가능 여부)와 함께 움직인다 */
+        var act = (c.verifyStatus === 'pending' || c.verifyStatus === 'rejected')
           ? '<button class="btn btn-soft btn-sm" data-vapprove="' + c.id + '">승인</button> ' +
             '<button class="btn btn-danger btn-sm" data-vreject="' + c.id + '">반려</button>'
           : c.verifyStatus === 'verified'
             ? '<button class="btn btn-ghost btn-sm" data-vreject="' + c.id + '">인증 해제</button>'
             : '<span class="faint" style="font-size:.8rem">요청 대기</span>';
+        var ownerState = owner && owner.status === 'pending' ? ' <span class="badge warn">로그인 대기</span>'
+          : owner && owner.status === 'rejected' ? ' <span class="badge danger">반려</span>' : '';
         return '<tr><td><b>' + esc(c.name) + '</b></td>' +
-          '<td>' + esc(owner ? owner.name : '-') + '</td>' +
-          '<td>' + esc((c.verifyDocs || []).join(', ') || '-') + '</td>' +
+          '<td>' + esc(owner ? owner.name : '-') + ownerState + '</td>' +
+          '<td>' + esc((c.verifyDocs || []).join(', ') || '-') +
+            (c.verifyStatus === 'rejected' && owner && owner.rejectReason
+              ? '<div class="faint" style="font-size:.78rem">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
+          '</td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
       }).join('');
       return '<div class="card"><div class="card-head"><h3>아이 정보 인증</h3>' +
@@ -2199,14 +2206,38 @@
     if (tab === 'verify') {
       document.querySelectorAll('[data-vapprove]').forEach(function (b) {
         b.onclick = function () {
-          Store.setChildVerify(b.dataset.vapprove, 'verified');
-          toast('인증을 승인했습니다', 'ok'); App.refresh();
+          var c = Store.getChild(b.dataset.vapprove);
+          if (!c) return;
+          Store.reviewGuardian(c.ownerId, true);
+          toast('승인했습니다. 보호자에게 알림톡이 발송됩니다(시연)', 'ok');
+          App.refresh();
         };
       });
+      /* 반려는 사유가 반드시 남아야 한다 — 보호자 화면에 그대로 표시된다 */
+      var REJECT_REASONS = ['사진이 흐려 판독이 어려웠어요', '이름이 서로 달라요',
+        '서류 유효기간이 지났어요', '접수한 서류 종류가 맞지 않아요', '일부가 가려져 확인이 어려웠어요'];
       document.querySelectorAll('[data-vreject]').forEach(function (b) {
         b.onclick = function () {
-          Store.setChildVerify(b.dataset.vreject, 'none');
-          toast('인증이 해제/반려되었습니다', 'ok'); App.refresh();
+          var c = Store.getChild(b.dataset.vreject);
+          if (!c) return;
+          Modal.open({
+            title: '인증 반려', icon: 'alert',
+            body: '<p class="muted mb-2" style="font-size:.9rem">사유는 보호자 화면에 그대로 보여집니다.</p>' +
+              '<div class="field"><label>반려 사유</label><select class="select" name="reason">' +
+              REJECT_REASONS.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') +
+              '</select></div>',
+            buttons: [
+              { label: '취소', value: 'cancel', variant: 'ghost' },
+              { label: '반려', value: 'ok', variant: 'danger' }
+            ],
+            onButton: function (v, root) {
+              if (v !== 'ok') return;
+              var f = readForm(root);
+              Store.reviewGuardian(c.ownerId, false, f.reason);
+              toast('반려했습니다. 사유가 보호자에게 전달됩니다(시연)', 'ok');
+              App.refresh();
+            }
+          });
         };
       });
     }

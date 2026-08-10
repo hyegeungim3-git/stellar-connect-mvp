@@ -95,6 +95,8 @@
     })[0] || null;
   }
 
+  /* 계정 상태 — 보호자 인증 심사를 거쳐야 로그인이 열린다(2026-08-05 가입 절차 확정)
+     nodoc(서류 미제출) → pending(심사 대기) → active(승인) / rejected(반려) / withdrawn(탈퇴) */
   function signup(data) {
     var db = getDB();
     if (findUserByEmail(data.email)) {
@@ -107,24 +109,76 @@
       phone: data.phone || '',
       password: data.password,
       role: 'parent',
-      status: 'active',
-      verified: !!data.verified,         // 본인인증 여부
+      status: data.status || 'nodoc',    // 서류 등록 전까지는 로그인 불가
+      verified: !!data.verified,         // 본인인증(Nice) 완료 여부
+      di: data.di || '',                 // 본인확인 중복가입확인정보 — 중복 가입 차단용
       provider: data.provider || 'email', // email | kakao | naver
+      consents: data.consents || null,   // 동의 이력 {terms, privacy, sensitive, identity, age14, alimtalk, marketing, at}
+      submittedAt: null,                 // 서류 접수 일시
+      reviewedAt: null,                  // 심사 완료 일시
+      rejectReason: '',                  // 반려 사유 (rejected일 때)
       healthStatus: '',
       emergencyContacts: [],
       notify: { push: true, schedule: true, crisis: true },
       createdAt: nowISO()
     };
     db.users.push(user);
-    setDB(db);
+    if (!setDB(db)) return { ok: false, error: '저장에 실패했어요. 잠시 후 다시 시도해 주세요.' };
     return { ok: true, user: user };
+  }
+
+  /* 보호자 인증 서류 제출 — 아이 최소 정보(이름·생년월일·장애유형)와 함께 접수.
+     서류 원본은 보관하지 않는다(개인정보 설계 원칙) — 종류·파일명만 기록한다. */
+  function submitGuardianDocs(userId, opts) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u) return { ok: false, error: '계정을 찾을 수 없어요.' };
+    /* 반려 후 재제출이면 기존 아이를 갱신한다 — 새로 넣으면 아이가 중복 생성된다 */
+    var child = db.children.filter(function (c) {
+      return c.ownerId === userId && (c.verifyStatus === 'pending' || c.verifyStatus === 'rejected');
+    })[0];
+    if (!child) { child = emptyChild(userId); db.children.push(child); }
+    child.name = opts.childName;
+    child.birthDate = opts.childBirth;
+    child.disability.type = opts.disabilityType || '자폐 스펙트럼 장애';
+    child.verifyStatus = 'pending';
+    child.verifyDocs = [opts.docType + (opts.fileName ? ' (' + opts.fileName + ')' : '')];
+    u.status = 'pending';
+    u.submittedAt = nowISO();
+    u.rejectReason = '';
+    if (!setDB(db)) return { ok: false, error: '저장에 실패했어요. 잠시 후 다시 시도해 주세요.' };
+    /* 설명서는 승인 후 화면 진입 시 자동 생성된다 */
+    return { ok: true, user: u, child: child };
+  }
+
+  /* 관리자 심사 — 승인하면 계정이 열리고 아이가 인증 완료로, 반려하면 사유와 함께 되돌린다 */
+  function reviewGuardian(userId, approved, reason) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u) return null;
+    u.status = approved ? 'active' : 'rejected';
+    u.reviewedAt = nowISO();
+    u.rejectReason = approved ? '' : (reason || '');
+    db.children.forEach(function (c) {
+      if (c.ownerId !== userId) return;
+      if (approved) { if (c.verifyStatus === 'pending') c.verifyStatus = 'verified'; }
+      else if (c.verifyStatus === 'pending') c.verifyStatus = 'rejected';
+    });
+    setDB(db);
+    return u;
   }
 
   function login(email, password) {
     var u = findUserByEmail(email);
-    if (!u) return { ok: false, error: '가입되지 않은 이메일입니다.' };
+    if (!u) return { ok: false, error: '이메일 또는 비밀번호가 일치하지 않아요.' };
+    /* 비밀번호를 먼저 확인한다 — 틀린 상태에서 계정 상태를 알려주면
+       남의 이메일로 가입 여부를 확인할 수 있게 된다(계정 존재 노출 방지) */
+    if (u.password !== password) return { ok: false, error: '이메일 또는 비밀번호가 일치하지 않아요.' };
     if (u.status === 'withdrawn') return { ok: false, error: '탈퇴한 계정입니다.' };
-    if (u.password !== password) return { ok: false, error: '비밀번호가 일치하지 않습니다.' };
+    /* 심사 상태는 화면에서 모달로 안내한다 (code로 분기) */
+    if (u.status === 'nodoc') return { ok: false, code: 'nodoc', user: u };
+    if (u.status === 'pending') return { ok: false, code: 'pending', user: u };
+    if (u.status === 'rejected') return { ok: false, code: 'rejected', user: u };
     setSession(u.id);
     return { ok: true, user: u };
   }
@@ -539,6 +593,7 @@
     // 세션 / 인증
     getSession: getSession, currentUser: currentUser,
     signup: signup, login: login, logout: logout,
+    submitGuardianDocs: submitGuardianDocs, reviewGuardian: reviewGuardian,
     updateUser: updateUser, withdraw: withdraw, findUserByEmail: findUserByEmail,
     // 아이
     emptyChild: emptyChild, childrenOf: childrenOf, getChild: getChild,

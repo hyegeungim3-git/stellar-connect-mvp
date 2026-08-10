@@ -9,7 +9,9 @@
   /* 화면 전환 사이 유지되는 임시 UI 상태 */
   var S = { manualTab: 'canDo', recFilter: 'all', recSearch: '', homeChild: null,
     recPeriod: 'all', recFrom: '', recTo: '', recMood: 'all', recSort: 'new',
-    adminTab: 'stats', focusAdd: null };
+    adminTab: 'stats', focusAdd: null,
+    /* 회원가입 5단계 — 동의 → 본인인증 → 회원정보 → 서류 등록 → 접수 완료 */
+    suStep: 1, suData: null };
 
   /* ---------- 설명서 섹션 정의 ---------- */
   var MSEC = {
@@ -466,6 +468,8 @@
         e.preventDefault();
         var f = readForm(e.target);
         var r = Store.login(f.email, f.password);
+        /* 심사 상태는 토스트가 아니라 모달로 — 왜 못 들어가는지, 다음에 뭘 하면 되는지 알려야 한다 */
+        if (!r.ok && r.code) { openReviewStatus(r.code, r.user); return; }
         if (!r.ok) { toast(r.error, 'err'); return; }
         toast(r.user.name + '님, 환영합니다', 'ok');
         App.navigate('#/dashboard');
@@ -473,60 +477,365 @@
     }
   };
 
+  /* 승인 전 로그인 시도 — 상태별 안내 모달 (비밀번호 확인을 통과한 뒤에만 열린다) */
+  function openReviewStatus(code, user) {
+    if (code === 'nodoc') {
+      Modal.open({
+        title: '아직 서류 등록이 남아 있어요', icon: 'clock',
+        body: '<p class="muted mb-2">마지막 단계만 마치면 바로 이용하실 수 있어요.</p>' +
+          '<div class="pill-info">' + icon('info', 16) +
+          '<div>보호자 확인을 위한 서류를 등록해 주시면 관리자가 확인해 드려요.</div></div>',
+        buttons: [
+          { label: '닫기', value: 'cancel', variant: 'ghost' },
+          { label: '서류 등록하러 가기', value: 'go', variant: 'primary' }
+        ],
+        onButton: function (v) {
+          if (v !== 'go') return;
+          S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
+            account: { email: user.email } };
+          S.suStep = 4; S.suResume = true;
+          App.navigate('#/signup');
+        }
+      });
+      return;
+    }
+    if (code === 'rejected') {
+      Modal.open({
+        title: '서류를 다시 확인해 주세요', icon: 'alert',
+        body: '<p class="muted mb-2">보내주신 서류를 확인하지 못했어요.</p>' +
+          '<div class="callout mb-2"><div class="faint" style="font-size:.8rem">사유</div>' +
+          '<b>' + esc(user.rejectReason || '서류를 판독하기 어려웠어요') + '</b></div>' +
+          '<div class="pill-info">' + icon('bell', 16) +
+          '<div>다시 제출해 주시면 빠르게 확인해 드릴게요. 결과는 <b>카카오 알림톡</b>으로 알려 드려요.</div></div>',
+        buttons: [
+          { label: '닫기', value: 'cancel', variant: 'ghost' },
+          { label: '서류 다시 제출', value: 'go', variant: 'primary' }
+        ],
+        onButton: function (v) {
+          if (v !== 'go') return;
+          S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
+            account: { email: user.email } };
+          S.suStep = 4; S.suResume = true;
+          App.navigate('#/signup');
+        }
+      });
+      return;
+    }
+    /* pending — 접수일과 예상 완료를 함께 보여 준다(없으면 문의가 몰린다) */
+    Modal.open({
+      title: '관리자 확인을 기다리고 있어요', icon: 'clock',
+      body: '<p class="muted mb-2">제출해 주신 서류를 확인하고 있어요.</p>' +
+        '<div class="callout mb-2">' +
+          '<div class="row between wrap" style="gap:8px"><span class="faint">접수일</span>' +
+            '<b>' + UI.fmtDate(user.submittedAt || user.createdAt) + '</b></div>' +
+          '<div class="row between wrap" style="gap:8px;margin-top:4px"><span class="faint">확인 예정</span>' +
+            '<b>영업일 1~2일 안</b></div></div>' +
+        '<div class="pill-info">' + icon('bell', 16) +
+        '<div>확인이 끝나면 <b>카카오 알림톡</b>으로 알려 드릴게요. 승인되면 바로 로그인하실 수 있어요.</div></div>',
+      buttons: [
+        { label: '확인', value: 'ok', variant: 'primary' },
+        { label: '서류 다시 제출', value: 'go', variant: 'soft' }
+      ],
+      onButton: function (v) {
+        if (v !== 'go') return;
+        S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
+          account: { email: user.email } };
+        S.suStep = 4; S.suResume = true;
+        App.navigate('#/signup');
+      }
+    });
+  }
+
   /* =====================================================================
-   * 회원가입
+   * 회원가입 — 5단계 (2026-08-05 확정 절차)
+   *   ① 약관·동의 → ② 본인인증(Nice) → ③ 회원정보 → ④ 서류 등록 → ⑤ 접수 완료
+   * 보호자 인증 서류를 관리자가 승인해야 로그인이 열린다.
    * ===================================================================== */
+  var SU_STEPS = ['약관 동의', '본인인증', '회원정보', '서류 등록', '접수 완료'];
+  var SU_DOCS = ['복지카드', '장애인증명서', '특수교육대상자 증명서'];
+  var SU_DISABILITY = ['자폐 스펙트럼 장애', '지적장애', '발달지연', '뇌병변장애', '기타 발달장애'];
+
+  function suData() {
+    if (!S.suData) S.suData = { consents: null, ident: null, account: null };
+    return S.suData;
+  }
+  function suShell(body) {
+    var step = S.suStep;
+    var bar = '<div class="su-steps">' + SU_STEPS.map(function (t, i) {
+      var n = i + 1;
+      return '<span class="su-step' + (n === step ? ' on' : n < step ? ' done' : '') + '">' +
+        '<b>' + (n < step ? '✓' : n) + '</b>' + esc(t) + '</span>';
+    }).join('') + '</div>';
+    return '<div class="app-bar"><div class="brand" onclick="App.navigate(\'#/\')">' + UI.brandMark(34) +
+      '<div class="wordmark"><b>Stellar Connect</b><span>S:CON · ASTROGEN</span></div></div></div>' +
+      '<div class="container narrow" style="padding-top:32px">' +
+        '<div class="card card-pad" style="max-width:520px;margin:0 auto">' + bar + body + '</div>' +
+        '<p class="center muted" style="margin:18px 0 40px;font-size:.9rem">이미 계정이 있으신가요? ' +
+          '<a href="#/login" style="color:var(--primary);font-weight:700">로그인</a></p>' +
+      '</div>';
+  }
+  /* 동의 항목 — 민감정보·본인확인은 개인정보보호법상 별도 동의 대상이라 한 줄씩 분리한다 */
+  var SU_CONSENTS = [
+    { k: 'terms',     req: true,  t: '서비스 이용약관' },
+    { k: 'privacy',   req: true,  t: '개인정보 수집·이용 동의',
+      d: '가입·본인확인·서비스 제공에 필요한 정보를 모아요. 탈퇴하면 30일 뒤 지워요.' },
+    { k: 'sensitive', req: true,  t: '아이의 특성·건강 정보 처리 동의 (민감정보)',
+      d: '장애 특성·복약 같은 정보는 따로 동의를 받아요. 이 동의가 있어야 설명서를 만들 수 있어요.' },
+    { k: 'identity',  req: true,  t: '본인확인 서비스 이용 동의',
+      d: '휴대폰 본인인증을 위해 본인확인기관에 정보를 전달해요.' },
+    { k: 'age14',     req: true,  t: '만 14세 이상입니다' },
+    { k: 'alimtalk',  req: false, t: '알림톡 수신 동의 (선택)',
+      d: '심사 결과·복약 알림 같은 소식을 카카오 알림톡으로 보내 드려요.' },
+    { k: 'marketing', req: false, t: '서비스 소식·이벤트 수신 (선택)' }
+  ];
+
   var signup = {
     layout: 'public',
     render: function () {
-      return '' +
-      '<div class="app-bar"><div class="brand" onclick="App.navigate(\'#/\')">' + UI.brandMark(34) +
-        '<div class="wordmark"><b>Stellar Connect</b>' +
-        '<span>S:CON · ASTROGEN</span></div></div></div>' +
-      '<div class="container narrow" style="padding-top:36px">' +
-        '<div class="card card-pad" style="max-width:460px;margin:0 auto">' +
-          '<h1 class="mb-1">회원가입</h1>' +
-          '<p class="muted mb-3" style="font-size:.92rem">양육자(보호자) 계정으로 가입합니다.</p>' +
-          '<form id="signup-form">' +
-            '<div class="field"><label>이름 <span class="req">*</span></label>' +
-              '<input class="input" name="name" required placeholder="홍길동"></div>' +
-            '<div class="field"><label>이메일 <span class="req">*</span></label>' +
-              '<input class="input" name="email" type="email" required placeholder="you@example.com"></div>' +
+      var d = suData();
+      if (S.suStep === 1) {
+        return suShell(
+          '<h1 class="mb-1">약관에 동의해 주세요</h1>' +
+          '<p class="muted mb-3" style="font-size:.92rem">필요한 것만 최소로 모으고, 어디에 쓰는지 먼저 알려 드릴게요.</p>' +
+          '<label class="checkline su-all"><input type="checkbox" id="su-all">' +
+            '<span><b>전체 동의</b> <span class="faint" style="font-size:.82rem">— 선택 항목까지 모두</span></span></label>' +
+          '<div class="divider"></div>' +
+          SU_CONSENTS.map(function (c) {
+            return '<label class="checkline su-c"><input type="checkbox" data-consent="' + c.k + '"' +
+              (c.req ? ' data-req="1"' : '') + '>' +
+              '<span>' + esc(c.t) + (c.req ? ' <span class="req">*</span>' : '') +
+              (c.d ? '<span class="faint" style="display:block;font-size:.8rem;margin-top:2px">' +
+                esc(c.d) + '</span>' : '') + '</span></label>';
+          }).join('') +
+          '<button class="btn btn-primary btn-block btn-lg mt-2" id="su-next1">다음</button>');
+      }
+      if (S.suStep === 2) {
+        var ok = !!d.ident;
+        return suShell(
+          '<h1 class="mb-1">본인인증</h1>' +
+          '<p class="muted mb-3" style="font-size:.92rem">보호자 본인 확인을 위해 휴대폰 인증이 필요해요.</p>' +
+          (ok
+            ? '<div class="callout mb-2"><div class="row gap-sm" style="align-items:center">' +
+                '<span class="badge ok dot">인증 완료</span>' +
+                '<b>' + esc(d.ident.name) + '</b>' +
+                '<span class="faint">' + esc(d.ident.phoneMask) + '</span></div></div>'
+            : '<button class="btn btn-soft btn-block btn-lg mb-2" id="su-nice">' +
+              icon('shield', 17) + '휴대폰으로 본인인증하기</button>') +
+          '<div class="pill-info">' + icon('info', 16) +
+            '<div>정식 서비스에서는 <b>NICE 본인확인</b> 창이 열려요. 지금은 시연용이라 ' +
+            '입력하신 값으로 인증을 마친 것처럼 보여 드립니다.</div></div>' +
+          '<div class="row gap-sm mt-2">' +
+            '<button class="btn btn-ghost btn-lg" id="su-prev">이전</button>' +
+            '<button class="btn btn-primary btn-lg" id="su-next2" style="flex:1"' +
+              (ok ? '' : ' disabled') + '>다음</button></div>');
+      }
+      if (S.suStep === 3) {
+        var id = d.ident || { name: '', phone: '' };
+        return suShell(
+          '<h1 class="mb-1">계정 만들기</h1>' +
+          '<p class="muted mb-3" style="font-size:.92rem">이메일이 아이디가 돼요.</p>' +
+          '<form id="su-form3">' +
             '<div class="field-row">' +
-              '<div class="field"><label>비밀번호 <span class="req">*</span></label>' +
-                '<input class="input" name="password" type="password" required minlength="4"></div>' +
+              '<div class="field"><label>이름</label>' +
+                '<input class="input" value="' + esc(id.name) + '" disabled ' +
+                'style="background:var(--surface-2)"></div>' +
               '<div class="field"><label>휴대전화</label>' +
-                '<input class="input" name="phone" placeholder="010-0000-0000"></div>' +
+                '<input class="input" value="' + esc(id.phone) + '" disabled ' +
+                'style="background:var(--surface-2)"></div>' +
             '</div>' +
-            '<div class="callout mb-2">' +
-              '<label class="checkline"><input type="checkbox" name="age14" required>' +
-                '<span>만 14세 이상입니다. <span class="req">*</span></span></label>' +
-              '<label class="checkline"><input type="checkbox" id="su-verify">' +
-                '<span>휴대폰 본인인증 <span class="faint">(데모: 체크 시 인증 완료)</span></span></label>' +
-              '<label class="checkline"><input type="checkbox" name="terms" required>' +
-                '<span>이용약관 및 개인정보처리방침에 동의합니다. <span class="req">*</span></span></label>' +
+            '<p class="faint mb-2" style="font-size:.78rem">본인인증으로 확인된 정보예요.</p>' +
+            '<div class="field"><label>이메일 (아이디) <span class="req">*</span></label>' +
+              '<input class="input" name="email" type="email" placeholder="you@example.com"></div>' +
+            '<div class="field"><label>비밀번호 <span class="req">*</span> ' +
+              '<span class="faint">8자 이상, 영문·숫자를 함께</span></label>' +
+              '<input class="input" name="password" type="password"></div>' +
+            '<div class="field"><label>비밀번호 확인 <span class="req">*</span></label>' +
+              '<input class="input" name="password2" type="password"></div>' +
+            '<div class="row gap-sm mt-2">' +
+              '<button type="button" class="btn btn-ghost btn-lg" id="su-prev">이전</button>' +
+              '<button type="submit" class="btn btn-primary btn-lg" style="flex:1">다음</button></div>' +
+          '</form>');
+      }
+      if (S.suStep === 4) {
+        return suShell(
+          '<h1 class="mb-1">아이 정보와 서류 등록</h1>' +
+          '<p class="muted mb-3" style="font-size:.92rem">발달장애 아동 보호자를 위한 서비스라, ' +
+            '보호자 확인을 위한 서류를 한 번 받고 있어요. 여기서 받은 정보는 아이 프로필의 시작점이 돼요.</p>' +
+          '<form id="su-form4">' +
+            '<div class="field"><label>아이 이름 또는 별명 <span class="req">*</span></label>' +
+              '<input class="input" name="childName" placeholder="예) 준호 · 우리 별"></div>' +
+            '<p class="faint mb-2" style="font-size:.78rem">별명으로 적으셔도 괜찮아요. 나중에 바꿀 수 있어요.</p>' +
+            '<div class="field-row">' +
+              '<div class="field"><label>생년월일 <span class="req">*</span></label>' +
+                '<input class="input" name="childBirth" type="date" min="1900-01-01" max="' +
+                UI.todayISO() + '"></div>' +
+              '<div class="field"><label>장애 유형 <span class="req">*</span></label>' +
+                '<select class="select" name="disabilityType">' +
+                SU_DISABILITY.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') +
+                '</select></div>' +
             '</div>' +
-            '<button class="btn btn-primary btn-block btn-lg" type="submit">가입하기</button>' +
-          '</form>' +
-          '<p class="center muted" style="margin-top:18px;font-size:.9rem">이미 계정이 있으신가요? ' +
-            '<a href="#/login" style="color:var(--primary);font-weight:700">로그인</a></p>' +
+            '<div class="field"><label>제출 서류 <span class="req">*</span></label>' +
+              '<select class="select" name="docType">' +
+              SU_DOCS.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') +
+              '</select></div>' +
+            '<div class="field"><label>서류 사진 <span class="req">*</span></label>' +
+              '<label class="btn btn-soft btn-block" style="cursor:pointer">' + icon('camera', 16) +
+                '<span id="su-docname">사진 선택</span>' +
+                '<input type="file" id="su-doc" accept="image/*" hidden></label></div>' +
+            '<div class="pill-info mb-2">' + icon('lock', 16) +
+              '<div><b>주민등록번호 뒷자리는 가리고</b> 촬영해 주세요. 서류 사진은 확인이 끝나면 ' +
+              '<b>바로 파기</b>하고, 확인했다는 기록만 남겨요.</div></div>' +
+            '<div class="row gap-sm">' +
+              '<button type="button" class="btn btn-ghost btn-lg" id="su-prev">이전</button>' +
+              '<button type="submit" class="btn btn-primary btn-lg" style="flex:1">제출하고 심사 요청</button></div>' +
+          '</form>');
+      }
+      /* ⑤ 접수 완료 */
+      var acc = d.account || {};
+      return suShell(
+        '<div style="text-align:center;padding:6px 0 2px">' +
+          '<div style="color:var(--primary)">' + icon('check', 40) + '</div>' +
+          '<h1 style="margin:10px 0 6px">서류를 접수했어요</h1>' +
+          '<p class="muted" style="font-size:.94rem">관리자가 확인한 뒤에 서비스를 시작하실 수 있어요.</p>' +
         '</div>' +
-      '</div>';
+        '<div class="callout mb-2"><div class="row between wrap" style="gap:8px">' +
+          '<span class="faint">접수일</span><b>' + UI.fmtDate(acc.submittedAt || Store.nowISO()) + '</b></div>' +
+          '<div class="row between wrap" style="gap:8px;margin-top:4px">' +
+          '<span class="faint">확인 예정</span><b>영업일 1~2일 안</b></div></div>' +
+        '<div class="pill-info mb-2">' + icon('bell', 16) +
+          '<div>확인이 끝나면 <b>카카오 알림톡</b>으로 알려 드릴게요. ' +
+          '승인되면 바로 로그인하실 수 있어요.</div></div>' +
+        '<button class="btn btn-primary btn-block btn-lg" id="su-done">로그인 화면으로</button>');
     },
+
     mount: function () {
-      UI.el('signup-form').addEventListener('submit', function (e) {
+      var d = suData();
+      var prev = UI.el('su-prev');
+      if (prev) prev.onclick = function () { S.suStep--; App.refresh(); };
+
+      /* ① 동의 */
+      var all = UI.el('su-all');
+      if (all) {
+        var boxes = [].slice.call(document.querySelectorAll('[data-consent]'));
+        function syncAll() {
+          all.checked = boxes.every(function (b) { return b.checked; });
+        }
+        all.onclick = function () {
+          boxes.forEach(function (b) { b.checked = all.checked; });
+        };
+        boxes.forEach(function (b) { b.addEventListener('change', syncAll); });
+        UI.el('su-next1').onclick = function () {
+          var miss = boxes.filter(function (b) { return b.dataset.req && !b.checked; });
+          if (miss.length) {
+            toast('필수 항목에 동의해 주세요', 'err');
+            miss[0].focus();
+            return;
+          }
+          var c = { at: Store.nowISO() };
+          boxes.forEach(function (b) { c[b.dataset.consent] = b.checked; });
+          d.consents = c;
+          S.suStep = 2; App.refresh();
+        };
+      }
+
+      /* ② 본인인증 — 시연용 시뮬레이션 (실서비스는 NICE 본인확인 창) */
+      var nice = UI.el('su-nice');
+      if (nice) nice.onclick = function () {
+        Modal.open({
+          title: 'NICE 본인확인 (시연)', icon: 'shield',
+          body: '<p class="muted mb-2" style="font-size:.9rem">정식 서비스에서는 본인확인 창이 열려요. ' +
+            '시연에서는 아래 정보로 인증을 마친 것으로 처리합니다.</p>' +
+            '<div class="field"><label>이름</label><input class="input" name="name" placeholder="홍길동"></div>' +
+            '<div class="field-row">' +
+              '<div class="field"><label>생년월일</label>' +
+                '<input class="input" name="birth" type="date" max="' + UI.todayISO() + '"></div>' +
+              '<div class="field"><label>휴대전화</label>' +
+                '<input class="input" name="phone" placeholder="010-0000-0000"></div></div>',
+          buttons: [
+            { label: '취소', value: 'cancel', variant: 'ghost' },
+            { label: '인증 완료', value: 'ok', variant: 'primary' }
+          ],
+          onButton: function (v, root) {
+            if (v !== 'ok') return;
+            var f = readForm(root);
+            if (!f.name || !f.phone) { toast('이름과 휴대전화를 입력해 주세요', 'err'); return 'keep'; }
+            var tail = f.phone.replace(/\D/g, '').slice(-4);
+            d.ident = { name: f.name, birth: f.birth, phone: f.phone,
+              phoneMask: '···-····-' + tail,
+              di: 'DI-' + Store.uid('x').slice(-10) };
+            App.refresh();
+          }
+        });
+      };
+      var n2 = UI.el('su-next2');
+      if (n2) n2.onclick = function () { S.suStep = 3; App.refresh(); };
+
+      /* ③ 회원정보 */
+      var f3 = UI.el('su-form3');
+      if (f3) f3.addEventListener('submit', function (e) {
         e.preventDefault();
         var f = readForm(e.target);
-        if (!f.name || !f.email || !f.password) { toast('필수 항목을 입력해 주세요.', 'err'); return; }
-        var r = Store.signup({
-          name: f.name, email: f.email, password: f.password, phone: f.phone,
-          verified: UI.el('su-verify').checked
-        });
-        if (!r.ok) { toast(r.error, 'err'); return; }
-        Store.login(f.email, f.password);
-        toast('가입을 환영합니다! 아이를 등록해 주세요.', 'ok');
-        App.navigate('#/child/new');
+        function bad(sel, msg) {
+          toast(msg, 'err');
+          var el = e.target.querySelector(sel); if (el) el.focus();
+        }
+        if (!f.email || f.email.indexOf('@') < 0) { bad('[name=email]', '이메일을 확인해 주세요'); return; }
+        if (Store.findUserByEmail(f.email)) { bad('[name=email]', '이미 가입된 이메일이에요'); return; }
+        if ((f.password || '').length < 8) { bad('[name=password]', '비밀번호는 8자 이상으로 정해 주세요'); return; }
+        if (!/[a-zA-Z]/.test(f.password) || !/[0-9]/.test(f.password)) {
+          bad('[name=password]', '영문과 숫자를 함께 넣어 주세요'); return;
+        }
+        if (f.password !== f.password2) { bad('[name=password2]', '비밀번호가 서로 달라요'); return; }
+        d.account = { email: f.email, password: f.password };
+        S.suStep = 4; App.refresh();
       });
+
+      /* ④ 서류 등록 — 계정 생성 + 서류 접수를 한 번에 */
+      var docInput = UI.el('su-doc');
+      if (docInput) docInput.addEventListener('change', function () {
+        var file = this.files[0];
+        UI.el('su-docname').textContent = file ? file.name : '사진 선택';
+        d.docFile = file ? file.name : '';
+      });
+      var f4 = UI.el('su-form4');
+      if (f4) f4.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var f = readForm(e.target);
+        function bad(sel, msg) {
+          toast(msg, 'err');
+          var el = e.target.querySelector(sel);
+          if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }
+        if (!f.childName) { bad('[name=childName]', '아이 이름 또는 별명을 적어 주세요'); return; }
+        if (!f.childBirth) { bad('[name=childBirth]', '생년월일을 입력해 주세요'); return; }
+        if (f.childBirth > UI.todayISO()) { bad('[name=childBirth]', '생년월일은 오늘까지만 고를 수 있어요'); return; }
+        if (!d.docFile) { toast('서류 사진을 첨부해 주세요', 'err'); return; }
+        var id = d.ident || {}, acc = d.account || {};
+        /* 반려·미제출 계정의 재제출이면 이미 계정이 있다 — 가입을 다시 하지 않는다 */
+        var owner = Store.findUserByEmail(acc.email);
+        if (!owner) {
+          var r = Store.signup({
+            name: id.name, email: acc.email, password: acc.password, phone: id.phone,
+            verified: true, di: id.di, consents: d.consents, status: 'nodoc'
+          });
+          if (!r.ok) { toast(r.error, 'err'); return; }
+          owner = r.user;
+        }
+        var sub = Store.submitGuardianDocs(owner.id, {
+          childName: f.childName, childBirth: f.childBirth,
+          disabilityType: f.disabilityType, docType: f.docType, fileName: d.docFile
+        });
+        if (!sub.ok) { toast(sub.error, 'err'); return; }
+        d.account.submittedAt = sub.user.submittedAt;
+        S.suStep = 5; App.refresh();
+      });
+
+      /* ⑤ 접수 완료 */
+      var done = UI.el('su-done');
+      if (done) done.onclick = function () {
+        S.suStep = 1; S.suData = null;
+        App.navigate('#/login');
+      };
     }
   };
 
@@ -721,6 +1030,13 @@
     _notFound: notFound, _manualCount: manualCount,
     _childContextBar: childContextBar, _pageHead: pageHead,
     home: home, login: login, signup: signup, dashboard: dashboard,
+    /* 가입 화면에 새로 들어올 때마다 1단계부터. 이전 사용자의 입력이 남아 있으면
+       다음 방문자가 4단계로 들어가 버리므로 데이터까지 지운다.
+       단 로그인 모달의 '서류 다시 제출'처럼 단계를 지정해 보낸 경우(suResume)만 유지한다 */
+    _resetSignup: function () {
+      if (S.suResume) { S.suResume = false; return; }
+      S.suStep = 1; S.suData = null;
+    },
     _demo: function () {
       Store.login('parent@example.com', '1234'); App.navigate('#/dashboard');
       toast('체험 계정으로 로그인했습니다', 'ok');
