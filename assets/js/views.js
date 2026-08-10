@@ -9,7 +9,7 @@
   /* 화면 전환 사이 유지되는 임시 UI 상태 */
   var S = { manualTab: 'canDo', recFilter: 'all', recSearch: '', homeChild: null,
     recPeriod: 'all', recFrom: '', recTo: '', recMood: 'all', recSort: 'new',
-    adminTab: 'stats', verifyFilter: 'pending', focusAdd: null,
+    adminTab: 'stats', verifyFilter: 'pending', memQuery: '', memFilter: 'all', memPage: 1, focusAdd: null,
     /* 회원가입 5단계 — 동의 → 본인인증 → 회원정보 → 서류 등록 → 접수 완료 */
     suStep: 1, suData: null };
 

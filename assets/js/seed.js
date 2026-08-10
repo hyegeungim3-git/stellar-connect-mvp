@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 16;   // 데모 데이터 변경 시 이 숫자를 올린다 (v16: 텐텐 아침·저녁 2회 — 복수 시간대 예시)
+  var SEED_VERSION = 17;   // 데모 데이터 변경 시 이 숫자를 올린다 (v17: 심사자 계정 review@ichild.kr 추가)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -58,7 +58,15 @@
       notify: { push: true, schedule: false, crisis: true },
       createdAt: '2026-05-02T05:00:00.000Z'
     };
-    db.users.push(admin, parent1, parent2);
+    /* 심사자 계정 — 가입 심사만 볼 수 있는 권한(서류 열람 인원 최소화, v17) */
+    var reviewer = {
+      id: 'user-reviewer', name: '심사담당', email: 'review@ichild.kr',
+      phone: '02-000-0001', password: 'review123', role: 'reviewer', status: 'active',
+      verified: true, provider: 'email', healthStatus: '',
+      emergencyContacts: [], notify: { push: true, schedule: true, crisis: true },
+      createdAt: '2026-04-20T09:10:00.000Z'
+    };
+    db.users.push(admin, reviewer, parent1, parent2);
 
     /* 데모 날짜 — 항상 '요즘'처럼 보이도록 현재 시각 기준 상대 계산 */
     function _dAgo(n) { return new Date(Date.now() - n * 864e5).toISOString(); }

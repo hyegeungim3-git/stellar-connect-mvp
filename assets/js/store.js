@@ -27,6 +27,7 @@
       users: [], children: [], manuals: [], records: [],
       shares: [], contents: [], popups: [], notifications: [],
       verifyLogs: [],   // 보호자 인증 심사 이력 {id,userId,userName,action(view|approve|reject),reason,reviewer,at}
+      alimtalks: [],    // 알림톡 발송 이력 {id,userId,name,phone,template,title,body,at,result}
       medChecks: {},    // '아이id|YYYY-MM-DD' -> [복용 완료한 약 이름]
       dailyChecks: {},  // '아이id|YYYY-MM-DD' -> { mood, sleep, meal } (오늘의 체크인)
       plans: [],        // 성장 플랜 항목 {id, childId, stage, area, text, status, createdAt}
@@ -153,6 +154,7 @@
     u.submittedAt = nowISO();
     u.rejectReason = '';
     if (!setDB(db)) return { ok: false, error: '저장에 실패했어요. 잠시 후 다시 시도해 주세요.' };
+    sendAlimtalk(userId, 'submitted');
     /* 설명서는 승인 후 화면 진입 시 자동 생성된다 */
     return { ok: true, user: u, child: child };
   }
@@ -181,8 +183,52 @@
       reviewer: reviewer || '관리자', at: at
     });
     setDB(db);
+    sendAlimtalk(userId, approved ? 'approve' : 'reject', approved ? '' : (reason || ''));
     return u;
   }
+  /* 운영자 권한 — 심사자(reviewer)는 가입 심사만, 관리자(admin)는 전체.
+     서류는 민감정보라 열람 인원을 최소로 두기 위한 구분이다. */
+  function setUserRole(userId, role) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u) return null;
+    if (['parent', 'reviewer', 'admin'].indexOf(role) < 0) return null;
+    u.role = role;
+    setDB(db);
+    return u;
+  }
+  /* 알림톡 발송 — 실서비스는 카카오 알림톡 API. 프로토타입은 발송 이력만 남긴다.
+     승인·반려를 알림톡으로 알린다고 사용자에게 약속했으므로 확인할 수 있어야 한다. */
+  var ALIMTALK = {
+    submitted: { title: '서류 접수 안내',
+      body: '보호자 확인 서류를 접수했어요. 영업일 1~2일 안에 확인해 알려 드릴게요.' },
+    approve: { title: '가입 승인 안내',
+      body: '보호자 확인이 끝났어요. 이제 로그인하고 「내 아이 설명서」를 시작하실 수 있어요.' },
+    reject: { title: '서류 재제출 안내',
+      body: '보내주신 서류를 확인하지 못했어요. 앱에서 다시 제출해 주시면 빠르게 확인해 드릴게요.' }
+  };
+  function sendAlimtalk(userId, template, extra) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u) return null;
+    var t = ALIMTALK[template] || { title: '안내', body: '' };
+    var log = {
+      id: uid('atk'), userId: userId, name: u.name, phone: u.phone || '',
+      template: template, title: t.title,
+      body: t.body + (extra ? ' (' + extra + ')' : ''),
+      at: nowISO(),
+      /* 수신 동의를 하지 않았으면 발송하지 않는다 — 동의 이력이 곧 발송 근거 */
+      result: (u.consents && u.consents.alimtalk === false) ? 'skipped' : 'sent'
+    };
+    db.alimtalks = db.alimtalks || [];
+    db.alimtalks.push(log);
+    setDB(db);
+    return log;
+  }
+  function listAlimtalks() {
+    return (getDB().alimtalks || []).slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+  }
+
   /* 서류 열람 기록 — 민감정보라 누가 언제 봤는지 남긴다 */
   function logDocView(userId, reviewer) {
     var db = getDB();
@@ -648,6 +694,7 @@
     signup: signup, login: login, logout: logout,
     submitGuardianDocs: submitGuardianDocs, reviewGuardian: reviewGuardian,
     logDocView: logDocView, verifyLogsOf: verifyLogsOf,
+    sendAlimtalk: sendAlimtalk, listAlimtalks: listAlimtalks, setUserRole: setUserRole,
     updateUser: updateUser, withdraw: withdraw, findUserByEmail: findUserByEmail,
     // 아이
     emptyChild: emptyChild, childrenOf: childrenOf, getChild: getChild,

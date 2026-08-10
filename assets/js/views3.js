@@ -2025,12 +2025,19 @@
     layout: 'app',
     render: function () {
       var u = Store.currentUser();
-      if (!u || u.role !== 'admin') return notFound('관리자만 접근할 수 있어요');
+      if (!u || (u.role !== 'admin' && u.role !== 'reviewer')) {
+        return notFound('관리자만 접근할 수 있어요');
+      }
       var db = Store.getDB();
-      var tabs = [
-        ['stats', '운영 현황'], ['members', '회원 관리'], ['verify', '아이 인증'],
-        ['contents', '콘텐츠'], ['popups', '팝업·배너'], ['noti', '알림 발송']
-      ];
+      /* 심사자(reviewer)는 가입 심사만 — 서류는 민감정보라 열람 인원을 최소로 둔다 */
+      var tabs = u.role === 'reviewer'
+        ? [['verify', '가입 심사']]
+        : [
+            ['stats', '운영 현황'], ['members', '회원 관리'], ['verify', '가입 심사'],
+            ['alimtalk', '알림톡 이력'], ['security', '공유 보안'],
+            ['contents', '콘텐츠'], ['popups', '팝업·배너'], ['noti', '알림 발송']
+          ];
+      if (!tabs.some(function (t) { return t[0] === S.adminTab; })) S.adminTab = tabs[0][0];
       var tabBar = '<div class="manual-tabs">' + tabs.map(function (t) {
         return '<button class="manual-tab' + (S.adminTab === t[0] ? ' active' : '') +
           '" data-atab="' + t[0] + '">' + esc(t[1]) + '</button>';
@@ -2095,7 +2102,24 @@
     }
 
     if (tab === 'members') {
-      var rows = db.users.filter(function (x) { return x.role === 'parent'; }).map(function (m) {
+      /* 검색·상태 필터·페이지네이션 — 회원이 늘면 목록만으로는 운영이 안 된다 */
+      var mq = (S.memQuery || '').trim().toLowerCase();
+      var mf = S.memFilter || 'all';
+      var PAGE = 20;
+      var parents = db.users.filter(function (x) { return x.role === 'parent'; });
+      var filtered = parents.filter(function (m) {
+        if (mf !== 'all' && m.status !== mf) return false;
+        if (!mq) return true;
+        return (m.name + ' ' + m.email + ' ' + (m.phone || '')).toLowerCase().indexOf(mq) >= 0;
+      }).sort(function (a, b) { return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1; });
+      var page = Math.max(1, Math.min(S.memPage || 1, Math.ceil(filtered.length / PAGE) || 1));
+      S.memPage = page;
+      var pageRows = filtered.slice((page - 1) * PAGE, page * PAGE);
+      var mCounts = {};
+      ['active', 'pending', 'nodoc', 'rejected', 'withdrawn'].forEach(function (k) {
+        mCounts[k] = parents.filter(function (m) { return m.status === k; }).length;
+      });
+      var rows = pageRows.map(function (m) {
         var kids = db.children.filter(function (c) { return c.ownerId === m.id; }).length;
         var st = MEMBER_STATE[m.status] || MEMBER_STATE.nodoc;
         /* 심사 단계(nodoc·pending·rejected) 계정은 여기서 상태를 바꾸지 않는다.
@@ -2112,17 +2136,117 @@
               ? '<div class="faint" style="font-size:.76rem;margin-top:2px">' + esc(m.rejectReason) + '</div>' : '') +
           '</td>' +
           '<td>' + UI.fmtDate(m.createdAt) + '</td>' +
-          '<td class="actions">' + act + '</td></tr>';
+          '<td class="actions">' +
+            '<button class="btn btn-ghost btn-sm" data-mem-consent="' + m.id + '">동의 이력</button> ' +
+            act + '</td></tr>';
+      }).join('');
+      var mSegs = [['all', '전체 ' + parents.length], ['active', '활성 ' + mCounts.active],
+        ['pending', '심사 대기 ' + mCounts.pending], ['nodoc', '서류 미제출 ' + mCounts.nodoc],
+        ['rejected', '반려 ' + mCounts.rejected], ['withdrawn', '탈퇴 ' + mCounts.withdrawn]];
+      var totalPages = Math.ceil(filtered.length / PAGE) || 1;
+      var pager = totalPages > 1
+        ? '<div class="row gap-sm mt-2" style="justify-content:center;align-items:center">' +
+            '<button class="btn btn-soft btn-sm" data-mempage="' + (page - 1) + '"' +
+              (page <= 1 ? ' disabled' : '') + '>이전</button>' +
+            '<span class="muted" style="font-size:.85rem">' + page + ' / ' + totalPages + '</span>' +
+            '<button class="btn btn-soft btn-sm" data-mempage="' + (page + 1) + '"' +
+              (page >= totalPages ? ' disabled' : '') + '>다음</button></div>'
+        : '';
+      /* 운영자 계정 — 심사자 권한 부여·회수 (서류 열람 인원 최소화) */
+      var staff = db.users.filter(function (x) { return x.role === 'admin' || x.role === 'reviewer'; });
+      var staffRows = staff.map(function (m) {
+        return '<tr><td><b>' + esc(m.name) + '</b></td><td>' + esc(m.email) + '</td>' +
+          '<td>' + (m.role === 'admin' ? '<span class="badge brand">관리자</span>'
+            : '<span class="badge">심사자</span>') + '</td>' +
+          '<td class="actions">' + (m.role === 'admin'
+            ? '<button class="btn btn-ghost btn-sm" data-role-set="' + m.id + '|reviewer">심사자로</button>'
+            : '<button class="btn btn-ghost btn-sm" data-role-set="' + m.id + '|admin">관리자로</button>') +
+          '</td></tr>';
       }).join('');
       return '<div class="card"><div class="card-head"><h3>회원 목록</h3>' +
-        '<span class="badge">권한: 양육자</span></div>' +
+        '<span class="badge">' + filtered.length + '명</span></div>' +
+        '<div class="card-body" style="padding-bottom:0">' +
+          '<input class="input mb-2" id="mem-q" placeholder="이름·이메일·연락처로 검색" value="' +
+            esc(S.memQuery || '') + '">' +
+          '<div class="seg">' + mSegs.map(function (s) {
+            return '<button class="' + (mf === s[0] ? 'on' : '') + '" data-memfilter="' + s[0] + '">' +
+              esc(s[1]) + '</button>';
+          }).join('') + '</div></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
         '<th>이름</th><th>이메일</th><th>연락처</th><th>아이</th><th>상태</th><th>가입일</th><th></th>' +
-        '</tr></thead><tbody>' + (rows || '<tr><td colspan="7" class="muted">회원이 없습니다.</td></tr>') +
+        '</tr></thead><tbody>' + (rows || '<tr><td colspan="7" class="muted">조건에 맞는 회원이 없습니다.</td></tr>') +
+        '</tbody></table></div>' + pager + '</div>' +
+        '<div class="card mt-2"><div class="card-head"><h3>운영자 계정</h3>' +
+          '<span class="badge warn">서류 열람은 심사자·관리자만</span></div>' +
+          '<div class="table-wrap"><table class="tbl"><thead><tr>' +
+          '<th>이름</th><th>이메일</th><th>권한</th><th></th></tr></thead><tbody>' +
+          (staffRows || '<tr><td colspan="4" class="muted">운영자 계정이 없습니다.</td></tr>') +
+          '</tbody></table></div></div>' +
+        '<p class="faint mt-2" style="font-size:.82rem">' +
+        '심사자는 「가입 심사」만 볼 수 있습니다. 병원·치료기관 담당자 권한 그룹은 ' +
+        '2차 확장을 고려한 구조로 설계되어 있습니다.</p>';
+    }
+
+    if (tab === 'alimtalk') {
+      var logs = Store.listAlimtalks();
+      var TPL = { submitted: '서류 접수', approve: '가입 승인', reject: '서류 재제출' };
+      var arows = logs.slice(0, 100).map(function (l) {
+        return '<tr><td>' + UI.fmtDateTime(l.at) + '</td>' +
+          '<td><b>' + esc(l.name) + '</b><div class="faint" style="font-size:.78rem">' +
+            esc(l.phone || '-') + '</div></td>' +
+          '<td><span class="badge brand">' + esc(TPL[l.template] || l.template) + '</span></td>' +
+          '<td>' + esc(l.body) + '</td>' +
+          '<td>' + (l.result === 'sent' ? '<span class="badge ok dot">발송</span>'
+            : '<span class="badge dot">미발송(수신 미동의)</span>') + '</td></tr>';
+      }).join('');
+      return '<div class="card"><div class="card-head"><h3>알림톡 발송 이력</h3>' +
+        '<span class="badge">' + logs.length + '건</span></div>' +
+        '<div class="table-wrap"><table class="tbl"><thead><tr>' +
+        '<th>발송 시각</th><th>받는 분</th><th>유형</th><th>내용</th><th>결과</th>' +
+        '</tr></thead><tbody>' + (arows || '<tr><td colspan="5" class="muted">발송 이력이 없습니다.</td></tr>') +
         '</tbody></table></div></div>' +
         '<p class="faint mt-2" style="font-size:.82rem">' +
-        '1차 오픈은 관리자·일반회원 중심으로 구성하며, 병원·치료기관 담당자 권한 그룹은 ' +
-        '2차 확장을 고려한 구조로 설계되어 있습니다.</p>';
+        '접수·승인·반려 시 자동 발송됩니다. 알림톡 수신에 동의하지 않은 계정은 발송하지 않고 기록만 남깁니다. ' +
+        '정식 서비스에서는 카카오 알림톡 API로 실제 발송됩니다.</p>';
+    }
+
+    if (tab === 'security') {
+      /* 공유 인증 5회 실패 자동 잠금 — 반복되면 무단 열람 시도 신호라 따로 본다 */
+      var locked = db.shares.filter(function (s) { return s.revokedReason === 'authfail'; });
+      var risky = db.shares.filter(function (s) {
+        return s.revokedReason !== 'authfail' && (s.failCount || 0) > 0;
+      });
+      function shareRow(s, isLocked) {
+        var c = db.children.filter(function (x) { return x.id === s.childId; })[0];
+        var owner = c ? db.users.filter(function (u) { return u.id === c.ownerId; })[0] : null;
+        return '<tr><td><b>' + esc(c ? c.name : '-') + '</b>' +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.name : '') + '</div></td>' +
+          '<td>' + esc(s.viewerName || '받는 분') + ' <span class="badge">' + esc(s.viewerRole) + '</span></td>' +
+          '<td>' + (isLocked ? '<span class="admin-over">' + (s.failCount || 0) + '회</span>'
+            : (s.failCount || 0) + '회') + '</td>' +
+          '<td>' + UI.fmtDate(s.createdAt) + '</td>' +
+          '<td>' + (isLocked ? '<span class="badge danger dot">자동 잠김</span>'
+            : '<span class="badge warn dot">실패 누적</span>') + '</td></tr>';
+      }
+      return '<div class="card"><div class="card-head"><h3>인증 5회 실패로 잠긴 공유</h3>' +
+        '<span class="badge ' + (locked.length ? 'danger' : '') + '">' + locked.length + '건</span></div>' +
+        '<div class="table-wrap"><table class="tbl"><thead><tr>' +
+        '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th>' +
+        '</tr></thead><tbody>' +
+        (locked.map(function (s) { return shareRow(s, true); }).join('') ||
+          '<tr><td colspan="5" class="muted">잠긴 공유가 없습니다.</td></tr>') +
+        '</tbody></table></div></div>' +
+        '<div class="card mt-2"><div class="card-head"><h3>실패가 쌓이고 있는 공유</h3>' +
+          '<span class="badge">' + risky.length + '건</span></div>' +
+          '<div class="table-wrap"><table class="tbl"><thead><tr>' +
+          '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th>' +
+          '</tr></thead><tbody>' +
+          (risky.map(function (s) { return shareRow(s, false); }).join('') ||
+            '<tr><td colspan="5" class="muted">해당 건이 없습니다.</td></tr>') +
+          '</tbody></table></div></div>' +
+        '<p class="faint mt-2" style="font-size:.82rem">' +
+        '인증번호를 5번 연속 틀리면 링크가 자동으로 잠깁니다. 같은 보호자에게서 반복되면 ' +
+        '무단 열람 시도일 수 있으니 연락해 확인해 주세요.</p>';
     }
 
     if (tab === 'verify') {
@@ -2288,6 +2412,63 @@
       var goReview = document.querySelectorAll('[data-mem-review]');
       goReview.forEach(function (b) {
         b.onclick = function () { S.adminTab = 'verify'; App.refresh(); };
+      });
+      /* 검색은 입력 중 포커스가 날아가지 않게 디바운스 후 갱신 */
+      var mq = UI.el('mem-q');
+      if (mq) {
+        var t = null;
+        mq.addEventListener('input', function () {
+          clearTimeout(t);
+          t = setTimeout(function () {
+            S.memQuery = mq.value; S.memPage = 1; App.refresh();
+            var again = UI.el('mem-q');
+            if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+          }, 280);
+        });
+      }
+      document.querySelectorAll('[data-memfilter]').forEach(function (b) {
+        b.onclick = function () { S.memFilter = b.dataset.memfilter; S.memPage = 1; App.refresh(); };
+      });
+      document.querySelectorAll('[data-mempage]').forEach(function (b) {
+        b.onclick = function () { S.memPage = parseInt(b.dataset.mempage, 10) || 1; App.refresh(); };
+      });
+      /* 동의 이력 — 분쟁·감사 때 무엇에 언제 동의했는지 확인한다 */
+      document.querySelectorAll('[data-mem-consent]').forEach(function (b) {
+        b.onclick = function () {
+          var m = Store.getDB().users.filter(function (x) { return x.id === b.dataset.memConsent; })[0];
+          if (!m) return;
+          var C = [['terms', '서비스 이용약관', true], ['privacy', '개인정보 수집·이용', true],
+            ['sensitive', '아이의 특성·건강 정보 처리 (민감정보)', true],
+            ['identity', '본인확인 서비스 이용', true], ['age14', '만 14세 이상', true],
+            ['alimtalk', '알림톡 수신', false], ['marketing', '서비스 소식·이벤트 수신', false]];
+          var cs = m.consents;
+          Modal.open({
+            title: esc(m.name) + ' — 동의 이력', icon: 'shield',
+            body: cs
+              ? '<div class="row between wrap mb-2" style="gap:8px;font-size:.86rem">' +
+                  '<span class="muted">동의 시각</span><b>' + UI.fmtDateTime(cs.at) + '</b></div>' +
+                '<div class="divider"></div>' +
+                C.map(function (c) {
+                  return '<div class="row between wrap" style="gap:8px;padding:5px 0;font-size:.88rem">' +
+                    '<span>' + esc(c[1]) + (c[2] ? ' <span class="req">*</span>' : '') + '</span>' +
+                    (cs[c[0]] ? '<span class="badge ok dot">동의</span>'
+                              : '<span class="badge dot">미동의</span>') + '</div>';
+                }).join('')
+              : '<p class="muted">동의 이력이 없는 계정입니다. (가입 절차 개편 이전 계정)</p>',
+            buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }]
+          });
+        };
+      });
+      /* 운영자 권한 변경 — 서류 열람 인원을 최소로 유지하기 위한 장치 */
+      document.querySelectorAll('[data-role-set]').forEach(function (b) {
+        b.onclick = function () {
+          var p = b.dataset.roleSet.split('|');
+          var me = Store.currentUser();
+          if (me && me.id === p[0]) { toast('본인 권한은 바꿀 수 없어요', 'err'); return; }
+          Store.setUserRole(p[0], p[1]);
+          toast(p[1] === 'admin' ? '관리자 권한을 부여했습니다' : '심사자 권한으로 바꿨습니다', 'ok');
+          App.refresh();
+        };
       });
     }
     if (tab === 'verify') {
