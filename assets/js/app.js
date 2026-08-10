@@ -111,25 +111,28 @@
   /* ---------- 관리자 메뉴 ----------
      운영자는 양육자 화면을 쓰지 않으므로 사이드바를 통째로 관리자 메뉴로 바꾼다.
      각 항목이 URL(#/admin/<키>)을 가져 북마크·뒤로가기가 그대로 동작한다. */
+  /* 가입 심사는 회원 관리에 통합(계정 한 줄에서 [심사하기]),
+     공유 보안은 보호자가 새 공유를 만들면 해결되는 건이라 메뉴에서 제외(2026-08-10) */
   var ADMIN_NAV = [
     { key: 'stats',    label: '운영 현황',  icon: 'chart' },
     { key: 'members',  label: '회원 관리',  icon: 'users' },
-    { key: 'verify',   label: '가입 심사',  icon: 'shield' },
     { key: 'alimtalk', label: '알림톡 이력', icon: 'message' },
-    { key: 'security', label: '공유 보안',  icon: 'lock' },
     { key: 'contents', label: '콘텐츠',     icon: 'book' },
     { key: 'popups',   label: '팝업',      icon: 'grid' },
     { key: 'noti',     label: '알림 발송',  icon: 'bell' }
   ];
-  /* 심사자는 가입 심사만 — 서류가 민감정보라 열람 인원을 최소로 둔다 */
+  /* 심사자는 회원 관리 화면의 심사 대기 건만 — 서류가 민감정보라 열람 인원을 최소로 둔다 */
   function adminNav(role) {
     return role === 'reviewer'
-      ? ADMIN_NAV.filter(function (it) { return it.key === 'verify'; })
+      ? [{ key: 'members', label: '가입 심사', icon: 'shield' }]
       : ADMIN_NAV;
   }
+  /* 없어진 메뉴의 옛 URL(북마크)도 회원 관리로 받는다 */
+  var ADMIN_TAB_ALIAS = { verify: 'members', security: 'members' };
   function adminTabOf(r, role) {
     var keys = adminNav(role).map(function (it) { return it.key; });
-    var t = r.params && r.params.tab;
+    var t = (r.params && r.params.tab) || '';
+    if (ADMIN_TAB_ALIAS[t]) t = ADMIN_TAB_ALIAS[t];
     return keys.indexOf(t) >= 0 ? t : keys[0];
   }
   var ADMIN_BOTTOM = 4;   // 모바일 하단 탭에 노출할 관리자 메뉴 수 (나머지는 더보기)

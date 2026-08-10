@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 20;  // 데모 데이터 변경 시 이 숫자를 올린다 (v20: 콘텐츠 수정 이력·팝업 기간/대상/순서·알림 발송자)
+  var SEED_VERSION = 21;  // 데모 데이터 변경 시 이 숫자를 올린다 (v21: 알림 발송 채널 알림톡)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -362,7 +362,7 @@
 
     /* ---------- 알림 로그 ---------- */
     db.notifications.push(
-      { id: 'noti-1', target: '전체 양육자', channel: 'push',
+      { id: 'noti-1', target: '전체 양육자', channel: 'alimtalk',
         title: '설명서 업데이트 알림', body: '한 달 이상 업데이트되지 않은 설명서가 있어요. 아이의 변화를 기록해 보세요.',
         sentAt: '2026-05-19T01:00:00.000Z', sentBy: '운영관리자' }
     );

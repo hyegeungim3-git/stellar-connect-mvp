@@ -576,16 +576,6 @@
     var s = db.shares.filter(function (x) { return x.id === id; })[0];
     if (s && s.failCount) { s.failCount = 0; setDB(db); }
   }
-  /* 자동 잠금 해제 — 보호자가 인증번호를 잊은 경우가 대부분이라 운영에서 풀 수 있어야 한다.
-     보호자가 직접 중단한 공유('owner')는 대상이 아니다. */
-  function unlockShare(id) {
-    var db = getDB();
-    var s = db.shares.filter(function (x) { return x.id === id; })[0];
-    if (!s || s.revokedReason !== 'authfail') return false;
-    s.revoked = false; s.revokedReason = ''; s.failCount = 0;
-    return setDB(db) !== false;
-  }
-
   /* ---------- 대상별 공유 커스텀 ---------- */
   function listAudienceTemplates(ownerId) {
     return getDB().audienceTemplates.filter(function (t) { return t.ownerId === ownerId; });
@@ -769,7 +759,6 @@
     revokeShare: revokeShare, bumpShareViews: bumpShareViews,
     renewShare: renewShare, isShareExpired: isShareExpired, shareCycleDays: shareCycleDays,
     shareNeedsCode: shareNeedsCode, failShareAuth: failShareAuth, resetShareFail: resetShareFail,
-    unlockShare: unlockShare,
     SHARE_FAIL_LIMIT: SHARE_FAIL_LIMIT,
     listAudienceTemplates: listAudienceTemplates, saveAudienceTemplate: saveAudienceTemplate,
     deleteAudienceTemplate: deleteAudienceTemplate,
