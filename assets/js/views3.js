@@ -2074,21 +2074,36 @@
       var st = Store.stats();
       /* 가입 심사가 생기면서 '대기 건수'만으로는 운영이 안 된다 —
          SLA 초과·반려·중단(서류 미제출)과 평균 처리 시간을 함께 본다 */
-      var cards = [
-        ['심사 대기', st.pendingUsers + '건', 'clock'],
-        ['신규 가입 대기', st.pendingSignups + '건', 'user'],
-        ['24시간 초과', st.overdueUsers + '건', 'alert'],
-        ['반려', st.rejectedUsers + '건', 'x'],
-        ['서류 미제출', st.nodocUsers + '건', 'note'],
-        ['평균 심사 소요', st.avgReviewHours == null ? '—' : st.avgReviewHours + '시간', 'trend'],
-        ['활성 회원', st.activeUsers + '명', 'user'],
-        ['등록 아이', st.children + '명', 'smile'],
-        ['인증 완료 아이', st.verifiedChildren + '명', 'shield'],
-        ['작성된 설명서', st.manuals + '건', 'book'],
-        ['전체 기록', st.records + '건', 'note'],
-        ['공유 링크', st.shares + '개', 'share'],
-        ['인증 5회 실패 잠김', st.lockedShares + '건', 'lock']
+      /* 지표는 '지금 손을 대야 하는 것'과 '규모'를 섞으면 안 읽힌다 —
+         조치 지표는 위로 모으고, 0이 아닐 때만 눈에 띄게 한다 */
+      var avg = st.avgReviewHours == null ? '—'
+        : (st.avgReviewHours < 1 ? '1시간 미만' : st.avgReviewHours + '시간');
+      var todo = [
+        ['심사 대기', st.pendingUsers, '건', 'clock', '#/admin/verify', 'pending', 'warn'],
+        ['24시간 초과', st.overdueUsers, '건', 'alert', '#/admin/verify', 'pending', 'danger'],
+        ['반려', st.rejectedUsers, '건', 'x', '#/admin/verify', 'rejected', 'warn'],
+        ['서류 미제출', st.nodocUsers, '건', 'note', '#/admin/members', 'nodoc', 'warn'],
+        ['신규 가입 대기', st.pendingSignups, '건', 'user', '#/admin/members', 'pending', 'warn'],
+        ['인증 5회 실패 잠김', st.lockedShares, '건', 'lock', '#/admin/security', '', 'danger']
       ];
+      var scale = [
+        ['평균 심사 소요', avg, 'trend', ''],
+        ['활성 회원', st.activeUsers + '명', 'user', '#/admin/members'],
+        ['등록 아이', st.children + '명', 'smile', ''],
+        ['인증 완료 아이', st.verifiedChildren + '명', 'shield', '#/admin/verify'],
+        ['작성된 설명서', st.manuals + '건', 'book', ''],
+        ['전체 기록', st.records + '건', 'note', ''],
+        ['공유 링크', st.shares + '개', 'share', '#/admin/security']
+      ];
+      /* 지표를 보고 바로 그 화면으로 갈 수 있어야 한다 — 숫자만 보여주면 막다른 길이다 */
+      function statCard(label, value, ico, href, filter, tone) {
+        var cls = 'stat' + (href ? ' stat-link' : '') + (tone ? ' stat-' + tone : '');
+        var inner = '<div class="ico">' + icon(ico, 20) + '</div>' +
+          '<div class="label">' + label + '</div><div class="value">' + value + '</div>';
+        if (!href) return '<div class="' + cls + '">' + inner + '</div>';
+        return '<a class="' + cls + '" href="' + href + '"' +
+          (filter ? ' data-statfilter="' + filter + '"' : '') + '>' + inner + '</a>';
+      }
       var byMonth = [];
       var d = new Date();
       for (var i = 5; i >= 0; i--) {
@@ -2099,11 +2114,17 @@
             return (c.createdAt || '').slice(0, 7) === key;
           }).length });
       }
-      return '<div class="grid grid-4 mb-2">' + cards.map(function (c) {
-        return '<div class="stat"><div class="ico">' + icon(c[2], 20) + '</div>' +
-          '<div class="label">' + c[0] + '</div><div class="value">' + c[1] + '</div></div>';
-      }).join('') + '</div>' +
-      '<div class="card"><div class="card-head"><h3>월별 아이 등록 추이</h3></div>' +
+      var todoSum = todo.reduce(function (a, t) { return a + t[1]; }, 0);
+      return '<h3 class="sec-title">지금 처리할 일' +
+          (todoSum ? '' : ' <span class="badge ok dot">밀린 건 없음</span>') + '</h3>' +
+        '<div class="grid grid-4 mb-2">' + todo.map(function (t) {
+          return statCard(t[0], t[1] + t[2], t[3], t[4], t[5], t[1] > 0 ? t[6] : '');
+        }).join('') + '</div>' +
+        '<h3 class="sec-title">서비스 현황</h3>' +
+        '<div class="grid grid-4 mb-2">' + scale.map(function (c) {
+          return statCard(c[0], c[1], c[2], c[3], '', '');
+        }).join('') + '</div>' +
+        '<div class="card"><div class="card-head"><h3>월별 아이 등록 추이</h3></div>' +
         '<div class="card-body">' + UI.barChart(byMonth) + '</div></div>';
     }
 
@@ -2135,13 +2156,15 @@
           : m.status === 'withdrawn'
             ? '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>'
             : '<button class="btn btn-ghost btn-sm" data-mem-review="1">가입 심사에서 처리</button>';
-        return '<tr><td><b>' + esc(m.name) + '</b></td><td>' + esc(m.email) + '</td>' +
-          '<td>' + esc(m.phone || '-') + '</td><td>' + kids + '명</td>' +
-          '<td><span class="badge ' + st.cls + '">' + st.t + '</span>' +
+        return '<tr><td><span><b>' + esc(m.name) + '</b></span></td>' +
+          '<td><span>' + esc(m.email) + '</span></td>' +
+          '<td class="nw"><span>' + esc(m.phone || '-') + '</span></td>' +
+          '<td><span>' + kids + '명</span></td>' +
+          '<td><span><span class="badge ' + st.cls + '">' + st.t + '</span>' +
             (m.status === 'rejected' && m.rejectReason
               ? '<div class="faint" style="font-size:.76rem;margin-top:2px">' + esc(m.rejectReason) + '</div>' : '') +
-          '</td>' +
-          '<td>' + UI.fmtDate(m.createdAt) + '</td>' +
+          '</span></td>' +
+          '<td class="nw"><span>' + UI.fmtDate(m.createdAt) + '</span></td>' +
           '<td class="actions">' +
             '<button class="btn btn-ghost btn-sm" data-mem-consent="' + m.id + '">동의 이력</button> ' +
             act + '</td></tr>';
@@ -2161,7 +2184,8 @@
       /* 운영자 계정 — 심사자 권한 부여·회수 (서류 열람 인원 최소화) */
       var staff = db.users.filter(function (x) { return x.role === 'admin' || x.role === 'reviewer'; });
       var staffRows = staff.map(function (m) {
-        return '<tr><td><b>' + esc(m.name) + '</b></td><td>' + esc(m.email) + '</td>' +
+        return '<tr><td><span><b>' + esc(m.name) + '</b></span></td>' +
+          '<td><span>' + esc(m.email) + '</span></td>' +
           '<td>' + (m.role === 'admin' ? '<span class="badge brand">관리자</span>'
             : '<span class="badge">심사자</span>') + '</td>' +
           '<td class="actions">' + (m.role === 'admin'
@@ -2179,13 +2203,13 @@
               esc(s[1]) + '</button>';
           }).join('') + '</div></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-        '<th>이름</th><th>이메일</th><th>연락처</th><th>아이</th><th>상태</th><th>가입일</th><th></th>' +
+        '<th>이름</th><th>이메일</th><th>연락처</th><th>아이</th><th>상태</th><th>가입일</th><th>처리</th>' +
         '</tr></thead><tbody>' + (rows || '<tr><td colspan="7" class="muted">조건에 맞는 회원이 없습니다.</td></tr>') +
         '</tbody></table></div>' + pager + '</div>' +
         '<div class="card mt-2"><div class="card-head"><h3>운영자 계정</h3>' +
           '<span class="badge warn">서류 열람은 심사자·관리자만</span></div>' +
           '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-          '<th>이름</th><th>이메일</th><th>권한</th><th></th></tr></thead><tbody>' +
+          '<th>이름</th><th>이메일</th><th>권한</th><th>처리</th></tr></thead><tbody>' +
           (staffRows || '<tr><td colspan="4" class="muted">운영자 계정이 없습니다.</td></tr>') +
           '</tbody></table></div></div>' +
         '<p class="faint mt-2" style="font-size:.82rem">' +
@@ -2197,11 +2221,11 @@
       var logs = Store.listAlimtalks();
       var TPL = { submitted: '서류 접수', approve: '가입 승인', reject: '서류 재제출' };
       var arows = logs.slice(0, 100).map(function (l) {
-        return '<tr><td>' + UI.fmtDateTime(l.at) + '</td>' +
-          '<td><b>' + esc(l.name) + '</b><div class="faint" style="font-size:.78rem">' +
-            esc(l.phone || '-') + '</div></td>' +
+        return '<tr><td class="nw"><span>' + UI.fmtDateTime(l.at) + '</span></td>' +
+          '<td><span><b>' + esc(l.name) + '</b>' +
+            '<div class="faint nw" style="font-size:.78rem">' + esc(l.phone || '-') + '</div></span></td>' +
           '<td><span class="badge brand">' + esc(TPL[l.template] || l.template) + '</span></td>' +
-          '<td>' + esc(l.body) + '</td>' +
+          '<td><span>' + esc(l.body) + '</span></td>' +
           '<td>' + (l.result === 'sent' ? '<span class="badge ok dot">발송</span>'
             : '<span class="badge dot">미발송(수신 미동의)</span>') + '</td></tr>';
       }).join('');
@@ -2225,34 +2249,40 @@
       function shareRow(s, isLocked) {
         var c = db.children.filter(function (x) { return x.id === s.childId; })[0];
         var owner = c ? db.users.filter(function (u) { return u.id === c.ownerId; })[0] : null;
-        return '<tr><td><b>' + esc(c ? c.name : '-') + '</b>' +
-            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.name : '') + '</div></td>' +
-          '<td>' + esc(s.viewerName || '받는 분') + ' <span class="badge">' + esc(s.viewerRole) + '</span></td>' +
-          '<td>' + (isLocked ? '<span class="admin-over">' + (s.failCount || 0) + '회</span>'
-            : (s.failCount || 0) + '회') + '</td>' +
-          '<td>' + UI.fmtDate(s.createdAt) + '</td>' +
+        return '<tr><td><span><b>' + esc(c ? c.name : '-') + '</b>' +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.name : '') + '</div></span></td>' +
+          '<td><span>' + esc(s.viewerName || '받는 분') +
+            ' <span class="badge">' + esc(s.viewerRole) + '</span></span></td>' +
+          '<td class="nw"><span>' + (isLocked ? '<span class="admin-over">' + (s.failCount || 0) + '회</span>'
+            : (s.failCount || 0) + '회') + '</span></td>' +
+          '<td class="nw"><span>' + UI.fmtDate(s.createdAt) + '</span></td>' +
           '<td>' + (isLocked ? '<span class="badge danger dot">자동 잠김</span>'
-            : '<span class="badge warn dot">실패 누적</span>') + '</td></tr>';
+            : '<span class="badge warn dot">실패 누적</span>') + '</td>' +
+          '<td class="actions">' + (isLocked
+            ? '<button class="btn btn-soft btn-sm" data-sunlock="' + s.id + '">잠금 해제</button>'
+            : '<button class="btn btn-ghost btn-sm" data-sreset="' + s.id + '">실패 초기화</button>') +
+          '</td></tr>';
       }
       return '<div class="card"><div class="card-head"><h3>인증 5회 실패로 잠긴 공유</h3>' +
         '<span class="badge ' + (locked.length ? 'danger' : '') + '">' + locked.length + '건</span></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-        '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th>' +
+        '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th><th>처리</th>' +
         '</tr></thead><tbody>' +
         (locked.map(function (s) { return shareRow(s, true); }).join('') ||
-          '<tr><td colspan="5" class="muted">잠긴 공유가 없습니다.</td></tr>') +
+          '<tr><td colspan="6" class="muted">잠긴 공유가 없습니다.</td></tr>') +
         '</tbody></table></div></div>' +
         '<div class="card mt-2"><div class="card-head"><h3>실패가 쌓이고 있는 공유</h3>' +
           '<span class="badge">' + risky.length + '건</span></div>' +
           '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-          '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th>' +
+          '<th>아이 · 보호자</th><th>받는 분</th><th>실패</th><th>생성일</th><th>상태</th><th>처리</th>' +
           '</tr></thead><tbody>' +
           (risky.map(function (s) { return shareRow(s, false); }).join('') ||
-            '<tr><td colspan="5" class="muted">해당 건이 없습니다.</td></tr>') +
+            '<tr><td colspan="6" class="muted">해당 건이 없습니다.</td></tr>') +
           '</tbody></table></div></div>' +
         '<p class="faint mt-2" style="font-size:.82rem">' +
         '인증번호를 5번 연속 틀리면 링크가 자동으로 잠깁니다. 같은 보호자에게서 반복되면 ' +
-        '무단 열람 시도일 수 있으니 연락해 확인해 주세요.</p>';
+        '무단 열람 시도일 수 있으니 연락해 확인해 주세요. ' +
+        '보호자가 인증번호를 잊은 것으로 확인되면 잠금을 해제할 수 있습니다.</p>';
     }
 
     if (tab === 'verify') {
@@ -2299,27 +2329,27 @@
             (h < 1 ? '방금 접수' : h < 24 ? h + '시간 경과' : Math.floor(h / 24) + '일 ' + (h % 24) + '시간 경과') +
             (over ? ' · SLA 초과' : '') + '</div>';
         }
-        return '<tr><td><b>' + esc(c.name) + '</b>' +
+        return '<tr><td><span><b>' + esc(c.name) + '</b>' +
             (x.first ? ' <span class="badge">가입 심사</span>' : ' <span class="badge">추가 아이</span>') +
             ((c.verifyTries || 0) > 1 ? ' <span class="badge warn">재제출 ' + c.verifyTries + '회</span>' : '') +
-          '</td>' +
-          '<td>' + esc(owner ? owner.name : '-') +
-            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></td>' +
-          '<td>' + esc((c.verifyDocs || []).join(', ') || '-') +
+          '</span></td>' +
+          '<td><span>' + esc(owner ? owner.name : '-') +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></span></td>' +
+          '<td><span>' + esc((c.verifyDocs || []).join(', ') || '-') +
             (c.verifyDocImage
               ? ' <button class="btn btn-ghost btn-sm" data-vdoc="' + c.id + '">' + icon('eye', 13) + '서류 보기</button>'
               : '<div class="faint" style="font-size:.76rem">사진 파기됨</div>') +
             (c.verifyStatus === 'rejected' && owner && owner.rejectReason
               ? '<div class="faint" style="font-size:.78rem">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
-          '</td>' +
-          '<td>' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</td>' +
+          '</span></td>' +
+          '<td class="nw"><span>' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</span></td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
       }).join('');
       var segs = [['pending', '심사 대기 ' + counts.pending], ['rejected', '반려 ' + counts.rejected],
         ['verified', '인증 완료 ' + counts.verified], ['all', '전체 ' + all.length]];
-      return '<div class="card"><div class="card-head"><h3>가입 심사</h3>' +
-        '<span class="badge warn">대기 ' + counts.pending + '건</span>' +
-        '<span class="faint" style="margin-left:auto;font-size:.8rem">확인 목표 영업일 1~2일</span></div>' +
+      /* 카드 제목은 페이지 제목과 겹치지 않게 '지금 몇 건인지'를 말한다 */
+      return '<div class="card"><div class="card-head"><h3>심사 대기 ' + counts.pending + '건</h3>' +
+        (counts.pending ? '<span class="badge warn">확인 목표 영업일 1~2일</span>' : '') + '</div>' +
         '<div class="card-body" style="padding-bottom:0">' +
           '<div class="seg">' + segs.map(function (s) {
             return '<button class="' + (vf === s[0] ? 'on' : '') + '" data-vfilter="' + s[0] + '">' +
@@ -2397,6 +2427,14 @@
   }
 
   function adminWire(tab) {
+    /* 운영 현황 카드 → 그 건들이 실제로 보이는 화면·필터로 (숫자만 보여주고 끝내지 않는다) */
+    document.querySelectorAll('[data-statfilter]').forEach(function (a) {
+      a.onclick = function () {
+        var f = a.dataset.statfilter;
+        if (a.getAttribute('href').indexOf('members') > 0) { S.memFilter = f; S.memPage = 1; }
+        else S.verifyFilter = f;
+      };
+    });
     if (tab === 'members') {
       document.querySelectorAll('[data-mem-toggle]').forEach(function (b) {
         b.onclick = function () {
@@ -2478,14 +2516,25 @@
       });
     }
     if (tab === 'verify') {
+      /* 승인은 계정을 열고 알림톡까지 나가는 조치라, 반려와 마찬가지로 대상을 한 번 확인시킨다 */
       document.querySelectorAll('[data-vapprove]').forEach(function (b) {
         b.onclick = function () {
           var c = Store.getChild(b.dataset.vapprove);
           if (!c) return;
-          var me = Store.currentUser();
-          Store.reviewGuardian(c.ownerId, true, '', me ? me.name : '관리자');
-          toast('승인했습니다. 보호자에게 알림톡이 발송됩니다(시연)', 'ok');
-          App.refresh();
+          var owner = Store.getDB().users.filter(function (u) { return u.id === c.ownerId; })[0];
+          Modal.confirm({
+            title: '가입 승인',
+            message: c.name + ' · 양육자 ' + (owner ? owner.name : '-') +
+              (owner ? ' (' + owner.email + ')' : '') + '\n' +
+              '승인하면 이 계정으로 로그인할 수 있게 되고, 보호자에게 알림톡이 나갑니다.',
+            okLabel: '승인'
+          }).then(function (ok) {
+            if (!ok) return;
+            var me = Store.currentUser();
+            Store.reviewGuardian(c.ownerId, true, '', me ? me.name : '관리자');
+            toast('승인했습니다. 보호자에게 알림톡이 발송됩니다(시연)', 'ok');
+            App.refresh();
+          });
         };
       });
       /* 심사 대기·반려 필터 */
@@ -2500,6 +2549,7 @@
           var me = Store.currentUser();
           Store.logDocView(c.ownerId, me ? me.name : '관리자');
           var logs = Store.verifyLogsOf(c.ownerId).slice(0, 5);
+          var pend = c.verifyStatus === 'pending' || c.verifyStatus === 'rejected';
           Modal.open({
             title: esc(c.name) + ' — 제출 서류', icon: 'shield', wide: true,
             body: '<div class="pill-info mb-2">' + icon('lock', 16) +
@@ -2521,7 +2571,20 @@
                       '<span class="muted">' + UI.fmtDateTime(l.at) + '</span></div>';
                   }).join('')
                 : '<p class="muted" style="font-size:.82rem">기록이 없습니다.</p>'),
-            buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }]
+            /* 서류를 본 자리에서 바로 판단할 수 있어야 한다 — 닫고 표에서 다시 찾게 하지 않는다 */
+            buttons: pend
+              ? [{ label: '닫기', value: 'cancel', variant: 'ghost' },
+                 { label: '반려', value: 'reject', variant: 'danger' },
+                 { label: '승인', value: 'approve', variant: 'primary' }]
+              : [{ label: '닫기', value: 'ok', variant: 'primary' }],
+            onButton: function (v, root, close) {
+              if (v !== 'approve' && v !== 'reject') return;
+              close();
+              var sel = '[data-v' + (v === 'approve' ? 'approve' : 'reject') + '="' + c.id + '"]';
+              var target = document.querySelector(sel);
+              if (target) target.click();
+              return 'keep';
+            }
           });
         };
       });
@@ -2532,25 +2595,74 @@
         b.onclick = function () {
           var c = Store.getChild(b.dataset.vreject);
           if (!c) return;
+          var owner = Store.getDB().users.filter(function (u) { return u.id === c.ownerId; })[0];
+          var undo = c.verifyStatus === 'verified';
+          /* 되돌릴 수 없는 조치라 '누구를' 처리하는지 모달 안에서 먼저 확인시킨다 */
           Modal.open({
-            title: '인증 반려', icon: 'alert',
-            body: '<p class="muted mb-2" style="font-size:.9rem">사유는 보호자 화면에 그대로 보여집니다.</p>' +
-              '<div class="field"><label>반려 사유</label><select class="select" name="reason">' +
+            title: undo ? '인증 해제' : '인증 반려', icon: 'alert',
+            body: '<div class="admin-target mb-2"><b>' + esc(c.name) + '</b>' +
+                '<span class="muted"> · 양육자 ' + esc(owner ? owner.name : '-') +
+                (owner ? ' (' + esc(owner.email) + ')' : '') + '</span></div>' +
+              '<p class="muted mb-2" style="font-size:.9rem">사유는 보호자 화면에 그대로 보여집니다.</p>' +
+              '<div class="field"><label for="vrj-reason">' + (undo ? '해제' : '반려') + ' 사유</label>' +
+              '<select class="select" id="vrj-reason" name="reason">' +
               REJECT_REASONS.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') +
-              '</select></div>',
+              '<option value="__etc">직접 입력</option></select></div>' +
+              '<div class="field" id="vrj-etc" hidden><label for="vrj-text">사유 직접 입력</label>' +
+              '<textarea class="textarea" id="vrj-text" rows="2" maxlength="80" ' +
+              'placeholder="보호자가 무엇을 다시 준비하면 되는지 알려 주세요"></textarea></div>',
             buttons: [
               { label: '취소', value: 'cancel', variant: 'ghost' },
-              { label: '반려', value: 'ok', variant: 'danger' }
+              { label: undo ? '인증 해제' : '반려', value: 'ok', variant: 'danger' }
             ],
+            onMount: function (root) {
+              var sel = root.querySelector('#vrj-reason');
+              var box = root.querySelector('#vrj-etc');
+              sel.onchange = function () {
+                box.hidden = sel.value !== '__etc';
+                if (!box.hidden) root.querySelector('#vrj-text').focus();
+              };
+            },
             onButton: function (v, root) {
               if (v !== 'ok') return;
               var f = readForm(root);
+              var reason = f.reason;
+              if (reason === '__etc') {
+                reason = (root.querySelector('#vrj-text').value || '').trim();
+                if (!reason) { toast('반려 사유를 입력해 주세요', 'warn');
+                  root.querySelector('#vrj-text').focus(); return 'keep'; }
+              }
               var me = Store.currentUser();
-              Store.reviewGuardian(c.ownerId, false, f.reason, me ? me.name : '관리자');
+              Store.reviewGuardian(c.ownerId, false, reason, me ? me.name : '관리자');
               toast('반려했습니다. 사유가 보호자에게 전달됩니다(시연)', 'ok');
               App.refresh();
             }
           });
+        };
+      });
+    }
+    if (tab === 'security') {
+      /* 잠긴 공유를 보기만 하고 손댈 수 없으면 이 화면은 막다른 길이 된다 */
+      document.querySelectorAll('[data-sunlock]').forEach(function (b) {
+        b.onclick = function () {
+          Modal.confirm({
+            title: '잠금 해제',
+            message: '이 링크를 다시 열람할 수 있게 합니다.\n' +
+              '보호자에게 인증번호를 다시 안내한 뒤 해제해 주세요.',
+            okLabel: '해제'
+          }).then(function (ok) {
+            if (!ok) return;
+            if (Store.unlockShare(b.dataset.sunlock)) {
+              toast('잠금을 해제했습니다', 'ok'); App.refresh();
+            } else toast('해제할 수 없는 공유입니다', 'err');
+          });
+        };
+      });
+      document.querySelectorAll('[data-sreset]').forEach(function (b) {
+        b.onclick = function () {
+          Store.resetShareFail(b.dataset.sreset);
+          toast('실패 횟수를 초기화했습니다', 'ok');
+          App.refresh();
         };
       });
     }

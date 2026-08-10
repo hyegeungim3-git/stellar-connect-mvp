@@ -99,6 +99,8 @@
   --ok:     #1f9d6b;
   --warn:   #d68a18;
   --danger: #d6584e;
+  /* 연한 붉은 배경 위 '글자'용 — #d6584e는 3.34:1로 AA 미달이라 비활성 버튼처럼 보였다 */
+  --danger-ink: #b83b31;
   --info:   #2b8fc7;
 
   /* 형태 */
@@ -246,7 +248,7 @@ p.muted { line-height: 1.72; }
   background: var(--surface);
   padding: 18px 14px;
   position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top, 0px));
-  height: calc(100vh - var(--appbar-h) - env(safe-area-inset-top, 0px));
+  height: calc(100dvh - var(--appbar-h) - env(safe-area-inset-top, 0px));
   overflow-y: auto;
   display: flex; flex-direction: column;
 }
@@ -271,13 +273,18 @@ p.muted { line-height: 1.72; }
   width: 4px; height: 22px; background: var(--primary); border-radius: 0 4px 4px 0;
 }
 /* 가입 심사 큐 — SLA 초과 건은 색으로 바로 눈에 띄게 */
-.admin-over { color: var(--danger); font-weight: 800; }
+.admin-over { color: var(--danger-ink); font-weight: 800; }
 /* 제출 서류 뷰어 — 심사 동안만 보관하는 사진 */
 .admin-doc {
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   background: var(--surface-2); padding: 8px; text-align: center;
 }
 .admin-doc img { max-width: 100%; max-height: 46vh; border-radius: 8px; }
+/* 되돌릴 수 없는 처리 전에 '누구를' 처리하는지 모달 안에서 못 박는다 */
+.admin-target {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 13px; font-size: .92rem;
+}
 
 /* 회원가입 5단계 표시 — 지금 어디까지 왔는지 늘 보이게 (긴 절차의 이탈 방지) */
 .su-steps {
@@ -339,7 +346,7 @@ p.muted { line-height: 1.72; }
 /* 비밀번호 조건·일치 실시간 안내 */
 .su-pwmsg { margin: 6px 0 0; font-size: .78rem; color: var(--text-faint); min-height: 1em; }
 .su-pwmsg.ok { color: var(--ok, #1d8a5b); font-weight: 700; }
-.su-pwmsg.warn { color: var(--danger); font-weight: 700; }
+.su-pwmsg.warn { color: var(--danger-ink); font-weight: 700; }
 
 @media (max-width: 520px) {
   /* 번호만 남기지 않는다 — 지금이 무슨 단계인지는 늘 읽혀야 한다 */
@@ -414,7 +421,7 @@ p.muted { line-height: 1.72; }
 .btn-ghost:hover { background: var(--surface-2); border-color: var(--primary-100); }
 .btn-soft { background: var(--primary-soft); color: var(--primary-dark); }
 .btn-soft:hover { background: var(--primary-100); }
-.btn-danger { background: #fbe9e7; color: var(--danger); }
+.btn-danger { background: #fbe9e7; color: var(--danger-ink); }
 .btn-danger:hover { background: #f6d6d2; }
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 13px; font-size: .85rem; border-radius: 9px; }
@@ -460,7 +467,7 @@ svg { vertical-align: middle; }
   margin-bottom: 7px; color: var(--text);
 }
 .field .hint { font-size: .8rem; color: var(--text-faint); margin-top: 5px; }
-.req { color: var(--danger); }
+.req { color: var(--danger-ink); }
 .input, .textarea, .select {
   width: 100%; padding: 11px 14px;
   border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
@@ -510,7 +517,7 @@ svg { vertical-align: middle; }
 }
 .badge.ok      { background: var(--c-cando-bg); color: #157a51; }
 .badge.warn    { background: var(--c-problem-bg); color: #9a6207; }
-.badge.danger  { background: #fbe9e7; color: var(--danger); }
+.badge.danger  { background: #fbe9e7; color: var(--danger-ink); }
 .badge.info    { background: var(--c-help-bg); color: #1d6f9e; }
 .badge.brand   { background: var(--primary-soft); color: var(--primary-dark); }
 .badge.dot::before { content:''; width:6px; height:6px; border-radius:50%; background: currentColor; }
@@ -638,6 +645,22 @@ svg { vertical-align: middle; }
   background: var(--primary-soft); color: var(--primary); float: right;
 }
 .stat .ico svg { width: 21px; height: 21px; }
+/* 관리자 지표는 눌러서 그 건들이 있는 화면으로 가는 입구다 */
+a.stat-link { display: block; text-decoration: none; color: inherit; }
+a.stat-link:hover { border-color: var(--primary); }
+a.stat-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* 값이 0이 아닐 때만 색을 준다 — 늘 빨간 대시보드는 아무도 보지 않는다 */
+.stat-warn { border-color: var(--warn); }
+.stat-warn .value { color: #9a6207; }
+.stat-warn .ico { background: var(--c-problem-bg); color: #9a6207; }
+.stat-danger { border-color: var(--danger); }
+.stat-danger .value { color: var(--danger-ink); }
+.stat-danger .ico { background: #fbe9e7; color: var(--danger-ink); }
+.sec-title {
+  font-size: .84rem; font-weight: 800; color: var(--text-muted);
+  letter-spacing: .02em; margin: 4px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
 
 /* ---------- 10. 빈 상태 ---------- */
 .empty { text-align: center; padding: 54px 24px; color: var(--text-muted); }
@@ -1071,6 +1094,10 @@ table.tbl tr:last-child td { border-bottom: none; }
 table.tbl tbody tr { transition: .12s var(--ease); }
 table.tbl tbody tr:hover td { background: var(--primary-tint); }
 table.tbl td.actions { white-space: nowrap; }
+/* 좁은 열에서 배지·연락처·날짜가 두 글자씩 세로로 깨지던 문제
+   (「검토 중」→「검토/중」, 「010-7777-8888」→ 두 줄) */
+table.tbl .badge { white-space: nowrap; }
+table.tbl td.nw, table.tbl th.nw { white-space: nowrap; }
 
 /* ---------- 18. 토스트 ---------- */
 #toast-host {
@@ -1992,7 +2019,7 @@ table.tbl td.actions { white-space: nowrap; }
 }
 .summary-emergency .em-title {
   display: flex; align-items: center; gap: 8px;
-  font-weight: 800; font-size: .95rem; color: var(--danger);
+  font-weight: 800; font-size: .95rem; color: var(--danger-ink);
   margin-bottom: 8px;
 }
 .summary-emergency .em-title svg { width: 17px; height: 17px; }
@@ -2003,7 +2030,7 @@ table.tbl td.actions { white-space: nowrap; }
 .summary-emergency ul li:last-child { border-bottom: none; }
 .summary-emergency .em-k {
   display: inline-block; font-weight: 800; font-size: .78rem;
-  color: var(--danger); background: #fbe2de; border-radius: 6px;
+  color: var(--danger-ink); background: #fbe2de; border-radius: 6px;
   padding: 1px 8px; margin-right: 7px; vertical-align: 1px;
 }
 .summary-emergency a.tel { font-weight: 800; color: var(--primary-dark); text-decoration: underline; }
