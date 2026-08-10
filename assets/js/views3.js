@@ -2069,6 +2069,13 @@
     withdrawn: { cls: 'danger dot', t: '탈퇴' }
   };
 
+  /* 필터 세그먼트 버튼 — [키, 라벨, 건수] */
+  function segBtn(attr, s, on) {
+    return '<button class="' + (on ? 'on' : '') + (s[2] ? '' : ' zero') + '" ' +
+      attr + '="' + s[0] + '">' + esc(s[1]) +
+      '<span class="seg-n">' + s[2] + '</span></button>';
+  }
+
   function adminPanel(tab, db) {
     if (tab === 'stats') {
       var st = Store.stats();
@@ -2169,9 +2176,10 @@
             '<button class="btn btn-ghost btn-sm" data-mem-consent="' + m.id + '">동의 이력</button> ' +
             act + '</td></tr>';
       }).join('');
-      var mSegs = [['all', '전체 ' + parents.length], ['active', '활성 ' + mCounts.active],
-        ['pending', '심사 대기 ' + mCounts.pending], ['nodoc', '서류 미제출 ' + mCounts.nodoc],
-        ['rejected', '반려 ' + mCounts.rejected], ['withdrawn', '탈퇴 ' + mCounts.withdrawn]];
+      /* [키, 라벨, 건수] — 건수는 라벨과 붙여 쓰지 않고 별도 칩으로 그린다 */
+      var mSegs = [['all', '전체', parents.length], ['active', '활성', mCounts.active],
+        ['pending', '심사 대기', mCounts.pending], ['nodoc', '서류 미제출', mCounts.nodoc],
+        ['rejected', '반려', mCounts.rejected], ['withdrawn', '탈퇴', mCounts.withdrawn]];
       var totalPages = Math.ceil(filtered.length / PAGE) || 1;
       var pager = totalPages > 1
         ? '<div class="row gap-sm mt-2" style="justify-content:center;align-items:center">' +
@@ -2199,8 +2207,7 @@
           '<input class="input mb-2" id="mem-q" placeholder="이름·이메일·연락처로 검색" value="' +
             esc(S.memQuery || '') + '">' +
           '<div class="seg">' + mSegs.map(function (s) {
-            return '<button class="' + (mf === s[0] ? 'on' : '') + '" data-memfilter="' + s[0] + '">' +
-              esc(s[1]) + '</button>';
+            return segBtn('data-memfilter', s, mf === s[0]);
           }).join('') + '</div></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
         '<th>이름</th><th>이메일</th><th>연락처</th><th>아이</th><th>상태</th><th>가입일</th><th>처리</th>' +
@@ -2345,15 +2352,14 @@
           '<td class="nw">' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
       }).join('');
-      var segs = [['pending', '심사 대기 ' + counts.pending], ['rejected', '반려 ' + counts.rejected],
-        ['verified', '인증 완료 ' + counts.verified], ['all', '전체 ' + all.length]];
+      var segs = [['pending', '심사 대기', counts.pending], ['rejected', '반려', counts.rejected],
+        ['verified', '인증 완료', counts.verified], ['all', '전체', all.length]];
       /* 카드 제목은 페이지 제목과 겹치지 않게 '지금 몇 건인지'를 말한다 */
       return '<div class="card"><div class="card-head"><h3>심사 대기 ' + counts.pending + '건</h3>' +
         (counts.pending ? '<span class="badge warn">확인 목표 영업일 1~2일</span>' : '') + '</div>' +
         '<div class="card-body" style="padding-bottom:0">' +
           '<div class="seg">' + segs.map(function (s) {
-            return '<button class="' + (vf === s[0] ? 'on' : '') + '" data-vfilter="' + s[0] + '">' +
-              esc(s[1]) + '</button>';
+            return segBtn('data-vfilter', s, vf === s[0]);
           }).join('') + '</div></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
         '<th>아이</th><th>양육자</th><th>제출 서류</th><th>접수</th><th>상태</th><th>처리</th>' +

@@ -499,15 +499,25 @@ svg { vertical-align: middle; }
 .checkline input { width: 19px; height: 19px; accent-color: var(--primary); flex: none; }
 .seg {
   display: inline-flex; background: var(--surface-2); border-radius: var(--radius-sm);
-  padding: 4px; gap: 3px; border: 1px solid var(--border);
+  padding: 5px; gap: 6px; border: 1px solid var(--border); flex-wrap: wrap;
 }
 .seg button {
   padding: 8px 15px; border-radius: 8px; font-weight: 700; font-size: .85rem;
   color: var(--text-muted); transition: .14s var(--ease);
   min-height: 38px;   /* 터치 타깃 보정 (375에서 31px로 측정됨) */
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
 }
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow-xs); }
+/* 건수는 라벨에 딸린 값이다 — 그냥 띄어쓰기로 붙이면 항목 사이 간격과 똑같아져
+   («활성 2 심사 대기 0») 어디까지가 한 항목인지 읽히지 않는다 */
+.seg .seg-n {
+  font-size: .78rem; font-weight: 800; color: var(--text-muted);
+  background: var(--surface); border-radius: 999px; padding: 1px 7px; min-width: 20px;
+  text-align: center;
+}
+.seg button.on .seg-n { background: var(--primary-soft); color: var(--primary-dark); }
+.seg button.zero .seg-n { opacity: .55; }
 
 /* ---------- 8. 배지 / 칩 / 태그 ---------- */
 .badge {
@@ -1084,8 +1094,12 @@ table.tbl thead th:first-child { border-top-left-radius: var(--radius); }
 table.tbl thead th:last-child  { border-top-right-radius: var(--radius); }
 table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.tbl th, table.tbl td {
-  padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border);
+  padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--border);
 }
+/* 양 끝 칸은 카드 거터(22px)에 맞춘다 — 안 그러면 표 내용만 카드 제목보다
+   안쪽으로 어긋나 보이고, 글자가 카드 테두리에 붙는다 */
+table.tbl th:first-child, table.tbl td:first-child { padding-left: 22px; }
+table.tbl th:last-child,  table.tbl td:last-child  { padding-right: 22px; }
 table.tbl th {
   font-size: .77rem; color: var(--text-muted); font-weight: 800;
   background: var(--surface-3); text-transform: uppercase; letter-spacing: .03em;
