@@ -155,7 +155,13 @@
       ? '<div class="nav-group-label">' + (u.role === 'reviewer' ? '심사' : '운영') + '</div>' +
         items.map(function (it) {
           return navItemHTML(it, r.view === 'admin' ? staffTab : '');
-        }).join('')
+        }).join('') +
+        /* 심사자는 메뉴가 하나뿐이라 사이드바가 텅 빈다 — 권한 범위를 여기서 알려준다 */
+        (u.role === 'reviewer'
+          ? '<div class="side-note">' + icon('shield', 15) +
+            '<div><b>심사자 계정</b><br>가입 심사만 볼 수 있어요. 서류 사진은 ' +
+            '승인·반려로 처리하면 바로 파기되고, 열람 기록이 남습니다.</div></div>'
+          : '')
       : '<div class="nav-group-label">메뉴</div>' +
         items.map(function (it) { return navItemHTML(it, active); }).join('');
 

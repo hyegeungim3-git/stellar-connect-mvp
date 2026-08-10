@@ -2348,12 +2348,18 @@
           '</td>' +
           '<td>' + esc(owner ? owner.name : '-') +
             '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></td>' +
-          '<td>' + esc((c.verifyDocs || []).join(', ') || '-') +
+          /* 서류명과 [서류 보기]를 한 줄에 흘리면 파일명이 «(card-» / «2.jpg)»처럼
+             중간에서 끊기고 버튼이 글자에 엉킨다 → 이름은 한 줄 말줄임, 버튼은 아랫줄 */
+          '<td><div class="ell" style="max-width:210px" title="' +
+            esc((c.verifyDocs || []).join(', ') || '-') + '">' +
+            esc((c.verifyDocs || []).join(', ') || '-') + '</div>' +
             (c.verifyDocImage
-              ? ' <button class="btn btn-ghost btn-sm" data-vdoc="' + c.id + '">' + icon('eye', 13) + '서류 보기</button>'
+              ? '<button class="btn btn-ghost btn-sm mt-1" data-vdoc="' + c.id + '">' +
+                icon('eye', 13) + '서류 보기</button>'
               : '<div class="faint" style="font-size:.76rem">사진 파기됨</div>') +
             (c.verifyStatus === 'rejected' && owner && owner.rejectReason
-              ? '<div class="faint" style="font-size:.78rem">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
+              ? '<div class="faint ell" style="font-size:.78rem;max-width:210px" title="' +
+                esc(owner.rejectReason) + '">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
           '</td>' +
           '<td class="nw">' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
@@ -2388,7 +2394,8 @@
     }
 
     if (tab === 'popups') {
-      var prows = Store.listPopups().map(function (p) {
+      var pops = Store.listPopups();
+      var prows = pops.map(function (p) {
         return '<div class="card card-pad mb-2">' +
           '<div class="row between wrap"><div><b>' + esc(p.title) + '</b> ' +
           (p.active ? '<span class="badge ok dot">노출 중</span>'
@@ -2401,18 +2408,22 @@
           '</div></div>' +
           '<p class="muted" style="font-size:.88rem;margin-top:6px">' + esc(p.body) + '</p></div>';
       }).join('');
-      return '<div class="page-head-row mb-2"><h3>팝업 · 배너</h3>' +
+      /* 페이지 제목이 이미 「팝업·배너」다 — 여기선 몇 개가 노출 중인지를 말한다 */
+      var onCnt = pops.filter(function (p) { return p.active; }).length;
+      return '<div class="page-head-row mb-2"><h3>노출 중 ' + onCnt + '개 · 전체 ' + pops.length + '개</h3>' +
         '<button class="btn btn-primary btn-sm" id="add-popup">' + icon('plus', 15) + '팝업 추가</button>' +
         '</div>' + (prows || '<div class="card empty"><p>등록된 팝업이 없습니다.</p></div>');
     }
 
     if (tab === 'noti') {
+      /* 이력에 저장값(push·email)이 그대로 나오던 것을 폼 선택지와 같은 말로 */
+      var CH = { push: '앱 푸시', email: '이메일' };
       var log = Store.listNotifications().map(function (n) {
         return '<tr><td>' + esc(n.title) + '</td><td>' + esc(n.target) + '</td>' +
-          '<td><span class="badge">' + esc(n.channel) + '</span></td>' +
-          '<td>' + UI.fmtDateTime(n.sentAt) + '</td></tr>';
+          '<td><span class="badge">' + esc(CH[n.channel] || n.channel) + '</span></td>' +
+          '<td class="nw">' + UI.fmtDateTime(n.sentAt) + '</td></tr>';
       }).join('');
-      return '<div class="card mb-2"><div class="card-head"><h3>알림 발송</h3></div>' +
+      return '<div class="card mb-2"><div class="card-head"><h3>보낼 알림 작성</h3></div>' +
         '<div class="card-body"><form id="noti-form">' +
         '<div class="field-row">' +
           '<div class="field"><label>발송 대상</label>' +
@@ -2731,8 +2742,18 @@
         e.preventDefault();
         var f = readForm(e.target);
         if (!f.title || !f.body) { toast('제목과 내용을 입력해 주세요', 'err'); return; }
-        Store.sendNotification({ target: f.target, channel: f.channel, title: f.title, body: f.body });
-        toast('알림이 발송되었습니다', 'ok'); App.refresh();
+        /* 한 번 나가면 회수할 수 없는 단체 발송이다 — 승인·반려와 같은 무게로 확인받는다 */
+        var chLabel = f.channel === 'email' ? '이메일' : '앱 푸시';
+        Modal.confirm({
+          title: '알림 발송',
+          message: f.target + '에게 ' + chLabel + '로 보냅니다.\n제목: ' + f.title +
+            '\n\n보낸 알림은 회수할 수 없습니다.',
+          okLabel: '발송'
+        }).then(function (ok) {
+          if (!ok) return;
+          Store.sendNotification({ target: f.target, channel: f.channel, title: f.title, body: f.body });
+          toast('알림이 발송되었습니다', 'ok'); App.refresh();
+        });
       });
     }
   }

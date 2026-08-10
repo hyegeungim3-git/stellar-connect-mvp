@@ -280,6 +280,12 @@ p.muted { line-height: 1.72; }
   background: var(--surface-2); padding: 8px; text-align: center;
 }
 .admin-doc img { max-width: 100%; max-height: 46vh; border-radius: 8px; }
+/* 백오피스의 .faint는 장식이 아니라 운영 판단에 쓰는 값이다 — 연락처·양육자·경과
+   시간·반려 사유·「사진 파기됨」·정책 안내문. --text-faint(#8b95b2)는 흰 배경에서
+   2.98:1로 AA 미달이라 운영자가 읽어야 할 정보가 흐렸다 → muted(6.08:1)로 올린다.
+   양육자 화면의 .faint는 실제로 보조 장식이라 그대로 둔다 */
+#admin-panel .faint { color: var(--text-muted); }
+
 /* 되돌릴 수 없는 처리 전에 '누구를' 처리하는지 모달 안에서 못 박는다 */
 .admin-target {
   background: var(--surface-2); border: 1px solid var(--border);
@@ -366,6 +372,15 @@ p.muted { line-height: 1.72; }
   color: var(--text-faint); line-height: 1.5;
 }
 .sidebar .side-foot b { color: var(--primary); font-weight: 800; letter-spacing: .04em; }
+/* 메뉴가 하나뿐인 심사자 사이드바의 빈 공간 — 권한 범위를 알려주는 자리로 쓴다 */
+.sidebar .side-note {
+  display: flex; gap: 9px; margin: 14px 4px 0; padding: 12px 13px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: .78rem; line-height: 1.6;
+  color: var(--text-muted);
+}
+.sidebar .side-note b { color: var(--text); }
+.sidebar .side-note svg { flex: none; color: var(--primary); margin-top: 1px; }
 
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .container { max-width: var(--maxw); margin: 0 auto; width: 100%; padding: 28px 24px 40px; }
