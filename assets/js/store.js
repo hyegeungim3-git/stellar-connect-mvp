@@ -654,11 +654,19 @@
     var byStatus = function (s) {
       return parents.filter(function (u) { return u.status === s; }).length;
     };
-    var pend = parents.filter(function (u) { return u.status === 'pending'; });
+    /* 심사 대기는 '아이 기준'으로 센다 — 둘째 아이 추가 인증은 계정이 이미 active라
+       계정 기준으로만 세면 큐에는 있는데 지표에는 0으로 잡힌다(기준 불일치) */
     var DAY = 864e5;
-    var overdue = pend.filter(function (u) {
-      return u.submittedAt && (Date.now() - new Date(u.submittedAt).getTime()) > DAY;
+    var pendKids = db.children.filter(function (c) { return c.verifyStatus === 'pending'; });
+    function submittedOf(c) {
+      var o = db.users.filter(function (u) { return u.id === c.ownerId; })[0];
+      return c.verifySubmittedAt || (o && o.submittedAt) || c.createdAt;
+    }
+    var overdue = pendKids.filter(function (c) {
+      var at = submittedOf(c);
+      return at && (Date.now() - new Date(at).getTime()) > DAY;
     }).length;
+    var pend = parents.filter(function (u) { return u.status === 'pending'; });
     var done = parents.filter(function (u) { return u.submittedAt && u.reviewedAt; });
     var avgH = done.length
       ? Math.round(done.reduce(function (a, u) {
@@ -668,7 +676,8 @@
     return {
       users: parents.length,
       activeUsers: byStatus('active'),
-      pendingUsers: pend.length,          // 가입 심사 대기
+      pendingUsers: pendKids.length,      // 심사 대기 (가입 심사 큐와 같은 기준)
+      pendingSignups: pend.length,        // 그중 신규 가입 대기(계정이 아직 안 열린 건)
       overdueUsers: overdue,              // 접수 24시간 초과
       rejectedUsers: byStatus('rejected'),
       nodocUsers: byStatus('nodoc'),      // 서류 미제출로 중단된 가입

@@ -472,7 +472,9 @@
         if (!r.ok && r.code) { openReviewStatus(r.code, r.user); return; }
         if (!r.ok) { toast(r.error, 'err'); return; }
         toast(r.user.name + '님, 환영합니다', 'ok');
-        App.navigate('#/dashboard');
+        /* 운영자는 양육자 화면을 쓰지 않는다 — 바로 관리자 메뉴로 */
+        var staff = r.user.role === 'admin' || r.user.role === 'reviewer';
+        App.navigate(staff ? '#/admin' : '#/dashboard');
       });
     }
   };

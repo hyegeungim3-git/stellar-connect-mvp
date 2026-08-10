@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 17;   // 데모 데이터 변경 시 이 숫자를 올린다 (v17: 심사자 계정 review@ichild.kr 추가)
+  var SEED_VERSION = 19;  // 데모 데이터 변경 시 이 숫자를 올린다 (v19: 심사 큐 데모 접수 3시간 전)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -165,6 +165,7 @@
         contacts: [{ name: '박지영', relation: '모', phone: '010-9876-5432' }]
       },
       verifyStatus: 'pending', verifyDocs: ['복지카드 사본'],
+      verifySubmittedAt: new Date(Date.now() - 3 * 36e5).toISOString(), verifyTries: 1,   // 심사 큐 데모 — 3시간 전 접수(SLA 여유)
       createdAt: '2026-05-02T05:20:00.000Z', updatedAt: '2026-05-15T01:00:00.000Z'
     };
     db.children.push(child1, child2);

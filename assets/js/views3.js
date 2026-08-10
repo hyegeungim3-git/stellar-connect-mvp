@@ -2021,36 +2021,41 @@
   /* =====================================================================
    * 백오피스 (관리자)
    * ===================================================================== */
+  /* 관리자 메뉴 — 사이드바(app.js ADMIN_NAV)가 곧 내비게이션이라 화면 안 탭 바는 두지 않는다.
+     현재 메뉴는 URL(#/admin/<키>)이 정본이므로 북마크·뒤로가기가 그대로 동작한다. */
+  var ADMIN_TABS = {
+    stats: ['운영 현황', '가입 심사와 서비스 지표를 한눈에 봅니다.'],
+    members: ['회원 관리', '가입한 양육자와 운영자 계정을 관리합니다.'],
+    verify: ['가입 심사', '보호자 확인 서류를 검토하고 승인·반려합니다.'],
+    alimtalk: ['알림톡 이력', '접수·승인·반려 안내가 언제 나갔는지 확인합니다.'],
+    security: ['공유 보안', '인증번호 실패로 잠긴 공유를 살펴봅니다.'],
+    contents: ['콘텐츠', '공지·FAQ 등 정적 콘텐츠를 관리합니다.'],
+    popups: ['팝업·배너', '앱 안내 팝업을 관리합니다.'],
+    noti: ['알림 발송', '회원에게 보낼 알림을 작성합니다.']
+  };
   V.admin = {
     layout: 'app',
-    render: function () {
+    render: function (p) {
       var u = Store.currentUser();
       if (!u || (u.role !== 'admin' && u.role !== 'reviewer')) {
         return notFound('관리자만 접근할 수 있어요');
       }
       var db = Store.getDB();
       /* 심사자(reviewer)는 가입 심사만 — 서류는 민감정보라 열람 인원을 최소로 둔다 */
-      var tabs = u.role === 'reviewer'
-        ? [['verify', '가입 심사']]
-        : [
-            ['stats', '운영 현황'], ['members', '회원 관리'], ['verify', '가입 심사'],
-            ['alimtalk', '알림톡 이력'], ['security', '공유 보안'],
-            ['contents', '콘텐츠'], ['popups', '팝업·배너'], ['noti', '알림 발송']
-          ];
-      if (!tabs.some(function (t) { return t[0] === S.adminTab; })) S.adminTab = tabs[0][0];
-      var tabBar = '<div class="manual-tabs">' + tabs.map(function (t) {
-        return '<button class="manual-tab' + (S.adminTab === t[0] ? ' active' : '') +
-          '" data-atab="' + t[0] + '">' + esc(t[1]) + '</button>';
-      }).join('') + '</div>';
-
-      return pageHead('백오피스', '운영 관리자', '회원·인증·콘텐츠·알림을 관리합니다.') +
-        tabBar + '<div id="admin-panel">' + adminPanel(S.adminTab, db) + '</div>';
+      var allowed = u.role === 'reviewer' ? ['verify']
+        : ['stats', 'members', 'verify', 'alimtalk', 'security', 'contents', 'popups', 'noti'];
+      var tab = allowed.indexOf(p && p.tab) >= 0 ? p.tab : allowed[0];
+      S.adminTab = tab;
+      var meta = ADMIN_TABS[tab] || ['백오피스', ''];
+      return pageHead(u.role === 'reviewer' ? '심사' : '백오피스', meta[0], meta[1]) +
+        '<div id="admin-panel">' + adminPanel(tab, db) + '</div>';
     },
-    mount: function () {
-      document.querySelectorAll('[data-atab]').forEach(function (b) {
-        b.onclick = function () { S.adminTab = b.dataset.atab; App.refresh(); };
-      });
-      adminWire(S.adminTab);
+    mount: function (p) {
+      var u = Store.currentUser();
+      if (!u) return;
+      var allowed = u.role === 'reviewer' ? ['verify']
+        : ['stats', 'members', 'verify', 'alimtalk', 'security', 'contents', 'popups', 'noti'];
+      adminWire(allowed.indexOf(p && p.tab) >= 0 ? p.tab : allowed[0]);
     }
   };
 
@@ -2070,7 +2075,8 @@
       /* 가입 심사가 생기면서 '대기 건수'만으로는 운영이 안 된다 —
          SLA 초과·반려·중단(서류 미제출)과 평균 처리 시간을 함께 본다 */
       var cards = [
-        ['가입 심사 대기', st.pendingUsers + '건', 'clock'],
+        ['심사 대기', st.pendingUsers + '건', 'clock'],
+        ['신규 가입 대기', st.pendingSignups + '건', 'user'],
         ['24시간 초과', st.overdueUsers + '건', 'alert'],
         ['반려', st.rejectedUsers + '건', 'x'],
         ['서류 미제출', st.nodocUsers + '건', 'note'],
@@ -2411,7 +2417,7 @@
       });
       var goReview = document.querySelectorAll('[data-mem-review]');
       goReview.forEach(function (b) {
-        b.onclick = function () { S.adminTab = 'verify'; App.refresh(); };
+        b.onclick = function () { App.navigate('#/admin/verify'); };
       });
       /* 검색은 입력 중 포커스가 날아가지 않게 디바운스 후 갱신 */
       var mq = UI.el('mem-q');

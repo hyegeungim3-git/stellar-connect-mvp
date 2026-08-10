@@ -21,6 +21,7 @@
     { segs: ['dashboard'],               view: 'dashboard' },
     { segs: ['caregiver'],               view: 'caregiver' },
     { segs: ['admin'],                   view: 'admin' },
+    { segs: ['admin', ':tab'],           view: 'admin' },   // 관리자 메뉴를 URL로
     { segs: ['login'],                   view: 'login' },
     { segs: ['signup'],                  view: 'signup' },
     { segs: ['signup', ':step'],         view: 'signup' },   // 단계별 URL — 뒤로가기가 이전 단계로
@@ -107,25 +108,59 @@
   /* 모바일 하단 탭 4개 고정 (나머지는 더보기) */
   var BOTTOM_KEYS = ['dashboard', 'manual', 'records', 'gallery'];
 
+  /* ---------- 관리자 메뉴 ----------
+     운영자는 양육자 화면을 쓰지 않으므로 사이드바를 통째로 관리자 메뉴로 바꾼다.
+     각 항목이 URL(#/admin/<키>)을 가져 북마크·뒤로가기가 그대로 동작한다. */
+  var ADMIN_NAV = [
+    { key: 'stats',    label: '운영 현황',  icon: 'chart' },
+    { key: 'members',  label: '회원 관리',  icon: 'users' },
+    { key: 'verify',   label: '가입 심사',  icon: 'shield' },
+    { key: 'alimtalk', label: '알림톡 이력', icon: 'message' },
+    { key: 'security', label: '공유 보안',  icon: 'lock' },
+    { key: 'contents', label: '콘텐츠',     icon: 'book' },
+    { key: 'popups',   label: '팝업·배너',  icon: 'grid' },
+    { key: 'noti',     label: '알림 발송',  icon: 'bell' }
+  ];
+  /* 심사자는 가입 심사만 — 서류가 민감정보라 열람 인원을 최소로 둔다 */
+  function adminNav(role) {
+    return role === 'reviewer'
+      ? ADMIN_NAV.filter(function (it) { return it.key === 'verify'; })
+      : ADMIN_NAV;
+  }
+  function adminTabOf(r, role) {
+    var keys = adminNav(role).map(function (it) { return it.key; });
+    var t = r.params && r.params.tab;
+    return keys.indexOf(t) >= 0 ? t : keys[0];
+  }
+  var ADMIN_BOTTOM = 4;   // 모바일 하단 탭에 노출할 관리자 메뉴 수 (나머지는 더보기)
+
   /* ---------- 앱 셸 ---------- */
   function shell(r) {
     var u = Store.currentUser();
     var cur = currentChildId(r);
     var active = NAV_MAP[r.view] || '';
     var kids = Store.childrenOf(u.id);
-    var items = navItems(cur, !kids.length);
+    /* 운영자 계정은 사이드바 자체를 관리자 메뉴로 바꾼다 — 양육자 화면을 쓰지 않는다 */
+    var isStaff = u.role === 'admin' || u.role === 'reviewer';
+    var staffNav = isStaff ? adminNav(u.role) : [];
+    var staffTab = isStaff ? adminTabOf(r, u.role) : '';
+    var items = isStaff
+      ? staffNav.map(function (it) {
+          return { key: it.key, label: it.label, icon: it.icon, hash: '#/admin/' + it.key };
+        })
+      : navItems(cur, !kids.length);
 
     // 사이드바
-    var sideNav = '<div class="nav-group-label">메뉴</div>' +
-      items.map(function (it) { return navItemHTML(it, active); }).join('');
-    if (u.role === 'admin') {
-      sideNav += '<div class="nav-group-label">운영</div>' +
-        '<a class="nav-item' + (active === 'admin' ? ' active' : '') + '" href="#/admin">' +
-        icon('settings', 19) + '<span>백오피스</span></a>';
-    }
+    var sideNav = isStaff
+      ? '<div class="nav-group-label">' + (u.role === 'reviewer' ? '심사' : '운영') + '</div>' +
+        items.map(function (it) {
+          return navItemHTML(it, r.view === 'admin' ? staffTab : '');
+        }).join('')
+      : '<div class="nav-group-label">메뉴</div>' +
+        items.map(function (it) { return navItemHTML(it, active); }).join('');
 
     // 앱바 — 아이가 1명이면(대부분의 가정) 전환 드롭다운 없이 프로필 바로가기 칩
-    var childSwitch = kids.length
+    var childSwitch = (!isStaff && kids.length)
       ? '<button class="child-switch" id="child-switch" title="' +
           (kids.length > 1 ? '아이 전환' : '아이 프로필') + '">' +
           '<span class="avatar">' + (function () {
@@ -142,35 +177,40 @@
         '<span>Stellar Connect · S:CON</span></div></div>' +
       '<div class="spacer"></div>' +
       childSwitch +
-      '<button class="btn-icon app-help" id="help-btn" aria-label="이 화면 도움말" title="이 화면 도움말">' +
-        icon('help', 18) + '</button>' +
+      (isStaff ? '' :
+        '<button class="btn-icon app-help" id="help-btn" aria-label="이 화면 도움말" title="이 화면 도움말">' +
+        icon('help', 18) + '</button>') +
       '<div class="usermenu"><button class="trigger" id="user-trigger">' +
-        '<span class="avatar">' + esc(UI.initials(u.name)) + '</span>' +
+        '<span class="avatar">' + esc(isStaff ? u.name.slice(0, 2) : UI.initials(u.name)) + '</span>' +
         '<span class="nm-full" style="font-weight:700;font-size:.9rem">' + esc(u.name) + '</span>' +
         icon('chevD', 15) + '</button>' +
         '<div class="dropdown hide" id="user-dropdown">' +
-          '<button id="menu-tour">' + icon('info', 16) + '둘러보기 가이드</button>' +
-          '<button id="menu-tutorial">' + icon('book', 16) + '메뉴별 튜토리얼</button>' +
-          '<button data-go="#/caregiver">' + icon('user', 16) + '양육자 정보</button>' +
-          (u.role === 'admin'
-            ? '<button data-go="#/admin">' + icon('settings', 16) + '백오피스</button>' : '') +
+          (isStaff ? '' :
+            '<button id="menu-tour">' + icon('info', 16) + '둘러보기 가이드</button>' +
+            '<button id="menu-tutorial">' + icon('book', 16) + '메뉴별 튜토리얼</button>') +
+          (isStaff ? '' : '<button data-go="#/caregiver">' + icon('user', 16) + '양육자 정보</button>') +
           '<div class="sep"></div>' +
           '<button id="menu-reset">' + icon('alert', 16) + '데모 데이터 초기화</button>' +
           '<button id="menu-logout">' + icon('logout', 16) + '로그아웃</button>' +
         '</div></div>' +
     '</div>';
 
-    // 하단 탭바 (모바일)
+    // 하단 탭바 (모바일) — 운영자는 관리자 메뉴 앞 4개, 나머지는 더보기
+    var bottomItems = isStaff
+      ? items.slice(0, ADMIN_BOTTOM)
+      : items.filter(function (it) { return BOTTOM_KEYS.indexOf(it.key) >= 0; });
+    var bottomActive = isStaff ? (r.view === 'admin' ? staffTab : '') : active;
     var bottom = '<nav class="bottom-nav">' +
-      items.filter(function (it) { return BOTTOM_KEYS.indexOf(it.key) >= 0; }).map(function (it) {
+      bottomItems.map(function (it) {
         if (it.locked) {
           return '<button class="locked" aria-disabled="true" data-lock="' + esc(it.label) + '">' +
             icon(it.icon, 22) + '<span>' + esc(it.label) + '</span>' + icon('lock', 11) + '</button>';
         }
-        return '<a href="' + it.hash + '" class="' + (active === it.key ? 'active' : '') + '">' +
+        return '<a href="' + it.hash + '" class="' + (bottomActive === it.key ? 'active' : '') + '">' +
           icon(it.icon, 22) + '<span>' + esc(it.label) + '</span></a>';
       }).join('') +
-      '<button id="more-btn">' + icon('menu', 22) + '<span>더보기</span></button>' +
+      (isStaff && items.length <= ADMIN_BOTTOM ? ''
+        : '<button id="more-btn">' + icon('menu', 22) + '<span>더보기</span></button>') +
     '</nav>';
 
     return '<div class="app-shell">' + appbar +
@@ -268,14 +308,21 @@
     var u = Store.currentUser();
     var cur = currentChildId(r);
     var lock = !Store.childrenOf(u.id).length;
-    var links = [
-      { t: '아이 프로필', i: 'smile', h: '#/child/' + cur, lock: lock },
-      { t: '복용 관리', i: 'pill', h: '#/meds/' + cur, lock: lock },
-      { t: '미래 준비', i: 'flag', h: '#/plan/' + cur, lock: lock },
-      { t: '대상별 공유', i: 'share', h: '#/share/' + cur, lock: lock }
-      /* 양육자 정보는 계정 드롭다운에만 유지 */
-    ];
-    if (u.role === 'admin') links.push({ t: '백오피스', i: 'settings', h: '#/admin' });
+    var links;
+    if (u.role === 'admin' || u.role === 'reviewer') {
+      /* 운영자는 하단 탭에 못 담은 나머지 관리자 메뉴를 여기서 연다 */
+      links = adminNav(u.role).slice(ADMIN_BOTTOM).map(function (it) {
+        return { t: it.label, i: it.icon, h: '#/admin/' + it.key };
+      });
+    } else {
+      links = [
+        { t: '아이 프로필', i: 'smile', h: '#/child/' + cur, lock: lock },
+        { t: '복용 관리', i: 'pill', h: '#/meds/' + cur, lock: lock },
+        { t: '미래 준비', i: 'flag', h: '#/plan/' + cur, lock: lock },
+        { t: '대상별 공유', i: 'share', h: '#/share/' + cur, lock: lock }
+        /* 양육자 정보는 계정 드롭다운에만 유지 */
+      ];
+    }
 
     var bd = document.createElement('div');
     bd.className = 'drawer-backdrop';
