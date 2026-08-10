@@ -279,6 +279,29 @@
       bar + '</div><div class="legend" style="margin-top:10px">' + legend + '</div>';
   }
 
+  /* 순위 막대 — '무엇이 많은가'는 세로 막대보다 가로로 줄 세우는 게 읽기 쉽다.
+     items = [{label, value}] (정렬은 호출부 책임) */
+  function rankBar(items, opts) {
+    opts = opts || {};
+    if (!items.length) return '<p class="muted" style="font-size:.88rem">아직 데이터가 없습니다.</p>';
+    var max = Math.max.apply(null, items.map(function (i) { return i.value; }).concat([1]));
+    /* stack: 라벨이 길어 잘리는 경우(반려 사유 등) 라벨을 막대 위 한 줄로 올린다 */
+    return '<div class="rank-bars' + (opts.stack ? ' stack' : '') + '">' + items.map(function (it) {
+      var bar = '<div class="rank-track"><div class="rank-fill" style="width:' +
+          Math.max((it.value / max) * 100, it.value ? 4 : 0) + '%' +
+          (it.color ? ';background:' + it.color : '') + '"></div></div>' +
+        '<div class="rank-val">' + (opts.fmt ? opts.fmt(it.value) : it.value) + '</div>';
+      if (opts.stack) {
+        return '<div class="rank-item">' +
+          '<div class="rank-label">' + esc(it.label) + '</div>' +
+          '<div class="rank-row">' + bar + '</div></div>';
+      }
+      return '<div class="rank-row">' +
+        '<div class="rank-label" title="' + esc(it.label) + '">' + esc(it.label) + '</div>' +
+        bar + '</div>';
+    }).join('') + '</div>';
+  }
+
   /* 컨디션 5단계 — 이모지·라벨·감정색을 입력과 표시에 동일하게 사용
      (내부리뷰 0721: 디자인 통일 + 양육자 자문: 인사이드아웃식 감정별 색상) */
   var MOODS = [
@@ -407,7 +430,7 @@
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, timeAgo: timeAgo,
     calcAge: calcAge, initials: initials, todayISO: todayISO,
     toast: toast, Modal: Modal,
-    barChart: barChart, lineChart: lineChart, distBar: distBar,
+    barChart: barChart, lineChart: lineChart, distBar: distBar, rankBar: rankBar,
     MOODS: MOODS, moodStars: moodStars,
     fileToDataURL: fileToDataURL, copyText: copyText,
     speechSupported: speechSupported, attachVoiceInput: attachVoiceInput,

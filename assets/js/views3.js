@@ -2108,7 +2108,9 @@
         ['24시간 초과', st.overdueUsers, '건', 'alert', '#/admin/members', 'review', 'danger'],
         ['반려', st.rejectedUsers, '건', 'x', '#/admin/members', 'rejected', 'warn'],
         ['서류 미제출', st.nodocUsers, '건', 'note', '#/admin/members', 'nodoc', 'warn'],
-        ['신규 가입 대기', st.pendingSignups, '건', 'user', '#/admin/members', 'review', 'warn']
+        ['신규 가입 대기', st.pendingSignups, '건', 'user', '#/admin/members', 'review', 'warn'],
+        /* 로그인 잠김은 문의로 이어지는 건이라 '지금 처리할 일'에 함께 둔다 */
+        ['로그인 잠김', st.lockedUsers, '건', 'lock', '#/admin/members', 'locked', 'danger']
       ];
       var scale = [
         ['평균 심사 소요', avg, 'trend', ''],
@@ -2117,7 +2119,8 @@
         ['인증 완료 아이', st.verifiedChildren + '명', 'shield', '#/admin/members'],
         ['작성된 설명서', st.manuals + '건', 'book', ''],
         ['전체 기록', st.records + '건', 'note', ''],
-        ['공유 링크', st.shares + '개', 'share', '']
+        ['공유 링크', st.shares + '개', 'share', ''],
+        ['최근 7일 비밀번호 재설정', st.resetsWeek + '건', 'lock', '']
       ];
       /* 지표를 보고 바로 그 화면으로 갈 수 있어야 한다 — 숫자만 보여주면 막다른 길이다 */
       function statCard(label, value, ico, href, filter, tone) {
@@ -2138,7 +2141,121 @@
             return (c.createdAt || '').slice(0, 7) === key;
           }).length });
       }
+      /* ---- 그래프용 집계 ----
+         '몇 명인가'만으로는 운영 판단이 안 선다. 어디서 새는지(퍼널), 늘고 있는지(추이),
+         무엇이 많은지(순위), 누구를 위한 서비스인지(연령·대상)를 함께 본다. */
+      var parentsAll = db.users.filter(function (u) { return u.role === 'parent'; });
+      var today = new Date();
+      function ymd(dt) {
+        return dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) +
+          '-' + ('0' + dt.getDate()).slice(-2);
+      }
+
+      /* ① 가입 퍼널 — 접수한 사람 중 몇이 실제로 쓰기 시작했나 */
+      var fSignup = parentsAll.length;
+      var fSubmit = parentsAll.filter(function (u) { return u.submittedAt; }).length;
+      var fActive = parentsAll.filter(function (u) { return u.status === 'active'; }).length;
+      var fUsing = parentsAll.filter(function (u) {
+        return db.children.some(function (c) { return c.ownerId === u.id && c.verifyStatus === 'verified'; });
+      }).length;
+      var funnel = [
+        { label: '가입 시작', value: fSignup },
+        { label: '서류 접수', value: fSubmit },
+        { label: '승인 완료', value: fActive },
+        { label: '아이 등록', value: fUsing }
+      ];
+
+      /* ② 최근 8주 신규 가입 — 늘고 있는지 */
+      var byWeek = [];
+      for (var w = 7; w >= 0; w--) {
+        var end = new Date(today.getFullYear(), today.getMonth(), today.getDate() - w * 7);
+        var start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 6);
+        var s0 = ymd(start), s1 = ymd(end);
+        byWeek.push({
+          label: (end.getMonth() + 1) + '/' + end.getDate(),
+          value: parentsAll.filter(function (u) {
+            var d0 = (u.createdAt || '').slice(0, 10);
+            return d0 >= s0 && d0 <= s1;
+          }).length
+        });
+      }
+
+      /* ③ 심사 처리 시간 분포 — SLA(영업일 1~2일)를 지키고 있나 */
+      var reviewed = parentsAll.filter(function (u) { return u.submittedAt && u.reviewedAt; });
+      var band = { fast: 0, ok: 0, slow: 0 };
+      reviewed.forEach(function (u) {
+        var h = (new Date(u.reviewedAt) - new Date(u.submittedAt)) / 36e5;
+        if (h <= 24) band.fast++; else if (h <= 48) band.ok++; else band.slow++;
+      });
+      var slaSegs = [
+        { label: '24시간 이내', value: band.fast, color: '#1f9d6b' },
+        { label: '1~2일', value: band.ok, color: '#d68a18' },
+        { label: '2일 초과', value: band.slow, color: '#d6584e' }
+      ];
+
+      /* ④ 반려 사유 — 무엇 때문에 다시 받게 되는가(가입 안내를 고칠 근거) */
+      var reasonMap = {};
+      (db.verifyLogs || []).filter(function (l) { return l.action === 'reject' && l.reason; })
+        .forEach(function (l) { reasonMap[l.reason] = (reasonMap[l.reason] || 0) + 1; });
+      var reasons = Object.keys(reasonMap).map(function (k) { return { label: k, value: reasonMap[k] }; })
+        .sort(function (a, b) { return b.value - a.value; }).slice(0, 5);
+
+      /* ⑤ 아이 연령대 — 서비스가 실제로 누구를 위해 쓰이는가(연령 4단계) */
+      var ageBand = [0, 0, 0, 0];
+      db.children.forEach(function (c) {
+        var a = UI.calcAge(c.birthDate);
+        if (a == null) return;
+        if (a <= 6) ageBand[0]++; else if (a <= 12) ageBand[1]++;
+        else if (a <= 18) ageBand[2]++; else ageBand[3]++;
+      });
+      var ageSegs = [
+        { label: '영유아 0~6', value: ageBand[0], color: '#3566cd' },
+        { label: '학령기 7~12', value: ageBand[1], color: '#2f9e8f' },
+        { label: '청소년 13~18', value: ageBand[2], color: '#7159b0' },
+        { label: '성인 19+', value: ageBand[3], color: '#d68a18' }
+      ];
+
+      /* ⑥ 대상별 공유 — 설명서가 어디로 가고 있나 */
+      var audMap = {};
+      db.shares.forEach(function (s) {
+        var k = s.viewerRole || s.audience || '기타';
+        audMap[k] = (audMap[k] || 0) + 1;
+      });
+      var auds = Object.keys(audMap).map(function (k) { return { label: k, value: audMap[k] }; })
+        .sort(function (a, b) { return b.value - a.value; }).slice(0, 6);
+
+      /* ⑦ 월별 기록 — 만들어 두고 쓰지 않으면 의미가 없다 */
+      var recByMonth = [];
+      for (var r = 5; r >= 0; r--) {
+        var rd = new Date(today.getFullYear(), today.getMonth() - r, 1);
+        var rkey = rd.getFullYear() + '-' + ('0' + (rd.getMonth() + 1)).slice(-2);
+        recByMonth.push({ label: (rd.getMonth() + 1) + '월',
+          value: db.records.filter(function (x) {
+            return (x.date || x.createdAt || '').slice(0, 7) === rkey;
+          }).length });
+      }
+
+      /* ⑧ 설명서 채움 정도 — 공유할 만큼 채워졌는가 */
+      var manualFill = db.children.map(function (c) {
+        var mn = db.manuals.filter(function (x) { return x.childId === c.id; })[0];
+        return mn ? manualCount(mn) : 0;
+      });
+      var fillBand = [0, 0, 0];
+      manualFill.forEach(function (n) {
+        if (n === 0) fillBand[0]++; else if (n < 5) fillBand[1]++; else fillBand[2]++;
+      });
+      var fillSegs = [
+        { label: '아직 비어 있음', value: fillBand[0], color: '#c3ccdd' },
+        { label: '채우는 중', value: fillBand[1], color: '#d68a18' },
+        { label: '공유할 만큼', value: fillBand[2], color: '#1f9d6b' }
+      ];
+
       var todoSum = todo.reduce(function (a, t) { return a + t[1]; }, 0);
+      function chartCard(title, note, body, cls) {
+        return '<div class="card' + (cls ? ' ' + cls : '') + '"><div class="card-head"><h3>' + title + '</h3>' +
+          (note ? '<span class="badge">' + note + '</span>' : '') + '</div>' +
+          '<div class="card-body">' + body + '</div></div>';
+      }
       return '<h3 class="sec-title">지금 처리할 일' +
           (todoSum ? '' : ' <span class="badge ok dot">밀린 건 없음</span>') + '</h3>' +
         '<div class="grid grid-4 mb-2">' + todo.map(function (t) {
@@ -2148,8 +2265,54 @@
         '<div class="grid grid-4 mb-2">' + scale.map(function (c) {
           return statCard(c[0], c[1], c[2], c[3], '', '');
         }).join('') + '</div>' +
-        '<div class="card"><div class="card-head"><h3>월별 아이 등록 추이</h3></div>' +
-        '<div class="card-body">' + UI.barChart(byMonth) + '</div></div>';
+
+        '<h3 class="sec-title">가입은 어디서 멈추나</h3>' +
+        '<div class="grid grid-2 mb-2">' +
+          chartCard('가입 퍼널',
+            fSignup ? Math.round((fUsing / fSignup) * 100) + '% 완주' : '',
+            UI.rankBar(funnel) +
+            '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+            '가입 시작 → 서류 접수 → 승인 → 아이 등록. 크게 줄어드는 구간이 이탈 지점입니다.</p>') +
+          chartCard('심사 처리 시간', reviewed.length + '건',
+            (reviewed.length
+              ? UI.distBar(slaSegs) +
+                '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+                '확인 목표는 영업일 1~2일입니다. 2일 초과가 늘면 심사 인원을 늘려야 합니다.</p>'
+              : '<p class="muted" style="font-size:.88rem">아직 처리된 심사가 없습니다.</p>')) +
+        '</div>' +
+        '<div class="grid grid-2 mb-2">' +
+          chartCard('주간 신규 가입', '최근 8주',
+            UI.barChart(byWeek) +
+            '<p class="faint" style="font-size:.8rem;margin-top:6px">각 주의 마지막 날짜 기준입니다.</p>') +
+          chartCard('반려 사유', reasons.length ? '많은 순' : '',
+            /* 사유 문장이 길어 잘리면 정작 알아야 할 내용이 사라진다 → 라벨을 막대 위로 */
+            UI.rankBar(reasons, { stack: true, fmt: function (v) { return v + '건'; } }) +
+            '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+            '같은 사유가 반복되면 가입 화면의 안내 문구를 고치는 편이 빠릅니다.</p>') +
+        '</div>' +
+
+        '<h3 class="sec-title">누가 쓰고, 어떻게 쓰나</h3>' +
+        '<div class="grid grid-2 mb-2">' +
+          chartCard('아이 연령대', db.children.length + '명',
+            UI.distBar(ageSegs) +
+            '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+            '설명서 항목과 미래 준비는 연령 4단계에 맞춰 달라집니다.</p>') +
+          chartCard('설명서 채움 정도', db.children.length + '명',
+            UI.distBar(fillSegs) +
+            '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+            '비어 있는 설명서가 많으면 작성 안내·예시가 부족하다는 뜻입니다.</p>') +
+        '</div>' +
+        '<div class="grid grid-2 mb-2">' +
+          chartCard('대상별 공유', db.shares.length + '건',
+            UI.rankBar(auds, { fmt: function (v) { return v + '건'; } }) +
+            '<p class="faint" style="font-size:.8rem;margin-top:10px">' +
+            '설명서가 실제로 어디에 쓰이는지 보여 줍니다.</p>') +
+          chartCard('월별 기록', '최근 6개월',
+            UI.barChart(recByMonth) +
+            '<p class="faint" style="font-size:.8rem;margin-top:6px">' +
+            '가입만 하고 쓰지 않으면 이 그래프가 먼저 내려앉습니다.</p>') +
+        '</div>' +
+        chartCard('월별 아이 등록 추이', '최근 6개월', UI.barChart(byMonth));
     }
 
     if (tab === 'members') {
@@ -2200,10 +2363,12 @@
         nodoc: everyone.filter(function (m) { return m.role === 'parent' && m.status === 'nodoc'; }).length,
         rejected: everyone.filter(function (m) { return m.role === 'parent' && m.status === 'rejected'; }).length,
         withdrawn: everyone.filter(function (m) { return m.role === 'parent' && m.status === 'withdrawn'; }).length,
-        staff: everyone.filter(function (m) { return m.role !== 'parent'; }).length
+        staff: everyone.filter(function (m) { return m.role !== 'parent'; }).length,
+        locked: everyone.filter(function (m) { return m.loginLocked; }).length
       };
       var filtered = everyone.filter(function (m) {
         if (mf === 'review') { if (!needsReview(m)) return false; }
+        else if (mf === 'locked') { if (!m.loginLocked) return false; }
         else if (mf === 'staff') { if (m.role === 'parent') return false; }
         else if (mf !== 'all') { if (m.role !== 'parent' || m.status !== mf) return false; }
         if (!mq) return true;
@@ -2245,18 +2410,25 @@
         } else if (m.status === 'withdrawn') {
           act = '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>';
         }
+        /* 로그인 잠금은 계정 상태와 다른 축이다 — 심사 대기든 활성이든 잠길 수 있어
+           별도 버튼으로 둔다(운영자는 잠금만 풀고 비밀번호는 알지 못한다) */
+        if (!isReviewer && m.loginLocked) {
+          act = '<button class="btn btn-soft btn-sm" data-mem-unlock="' + m.id + '">잠금 해제</button> ' + act;
+        }
         if (!isReviewer && !isStaffRow) {
-          act = '<button class="btn btn-ghost btn-sm" data-mem-consent="' + m.id + '">동의 이력</button> ' + act;
+          act = '<button class="btn btn-ghost btn-sm" data-mem-account="' + m.id + '">계정</button> ' + act;
         }
         if (isReviewer && !needsReview(m)) act = '';
 
-        var stateCell = isStaffRow
+        var stateCell = (isStaffRow
           ? '<span class="badge ok dot">활성</span>'
           : '<span class="badge ' + st.cls + '">' + st.t + '</span>' +
             (rk.length ? elapsedHTML(rk[0].at) : '') +
             (m.status === 'rejected' && m.rejectReason
               ? '<div class="faint ell" style="font-size:.76rem;margin-top:2px;max-width:180px" title="' +
-                esc(m.rejectReason) + '">' + esc(m.rejectReason) + '</div>' : '');
+                esc(m.rejectReason) + '">' + esc(m.rejectReason) + '</div>' : '')) +
+          (m.loginLocked
+            ? '<div style="margin-top:3px"><span class="badge danger dot">로그인 잠김</span></div>' : '');
 
         /* 연락처는 열로 두지 않는다 — 목록에서 쓸 일이 거의 없고(전화는 심사할 때 건다),
            그 폭이 없으면 오른쪽 [심사하기]·[정지]가 카드 밖으로 밀린다.
@@ -2279,7 +2451,7 @@
       var mSegs = [['all', '전체', everyone.length], ['review', '심사 대기', mCounts.review],
         ['active', '활성', mCounts.active], ['nodoc', '서류 미제출', mCounts.nodoc],
         ['rejected', '반려', mCounts.rejected], ['withdrawn', '탈퇴', mCounts.withdrawn],
-        ['staff', '운영자', mCounts.staff]];
+        ['locked', '로그인 잠김', mCounts.locked], ['staff', '운영자', mCounts.staff]];
       var pager = totalPages > 1
         ? '<div class="row gap-sm mt-2" style="justify-content:center;align-items:center">' +
             '<button class="btn btn-soft btn-sm" data-mempage="' + (page - 1) + '"' +
@@ -2483,30 +2655,27 @@
       document.querySelectorAll('[data-mempage]').forEach(function (b) {
         b.onclick = function () { S.memPage = parseInt(b.dataset.mempage, 10) || 1; App.refresh(); };
       });
-      /* 동의 이력 — 분쟁·감사 때 무엇에 언제 동의했는지 확인한다 */
-      document.querySelectorAll('[data-mem-consent]').forEach(function (b) {
+      /* 계정 모달 — 동의 이력 + 로그인·재설정 이력 + 재설정 안내 재발송 + 연락처 정정.
+         로그인 문의는 '내가 언제 뭘 했나'를 확인하는 일이라 한 곳에 모아 둔다. */
+      document.querySelectorAll('[data-mem-account]').forEach(function (b) {
+        b.onclick = function () { openAccountModal(b.dataset.memAccount); };
+      });
+      /* 로그인 잠금 해제 — 운영자는 잠금만 풀고 비밀번호는 알지 못한다 */
+      document.querySelectorAll('[data-mem-unlock]').forEach(function (b) {
         b.onclick = function () {
-          var m = Store.getDB().users.filter(function (x) { return x.id === b.dataset.memConsent; })[0];
+          var m = Store.getDB().users.filter(function (x) { return x.id === b.dataset.memUnlock; })[0];
           if (!m) return;
-          var C = [['terms', '서비스 이용약관', true], ['privacy', '개인정보 수집·이용', true],
-            ['sensitive', '아이의 특성·건강 정보 처리 (민감정보)', true],
-            ['identity', '본인확인 서비스 이용', true], ['age14', '만 14세 이상', true],
-            ['alimtalk', '알림톡 수신', false], ['marketing', '서비스 소식·이벤트 수신', false]];
-          var cs = m.consents;
-          Modal.open({
-            title: esc(m.name) + ' — 동의 이력', icon: 'shield',
-            body: cs
-              ? '<div class="row between wrap mb-2" style="gap:8px;font-size:.86rem">' +
-                  '<span class="muted">동의 시각</span><b>' + UI.fmtDateTime(cs.at) + '</b></div>' +
-                '<div class="divider"></div>' +
-                C.map(function (c) {
-                  return '<div class="row between wrap" style="gap:8px;padding:5px 0;font-size:.88rem">' +
-                    '<span>' + esc(c[1]) + (c[2] ? ' <span class="req">*</span>' : '') + '</span>' +
-                    (cs[c[0]] ? '<span class="badge ok dot">동의</span>'
-                              : '<span class="badge dot">미동의</span>') + '</div>';
-                }).join('')
-              : '<p class="muted">동의 이력이 없는 계정입니다. (가입 절차 개편 이전 계정)</p>',
-            buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }]
+          Modal.confirm({
+            title: '로그인 잠금 해제',
+            message: m.name + ' (' + m.email + ')\n' +
+              '잠금을 풀면 다시 로그인할 수 있습니다. 비밀번호는 그대로예요.\n' +
+              '본인이 맞는지 확인한 뒤 풀어 주세요.',
+            okLabel: '잠금 해제'
+          }).then(function (ok) {
+            if (!ok) return;
+            if (Store.unlockLogin(m.id, (Store.currentUser() || {}).name)) {
+              toast('잠금을 풀었습니다. 안내 알림톡이 나갔어요(시연)', 'ok'); App.refresh();
+            } else toast('해제할 수 없는 계정입니다', 'err');
           });
         };
       });
@@ -2723,6 +2892,115 @@
           });
         };
       });
+  }
+
+  /* 계정 모달 — 로그인 문의(아이디를 잊었다/비밀번호가 안 된다/번호가 바뀌었다)에
+     답하는 데 필요한 것만 한 화면에: 동의 이력 · 계정 이력 · 재설정 안내 재발송 · 연락처 정정 */
+  var ACCOUNT_ACTION = {
+    login_fail: ['로그인 실패', ''],
+    locked: ['로그인 잠김', 'danger'],
+    unlocked: ['잠금 해제', 'ok'],
+    reset_sent: ['재설정 안내 발송', 'brand'],
+    pw_reset: ['비밀번호 재설정', 'ok'],
+    phone_changed: ['연락처 변경', 'warn']
+  };
+  function openAccountModal(userId) {
+    var m = Store.getDB().users.filter(function (x) { return x.id === userId; })[0];
+    if (!m) return;
+    var C = [['terms', '서비스 이용약관', true], ['privacy', '개인정보 수집·이용', true],
+      ['sensitive', '아이의 특성·건강 정보 처리 (민감정보)', true],
+      ['identity', '본인확인 서비스 이용', true], ['age14', '만 14세 이상', true],
+      ['alimtalk', '알림톡 수신', false], ['marketing', '서비스 소식·이벤트 수신', false]];
+    var cs = m.consents;
+    var logs = Store.accountLogsOf(userId).slice(0, 12);
+
+    Modal.open({
+      title: esc(m.name) + ' — 계정', icon: 'user', wide: true,
+      body: '<div class="admin-target mb-2">' + esc(m.email) +
+          '<div class="row between wrap" style="gap:8px;margin-top:6px">' +
+            '<span class="muted" style="font-size:.86rem">연락처 ' + esc(m.phone || '-') + '</span>' +
+            '<button class="btn btn-ghost btn-sm" id="acc-phone">연락처 정정</button>' +
+          '</div></div>' +
+        (m.loginLocked
+          ? '<div class="pill-info mb-2" style="background:#fbe9e7">' + icon('lock', 16) +
+            '<div>비밀번호를 ' + Store.LOGIN_FAIL_LIMIT + '번 연속 틀려 <b>로그인이 잠긴</b> 상태예요. ' +
+            '본인 확인 후 목록에서 잠금을 풀어 주세요.</div></div>'
+          : '') +
+        '<div class="row between wrap mb-2" style="gap:8px">' +
+          '<div class="muted" style="font-size:.86rem">비밀번호를 잊었다는 문의라면</div>' +
+          '<button class="btn btn-soft btn-sm" id="acc-reset">재설정 안내 발송</button>' +
+        '</div>' +
+        '<div class="divider"></div>' +
+        '<div class="muted" style="font-size:.8rem;font-weight:800;margin-bottom:6px">계정 이력</div>' +
+        (logs.length
+          ? logs.map(function (l) {
+              var a = ACCOUNT_ACTION[l.action] || [l.action, ''];
+              return '<div class="row between wrap" style="gap:8px;font-size:.83rem;padding:4px 0">' +
+                '<span><span class="badge ' + a[1] + '">' + a[0] + '</span> ' +
+                  esc(l.detail || '') + (l.by ? ' · ' + esc(l.by) : '') + '</span>' +
+                '<span class="muted nw">' + UI.fmtDateTime(l.at) + '</span></div>';
+            }).join('')
+          : '<p class="muted" style="font-size:.84rem">로그인 관련 기록이 없습니다.</p>') +
+        '<div class="divider"></div>' +
+        '<div class="muted" style="font-size:.8rem;font-weight:800;margin-bottom:6px">동의 이력</div>' +
+        (cs
+          ? '<div class="row between wrap mb-1" style="gap:8px;font-size:.85rem">' +
+              '<span class="muted">동의 시각</span><b>' + UI.fmtDateTime(cs.at) + '</b></div>' +
+            C.map(function (c) {
+              return '<div class="row between wrap" style="gap:8px;padding:4px 0;font-size:.86rem">' +
+                '<span>' + esc(c[1]) + (c[2] ? ' <span class="req">*</span>' : '') + '</span>' +
+                (cs[c[0]] ? '<span class="badge ok dot">동의</span>'
+                          : '<span class="badge dot">미동의</span>') + '</div>';
+            }).join('')
+          : '<p class="muted" style="font-size:.84rem">동의 이력이 없는 계정입니다. (가입 절차 개편 이전)</p>'),
+      buttons: [{ label: '닫기', value: 'ok', variant: 'primary' }],
+      onMount: function (root) {
+        /* 재설정 안내 재발송 — 알림톡을 못 받았다는 문의가 가장 흔하다.
+           운영자가 비밀번호를 만들어 주는 대신 본인이 정하게 한다 */
+        root.querySelector('#acc-reset').onclick = function () {
+          Modal.confirm({
+            title: '재설정 안내 발송',
+            message: m.name + ' (' + m.email + ')\n' +
+              '비밀번호 재설정 인증번호를 알림톡으로 보냅니다.\n' +
+              '운영자는 비밀번호를 알 수 없고, 본인이 새로 정하게 됩니다.',
+            okLabel: '발송'
+          }).then(function (ok) {
+            if (!ok) return;
+            Store.requestPasswordReset(m.email, (Store.currentUser() || {}).name || '관리자');
+            toast('재설정 안내를 보냈습니다(시연)', 'ok');
+            Modal.close(); App.refresh();
+          });
+        };
+        /* 연락처 정정 — 번호가 바뀌면 본인인증으로 계정을 찾지 못한다.
+           운영자 개입이 유일한 경로라 변경 이력을 반드시 남긴다 */
+        root.querySelector('#acc-phone').onclick = function () {
+          Modal.open({
+            title: '연락처 정정', icon: 'phone',
+            body: '<p class="muted mb-2" style="font-size:.9rem">' +
+                '휴대전화가 바뀌면 아이디 찾기·비밀번호 재설정을 할 수 없어요. ' +
+                '본인 확인을 마친 뒤에만 바꿔 주세요. 변경 이력이 남습니다.</p>' +
+              '<div class="field"><label for="acc-newphone">새 연락처</label>' +
+              '<input class="input" id="acc-newphone" type="tel" inputmode="numeric" value="' +
+              esc(m.phone || '') + '"></div>',
+            buttons: [
+              { label: '취소', value: 'cancel', variant: 'ghost' },
+              { label: '변경', value: 'ok', variant: 'primary' }
+            ],
+            onButton: function (v, r2) {
+              if (v !== 'ok') return;
+              var val = (r2.querySelector('#acc-newphone').value || '').trim();
+              if (val.replace(/\D/g, '').length < 10) {
+                toast('휴대전화 번호를 확인해 주세요', 'err'); return 'keep';
+              }
+              if (!Store.changePhone(m.id, val, (Store.currentUser() || {}).name || '관리자')) {
+                toast('변경하지 못했어요', 'err'); return 'keep';
+              }
+              toast('연락처를 바꿨습니다', 'ok'); App.refresh();
+            }
+          });
+        };
+      }
+    });
   }
 
   /* 가입 심사 모달 — 한 계정의 심사 대상 아이를 모아 아이별로 처리한다.

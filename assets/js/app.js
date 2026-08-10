@@ -23,6 +23,8 @@
     { segs: ['admin'],                   view: 'admin' },
     { segs: ['admin', ':tab'],           view: 'admin' },   // 관리자 메뉴를 URL로
     { segs: ['login'],                   view: 'login' },
+    { segs: ['find-id'],                 view: 'findId' },   // 아이디(이메일) 찾기
+    { segs: ['reset-pw'],                view: 'resetPw' },  // 비밀번호 재설정
     { segs: ['signup'],                  view: 'signup' },
     { segs: ['signup', ':step'],         view: 'signup' },   // 단계별 URL — 뒤로가기가 이전 단계로
     { segs: [],                          view: 'home' }

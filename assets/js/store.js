@@ -27,6 +27,7 @@
       users: [], children: [], manuals: [], records: [],
       shares: [], contents: [], popups: [], notifications: [],
       verifyLogs: [],   // 보호자 인증 심사 이력 {id,userId,userName,action(view|approve|reject),reason,reviewer,at}
+      accountLogs: [],  // 계정 이력 {id,userId,action(login_fail|locked|unlocked|pw_reset|reset_sent|phone_changed),detail,by,at}
       alimtalks: [],    // 알림톡 발송 이력 {id,userId,name,phone,template,title,body,at,result}
       medChecks: {},    // '아이id|YYYY-MM-DD' -> [복용 완료한 약 이름]
       dailyChecks: {},  // '아이id|YYYY-MM-DD' -> { mood, sleep, meal } (오늘의 체크인)
@@ -205,7 +206,11 @@
     approve: { title: '가입 승인 안내',
       body: '보호자 확인이 끝났어요. 이제 로그인하고 「내 아이 설명서」를 시작하실 수 있어요.' },
     reject: { title: '서류 재제출 안내',
-      body: '보내주신 서류를 확인하지 못했어요. 앱에서 다시 제출해 주시면 빠르게 확인해 드릴게요.' }
+      body: '보내주신 서류를 확인하지 못했어요. 앱에서 다시 제출해 주시면 빠르게 확인해 드릴게요.' },
+    resetpw: { title: '비밀번호 재설정 안내',
+      body: '비밀번호 재설정을 위한 인증번호를 보내 드렸어요. 5분 안에 입력해 주세요.' },
+    unlocked: { title: '로그인 잠금 해제 안내',
+      body: '로그인 잠금을 풀어 드렸어요. 다시 로그인해 주세요. 비밀번호가 기억나지 않으면 재설정을 이용해 주세요.' }
   };
   function sendAlimtalk(userId, template, extra) {
     var db = getDB();
@@ -245,12 +250,46 @@
       .sort(function (a, b) { return a.at < b.at ? 1 : -1; });
   }
 
+  var LOGIN_FAIL_LIMIT = 5;   // 공유 링크 인증과 같은 기준 — 로그인만 무제한이면 비대칭이다
+
+  /* 계정 이력 — 로그인 실패·잠금·비밀번호 재설정·연락처 변경.
+     계정 탈취 문의가 들어왔을 때 '언제 무슨 일이 있었는지'를 답할 수 있어야 한다. */
+  function logAccount(userId, action, detail, by) {
+    var db = getDB();
+    db.accountLogs = db.accountLogs || [];
+    db.accountLogs.push({ id: uid('alog'), userId: userId, action: action,
+      detail: detail || '', by: by || '', at: nowISO() });
+    setDB(db);
+  }
+  function accountLogsOf(userId) {
+    return (getDB().accountLogs || []).filter(function (l) { return l.userId === userId; })
+      .sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+  }
+
   function login(email, password) {
     var u = findUserByEmail(email);
     if (!u) return { ok: false, error: '이메일 또는 비밀번호가 일치하지 않아요.' };
+    /* 잠긴 계정은 비밀번호가 맞아도 열지 않는다 — 재설정하거나 운영에 문의해야 한다 */
+    if (u.loginLocked) return { ok: false, code: 'locked', user: u };
     /* 비밀번호를 먼저 확인한다 — 틀린 상태에서 계정 상태를 알려주면
        남의 이메일로 가입 여부를 확인할 수 있게 된다(계정 존재 노출 방지) */
-    if (u.password !== password) return { ok: false, error: '이메일 또는 비밀번호가 일치하지 않아요.' };
+    if (u.password !== password) {
+      var db = getDB();
+      var x = db.users.filter(function (y) { return y.id === u.id; })[0];
+      x.loginFails = (x.loginFails || 0) + 1;
+      var left = LOGIN_FAIL_LIMIT - x.loginFails;
+      if (x.loginFails >= LOGIN_FAIL_LIMIT) { x.loginLocked = true; x.lockedAt = nowISO(); }
+      setDB(db);
+      logAccount(u.id, x.loginLocked ? 'locked' : 'login_fail',
+        x.loginLocked ? '비밀번호 ' + LOGIN_FAIL_LIMIT + '회 연속 실패' : x.loginFails + '회째 실패');
+      if (x.loginLocked) return { ok: false, code: 'locked', user: x };
+      return { ok: false, error: '이메일 또는 비밀번호가 일치하지 않아요.', left: left };
+    }
+    if (u.loginFails) {   // 성공하면 카운터를 되돌린다(연속 실패만 잠금 대상)
+      var db2 = getDB();
+      db2.users.filter(function (y) { return y.id === u.id; })[0].loginFails = 0;
+      setDB(db2);
+    }
     if (u.status === 'withdrawn') return { ok: false, error: '탈퇴한 계정입니다.' };
     /* 심사 상태는 화면에서 모달로 안내한다 (code로 분기) */
     if (u.status === 'nodoc') return { ok: false, code: 'nodoc', user: u };
@@ -261,6 +300,97 @@
   }
 
   function logout() { setSession(null); }
+
+  /* ---------- 계정 찾기 / 비밀번호 재설정 ----------
+     이메일이 아이디라 잊으면 들어올 방법이 없다. 본인인증으로 확보한 이름·휴대전화를
+     열쇠로 쓰고, 재설정은 알림톡 인증번호로 확인한다. */
+  function maskEmail(email) {
+    var p = String(email).split('@');
+    var id = p[0] || '';
+    var head = id.slice(0, Math.min(2, id.length));
+    return head + new Array(Math.max(id.length - head.length, 1) + 1).join('*') + '@' + (p[1] || '');
+  }
+  /* 아이디(이메일) 찾기 — 이름 + 휴대전화가 모두 맞아야 한다 */
+  function findAccounts(name, phone) {
+    var digits = String(phone || '').replace(/\D/g, '');
+    return getDB().users.filter(function (u) {
+      return u.role === 'parent' && u.name === String(name || '').trim() &&
+        String(u.phone || '').replace(/\D/g, '') === digits;
+    }).map(function (u) {
+      return { email: u.email, masked: maskEmail(u.email),
+        provider: u.provider, status: u.status, createdAt: u.createdAt };
+    });
+  }
+
+  var RESET_KEY = 'scon_pwReset';   // 시연용 — 실서비스는 서버가 발급·검증한다
+  var RESET_FAIL_LIMIT = 5;
+  /* 재설정 인증번호 발급. 계정이 없어도 화면에는 같은 응답을 준다(가입 여부 노출 방지) —
+     실제 발송은 계정이 있을 때만 일어나고 알림톡 이력에 남는다. */
+  function requestPasswordReset(email, by) {
+    var u = findUserByEmail(email);
+    var code = String(Math.floor(100000 + Math.random() * 900000));
+    if (u) {
+      try {
+        localStorage.setItem(RESET_KEY, JSON.stringify({
+          userId: u.id, code: code, at: nowISO(), fails: 0
+        }));
+      } catch (e) { /* 저장 실패해도 화면 흐름은 같다 */ }
+      sendAlimtalk(u.id, 'resetpw');
+      logAccount(u.id, 'reset_sent', by ? '운영자가 재발송' : '본인 요청', by || '');
+    }
+    return { ok: true, demoCode: u ? code : '' };   // demoCode는 시연 화면 안내용
+  }
+  function _resetState() {
+    try { return JSON.parse(localStorage.getItem(RESET_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function verifyResetCode(code) {
+    var s = _resetState();
+    if (!s) return { ok: false, error: '인증번호를 다시 요청해 주세요.' };
+    if (s.code === String(code || '').trim()) return { ok: true };
+    s.fails = (s.fails || 0) + 1;
+    if (s.fails >= RESET_FAIL_LIMIT) {
+      localStorage.removeItem(RESET_KEY);
+      return { ok: false, error: '인증번호를 5번 틀렸어요. 처음부터 다시 요청해 주세요.' };
+    }
+    try { localStorage.setItem(RESET_KEY, JSON.stringify(s)); } catch (e) {}
+    return { ok: false, error: '인증번호가 맞지 않아요. (' + (RESET_FAIL_LIMIT - s.fails) + '번 남음)' };
+  }
+  /* 재설정 완료 — 잠긴 계정도 여기서 함께 풀린다(본인 확인을 마쳤으므로) */
+  function completePasswordReset(newPassword) {
+    var s = _resetState();
+    if (!s) return { ok: false, error: '인증번호를 다시 요청해 주세요.' };
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === s.userId; })[0];
+    if (!u) return { ok: false, error: '계정을 찾을 수 없어요.' };
+    u.password = newPassword;
+    u.loginFails = 0; u.loginLocked = false; u.lockedAt = '';
+    if (!setDB(db)) return { ok: false, error: '저장에 실패했어요. 잠시 후 다시 시도해 주세요.' };
+    localStorage.removeItem(RESET_KEY);
+    logAccount(u.id, 'pw_reset', '본인 인증 후 재설정');
+    return { ok: true, email: u.email };
+  }
+  /* 운영자가 로그인 잠금을 푼다 — 비밀번호는 알려 주지 않는다(재설정 안내만) */
+  function unlockLogin(userId, by) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u || !u.loginLocked) return false;
+    u.loginLocked = false; u.loginFails = 0; u.lockedAt = '';
+    if (setDB(db) === false) return false;
+    logAccount(userId, 'unlocked', '운영자가 잠금 해제', by || '관리자');
+    sendAlimtalk(userId, 'unlocked');
+    return true;
+  }
+  /* 휴대전화가 바뀌면 본인인증으로 계정을 못 찾는다 — 이때만 운영자가 연락처를 고친다 */
+  function changePhone(userId, phone, by) {
+    var db = getDB();
+    var u = db.users.filter(function (x) { return x.id === userId; })[0];
+    if (!u) return false;
+    var before = u.phone || '-';
+    u.phone = phone;
+    if (setDB(db) === false) return false;
+    logAccount(userId, 'phone_changed', before + ' → ' + phone, by || '관리자');
+    return true;
+  }
 
   function updateUser(id, patch) {
     var db = getDB();
@@ -722,7 +852,14 @@
       manuals: manualsFilled.length,
       records: db.records.length,
       shares: db.shares.length,
-      lockedShares: db.shares.filter(function (s) { return s.revokedReason === 'authfail'; }).length
+      lockedShares: db.shares.filter(function (s) { return s.revokedReason === 'authfail'; }).length,
+      /* 로그인이 잠긴 계정 — 본인이 재설정으로 풀 수도 있지만, 문의가 오면 운영이 풀어 준다 */
+      lockedUsers: db.users.filter(function (u) { return u.loginLocked; }).length,
+      /* 최근 7일 비밀번호 재설정 — 갑자기 늘면 계정 탈취 시도를 의심해야 한다 */
+      resetsWeek: (db.accountLogs || []).filter(function (l) {
+        return l.action === 'pw_reset' &&
+          l.at >= new Date(Date.now() - 7 * 864e5).toISOString();
+      }).length
     };
   }
 
@@ -763,6 +900,11 @@
     listAudienceTemplates: listAudienceTemplates, saveAudienceTemplate: saveAudienceTemplate,
     deleteAudienceTemplate: deleteAudienceTemplate,
     // 백오피스
+    findAccounts: findAccounts, maskEmail: maskEmail,
+    requestPasswordReset: requestPasswordReset, verifyResetCode: verifyResetCode,
+    completePasswordReset: completePasswordReset,
+    unlockLogin: unlockLogin, changePhone: changePhone,
+    accountLogsOf: accountLogsOf, LOGIN_FAIL_LIMIT: LOGIN_FAIL_LIMIT,
     listContents: listContents, saveContent: saveContent,
     listPopups: listPopups, savePopup: savePopup, deletePopup: deletePopup,
     movePopup: movePopup, popupLive: popupLive,

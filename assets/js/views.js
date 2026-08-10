@@ -458,7 +458,12 @@
             '<button class="btn btn-soft btn-sm" onclick="Views._demo()">양육자 체험</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="Views._demoAdmin()">관리자 체험</button>' +
           '</div>' +
-          '<p class="center muted" style="margin-top:18px;font-size:.9rem">계정이 없으신가요? ' +
+          /* 이메일이 곧 아이디라 잊으면 들어올 방법이 없다 — 로그인 화면에서 바로 이어 준다 */
+          '<p class="center muted" style="margin-top:16px;font-size:.88rem">' +
+            '<a href="#/find-id" style="color:var(--text-muted)">아이디 찾기</a>' +
+            '<span class="faint" style="margin:0 8px">·</span>' +
+            '<a href="#/reset-pw" style="color:var(--text-muted)">비밀번호 재설정</a></p>' +
+          '<p class="center muted" style="margin-top:10px;font-size:.9rem">계정이 없으신가요? ' +
             '<a href="#/signup" style="color:var(--primary);font-weight:700">회원가입</a></p>' +
         '</div>' +
       '</div>';
@@ -470,7 +475,11 @@
         var r = Store.login(f.email, f.password);
         /* 심사 상태는 토스트가 아니라 모달로 — 왜 못 들어가는지, 다음에 뭘 하면 되는지 알려야 한다 */
         if (!r.ok && r.code) { openReviewStatus(r.code, r.user); return; }
-        if (!r.ok) { toast(r.error, 'err'); return; }
+        /* 남은 횟수를 알려 준다 — 조용히 잠기면 왜 막혔는지 알 수 없다 */
+        if (!r.ok) {
+          toast(r.error + (r.left != null && r.left <= 2 ? ' (' + r.left + '번 남음)' : ''), 'err');
+          return;
+        }
         toast(r.user.name + '님, 환영합니다', 'ok');
         /* 운영자는 양육자 화면을 쓰지 않는다 — 바로 관리자 메뉴로 */
         var staff = r.user.role === 'admin' || r.user.role === 'reviewer';
@@ -481,6 +490,23 @@
 
   /* 승인 전 로그인 시도 — 상태별 안내 모달 (비밀번호 확인을 통과한 뒤에만 열린다) */
   function openReviewStatus(code, user) {
+    /* 비밀번호를 연속으로 틀려 잠긴 계정 — 스스로 푸는 길(재설정)을 먼저 준다 */
+    if (code === 'locked') {
+      Modal.open({
+        title: '로그인이 잠겼어요', icon: 'lock',
+        body: '<p class="muted mb-2">비밀번호를 ' + Store.LOGIN_FAIL_LIMIT +
+            '번 연속으로 잘못 입력해 계정을 잠갔어요.</p>' +
+          '<div class="pill-info">' + icon('info', 16) +
+          '<div>비밀번호를 재설정하면 잠금도 함께 풀립니다. ' +
+          '휴대전화 번호가 바뀌어 인증이 어렵다면 고객센터로 문의해 주세요.</div></div>',
+        buttons: [
+          { label: '닫기', value: 'cancel', variant: 'ghost' },
+          { label: '비밀번호 재설정', value: 'go', variant: 'primary' }
+        ],
+        onButton: function (v) { if (v === 'go') App.navigate('#/reset-pw'); }
+      });
+      return;
+    }
     if (code === 'nodoc') {
       Modal.open({
         title: '아직 서류 등록이 남아 있어요', icon: 'clock',
@@ -1146,12 +1172,181 @@
     }
   };
 
+  /* ---------- 아이디 찾기 / 비밀번호 재설정 ----------
+     이메일이 곧 아이디라 잊으면 들어올 방법이 없었다. 가입 때 본인인증으로 확보한
+     이름·휴대전화를 열쇠로 쓰고, 재설정은 알림톡 인증번호로 확인한다. */
+  function recoverShell(title, sub, inner) {
+    return '' +
+      '<div class="app-bar"><div class="brand" onclick="App.navigate(\'#/\')">' + UI.brandMark(34) +
+        '<div class="wordmark"><b>Stellar Connect</b><span>S:CON · ASTROGEN</span></div></div></div>' +
+      '<div class="container narrow" style="padding-top:48px">' +
+        '<div class="card card-pad" style="max-width:460px;margin:0 auto">' +
+          '<h1 class="mb-1">' + title + '</h1>' +
+          '<p class="muted mb-3" style="font-size:.92rem">' + sub + '</p>' +
+          inner +
+          '<p class="center muted" style="margin-top:20px;font-size:.9rem">' +
+            '<a href="#/login" style="color:var(--primary);font-weight:700">로그인으로 돌아가기</a></p>' +
+        '</div></div>';
+  }
+
+  var findId = {
+    layout: 'public',
+    render: function () {
+      var r = S.findIdResult;
+      if (r) {
+        return recoverShell('아이디 찾기',
+          r.length ? '가입하신 이메일이에요. 앞 두 글자만 보여 드려요.' : '',
+          (r.length
+            ? r.map(function (a) {
+                return '<div class="card card-pad mb-2"><b style="font-size:1.05rem">' +
+                  esc(a.masked) + '</b>' +
+                  '<div class="muted" style="font-size:.85rem;margin-top:4px">' +
+                  UI.fmtDate(a.createdAt) + ' 가입' +
+                  (a.provider && a.provider !== 'email'
+                    ? ' · ' + esc(a.provider) + ' 간편가입' : '') + '</div></div>';
+              }).join('') +
+              '<p class="muted" style="font-size:.85rem">비밀번호가 기억나지 않으면 ' +
+              '<a href="#/reset-pw" style="color:var(--primary);font-weight:700">비밀번호 재설정</a>을 이용해 주세요.</p>'
+            : '<div class="empty"><div class="emoji">🔍</div>' +
+              '<p>입력하신 정보로 가입된 계정을 찾지 못했어요.</p>' +
+              '<p class="muted" style="font-size:.88rem">이름과 휴대전화가 가입 때와 같은지 확인해 주세요. ' +
+              '휴대전화 번호가 바뀌었다면 고객센터로 문의해 주세요.</p></div>') +
+          '<button class="btn btn-soft btn-block mt-2" id="fi-again">다시 찾기</button>');
+      }
+      return recoverShell('아이디 찾기', '가입할 때 본인인증에 쓴 이름과 휴대전화를 입력해 주세요.',
+        '<form id="fi-form">' +
+          '<div class="field"><label for="fi-name">이름</label>' +
+            '<input class="input" id="fi-name" name="name" autocomplete="name" required></div>' +
+          '<div class="field"><label for="fi-phone">휴대전화</label>' +
+            '<input class="input" id="fi-phone" name="phone" type="tel" inputmode="numeric" ' +
+            'autocomplete="tel" placeholder="010-0000-0000" required></div>' +
+          '<button class="btn btn-primary btn-block btn-lg" type="submit">아이디 찾기</button>' +
+        '</form>' +
+        '<p class="faint mt-2" style="font-size:.8rem">' +
+        '정식 서비스에서는 휴대폰 본인인증(NICE)으로 확인합니다.</p>');
+    },
+    mount: function () {
+      var again = UI.el('fi-again');
+      if (again) again.onclick = function () { S.findIdResult = null; App.refresh(); };
+      var f = UI.el('fi-form');
+      if (!f) return;
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = readForm(e.target);
+        if (!v.name || !v.phone) { toast('이름과 휴대전화를 입력해 주세요', 'err'); return; }
+        S.findIdResult = Store.findAccounts(v.name, v.phone);
+        App.refresh();
+      });
+    }
+  };
+
+  var resetPw = {
+    layout: 'public',
+    render: function () {
+      var st = S.pwStep || 1;
+      if (st === 3) {
+        return recoverShell('비밀번호 재설정', '새 비밀번호를 정해 주세요.',
+          '<form id="pw-form3">' +
+            '<div class="field"><label for="pw-new">새 비밀번호</label>' +
+              '<input class="input" id="pw-new" name="password" type="password" ' +
+              'autocomplete="new-password" placeholder="8자 이상, 영문과 숫자 포함"></div>' +
+            '<div class="field"><label for="pw-new2">새 비밀번호 확인</label>' +
+              '<input class="input" id="pw-new2" name="password2" type="password" ' +
+              'autocomplete="new-password"></div>' +
+            '<p id="pw-msg" class="muted" style="font-size:.82rem;margin:-4px 0 12px" aria-live="polite"></p>' +
+            '<button class="btn btn-primary btn-block btn-lg" type="submit">비밀번호 바꾸기</button>' +
+          '</form>');
+      }
+      if (st === 2) {
+        return recoverShell('비밀번호 재설정',
+          '알림톡으로 보낸 6자리 인증번호를 입력해 주세요.',
+          '<form id="pw-form2">' +
+            '<div class="field"><label for="pw-code">인증번호</label>' +
+              '<input class="input" id="pw-code" name="code" inputmode="numeric" ' +
+              'maxlength="6" placeholder="6자리"></div>' +
+            '<button class="btn btn-primary btn-block btn-lg" type="submit">확인</button>' +
+          '</form>' +
+          (S.pwDemoCode
+            ? '<div class="pill-info mt-2">' + icon('info', 16) +
+              '<div>시연용 인증번호: <b>' + esc(S.pwDemoCode) + '</b><br>' +
+              '정식 서비스에서는 알림톡으로만 전달됩니다.</div></div>'
+            : '') +
+          '<button class="btn btn-ghost btn-block mt-2" id="pw-back">이메일 다시 입력</button>');
+      }
+      return recoverShell('비밀번호 재설정',
+        '가입하신 이메일로 인증번호를 보내 드릴게요.',
+        '<form id="pw-form1">' +
+          '<div class="field"><label for="pw-email">이메일</label>' +
+            '<input class="input" id="pw-email" name="email" type="email" ' +
+            'autocomplete="username" required></div>' +
+          '<button class="btn btn-primary btn-block btn-lg" type="submit">인증번호 받기</button>' +
+        '</form>' +
+        '<p class="muted mt-2" style="font-size:.85rem">아이디가 기억나지 않으면 ' +
+        '<a href="#/find-id" style="color:var(--primary);font-weight:700">아이디 찾기</a>를 먼저 해 주세요.</p>');
+    },
+    mount: function () {
+      var f1 = UI.el('pw-form1');
+      if (f1) f1.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = readForm(e.target);
+        if (!v.email) { toast('이메일을 입력해 주세요', 'err'); return; }
+        var r = Store.requestPasswordReset(v.email);
+        /* 가입 여부를 알려 주지 않는다 — 없는 이메일에도 같은 안내를 보여 준다 */
+        S.pwStep = 2; S.pwDemoCode = r.demoCode || '';
+        toast('인증번호를 보냈어요. 알림톡을 확인해 주세요', 'ok');
+        App.refresh();
+      });
+      var f2 = UI.el('pw-form2');
+      if (f2) f2.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = readForm(e.target);
+        var r = Store.verifyResetCode(v.code);
+        if (!r.ok) { toast(r.error, 'err'); return; }
+        S.pwStep = 3; App.refresh();
+      });
+      var back = UI.el('pw-back');
+      if (back) back.onclick = function () { S.pwStep = 1; S.pwDemoCode = ''; App.refresh(); };
+
+      var f3 = UI.el('pw-form3');
+      if (f3) {
+        var p1 = UI.el('pw-new'), p2 = UI.el('pw-new2'), msg = UI.el('pw-msg');
+        function check() {
+          var a = p1.value, b = p2.value;
+          if (!a) { msg.textContent = ''; return; }
+          if (!(a.length >= 8 && /[A-Za-z]/.test(a) && /\d/.test(a))) {
+            msg.textContent = '8자 이상, 영문과 숫자를 함께 넣어 주세요.';
+            msg.className = 'su-pwmsg warn'; return;
+          }
+          if (b && a !== b) { msg.textContent = '두 비밀번호가 서로 달라요.'; msg.className = 'su-pwmsg warn'; return; }
+          msg.textContent = b ? '사용할 수 있어요.' : '조건을 만족해요. 한 번 더 입력해 주세요.';
+          msg.className = 'su-pwmsg ok';
+        }
+        p1.addEventListener('input', check); p2.addEventListener('input', check);
+        f3.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var a = p1.value, b = p2.value;
+          if (!(a.length >= 8 && /[A-Za-z]/.test(a) && /\d/.test(a))) {
+            toast('8자 이상, 영문과 숫자를 함께 넣어 주세요', 'err'); p1.focus(); return;
+          }
+          if (a !== b) { toast('두 비밀번호가 서로 달라요', 'err'); p2.focus(); return; }
+          var r = Store.completePasswordReset(a);
+          if (!r.ok) { toast(r.error, 'err'); return; }
+          S.pwStep = 1; S.pwDemoCode = '';
+          toast('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요', 'ok');
+          App.navigate('#/login');
+        });
+      }
+    }
+  };
+
+
   global.Views = {
     _S: S, _MSEC: MSEC, _MTABS: MTABS, _RT: RT, _REL_OPTS: REL_OPTS,
     _readForm: readForm, _readRows: readRows, _ownedChild: ownedChild,
     _notFound: notFound, _manualCount: manualCount,
     _childContextBar: childContextBar, _pageHead: pageHead,
     home: home, login: login, signup: signup, dashboard: dashboard,
+    findId: findId, resetPw: resetPw,
     /* 가입 화면에 새로 들어올 때마다 1단계부터. 이전 사용자의 입력이 남아 있으면
        다음 방문자가 4단계로 들어가 버리므로 데이터까지 지운다.
        단 로그인 모달의 '서류 다시 제출'처럼 단계를 지정해 보낸 경우(suResume)만 유지한다 */
