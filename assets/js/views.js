@@ -759,10 +759,14 @@
           '<p class="muted mb-3" style="font-size:.92rem">발달장애 아동 보호자를 위한 서비스라, ' +
             '보호자 확인을 위한 서류를 한 번 받고 있어요. 여기서 받은 정보는 아이 프로필의 시작점이 돼요.</p>' +
           '<form id="su-form4">' +
-            '<div class="field"><label for="su-cname">아이 이름 또는 별명 <span class="req">*</span></label>' +
-              '<input class="input" id="su-cname" name="childName" placeholder="예) 준호 · 우리 별" ' +
+            /* 별명을 권하면 서류와 이름이 달라져 '이름이 서로 달라요'로 반려된다 —
+               여기서는 서류상 이름을 받고, 부르는 이름은 나중에 바꾸게 안내한다 */
+            '<div class="field"><label for="su-cname">아이 이름 <span class="req">*</span></label>' +
+              '<input class="input" id="su-cname" name="childName" placeholder="예) 이준호" ' +
               'value="' + esc(d.childName || '') + '"></div>' +
-            '<p class="faint mb-2" style="font-size:.78rem">별명으로 적으셔도 괜찮아요. 나중에 바꿀 수 있어요.</p>' +
+            '<p class="faint mb-2" style="font-size:.78rem">' +
+              '서류와 대조해야 해서 <b>서류에 적힌 이름 그대로</b> 적어 주세요. ' +
+              '앱에서 부르는 이름은 등록 후 별명으로 바꿀 수 있어요.</p>' +
             '<div class="field-row">' +
               '<div class="field"><label for="su-cbirth">생년월일 <span class="req">*</span></label>' +
                 '<input class="input" id="su-cbirth" name="childBirth" type="date" min="1900-01-01" max="' +
@@ -780,12 +784,25 @@
                 return '<option' + (d.docType === t ? ' selected' : '') + '>' + esc(t) + '</option>';
               }).join('') +
               '</select></div>' +
-            /* 미리보기를 보여줘야 흐리게 찍힌 사진을 제출 전에 알아차린다
-               (반려 사유 1순위가 '판독 불가'라, 여기서 막는 게 심사 왕복을 줄인다) */
+            /* '접수한 서류 종류가 맞지 않아요'도 반려 사유다 — 고른 종류와 사진을 맞추게 한다 */
+            '<p class="faint mb-2" style="font-size:.78rem">' +
+              '위에서 고른 종류와 <b>같은 서류</b>를 찍어 주세요. 셋 중 하나만 있으면 돼요.</p>' +
+            /* 촬영 안내는 찍기 '전'에 있어야 한다 — 반려 사유 5종(흐림·가림·유효기간·
+               이름 불일치·서류 종류)을 그대로 뒤집어 체크리스트로 만든다.
+               미리보기는 제출 전에 스스로 알아차리게 하는 두 번째 관문. */
             '<div class="field"><label for="su-doc">서류 사진 <span class="req">*</span></label>' +
+              '<div class="su-tips mb-2">' +
+                '<div class="su-tips-h">' + icon('camera', 15) + '이렇게 찍으면 한 번에 확인돼요</div>' +
+                '<ul>' +
+                  '<li>서류 <b>네 귀퉁이가 모두</b> 나오게 — 잘리거나 손가락에 가리지 않게</li>' +
+                  '<li>밝은 곳에서 <b>그림자 없이</b>, 글자에 초점을 맞춰서</li>' +
+                  '<li><b>아이 이름과 유효기간</b>이 읽히는지 확인해 주세요</li>' +
+                  '<li>원본이 없으면 <b>복사본·화면 캡처</b>도 괜찮아요</li>' +
+                '</ul></div>' +
               '<div id="su-docprev" class="su-docprev' + (d.docPreview ? '' : ' hide') + '">' +
                 (d.docPreview ? '<img src="' + d.docPreview + '" alt="첨부한 서류 사진 미리보기">' +
-                  '<p>글자가 또렷하게 보이는지 확인해 주세요. 흐리면 다시 찍어 주세요.</p>' : '') + '</div>' +
+                  '<p>이 상태로 접수돼요. <b>아이 이름과 유효기간</b> 글자가 읽히나요? ' +
+                  '흐리면 지금 다시 찍는 편이 훨씬 빨라요.</p>' : '') + '</div>' +
               '<label class="btn btn-soft btn-block su-docbtn" style="cursor:pointer">' + icon('camera', 16) +
                 '<span id="su-docname" class="su-docfile">' + esc(d.docFile || '사진 선택') + '</span>' +
                 '<input type="file" id="su-doc" accept="image/*" hidden></label></div>' +

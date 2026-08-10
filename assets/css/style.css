@@ -345,7 +345,29 @@ p.muted { line-height: 1.72; }
   display: block; width: 100%; max-height: 190px; object-fit: contain;
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
 }
-.su-docprev p { margin: 6px 0 0; font-size: .78rem; color: var(--text-muted); }
+.su-docprev p { margin: 6px 0 0; font-size: .8rem; color: var(--text-muted); line-height: 1.55; }
+.su-docprev p b { color: var(--text); }
+/* 촬영 안내 — 반려 사유 1순위가 '판독 불가'라, 찍기 전에 짚어 주는 자리 */
+.su-tips {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.su-tips-h {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .84rem; font-weight: 800; color: var(--text); margin-bottom: 7px;
+}
+.su-tips-h svg { color: var(--primary); flex: none; }
+/* 전역 ul은 list-style:none이라, 항목이 구분되도록 체크 표시를 직접 붙인다 */
+.su-tips ul { margin: 0; padding: 0; }
+.su-tips li {
+  position: relative; padding: 2px 0 2px 21px;
+  font-size: .81rem; color: var(--text-muted); line-height: 1.65;
+}
+.su-tips li::before {
+  content: ''; position: absolute; left: 3px; top: 9px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+}
+.su-tips li b { color: var(--text); font-weight: 700; }
 /* 파일명이 길어도 버튼 밖으로 밀리지 않게 */
 .su-docfile { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
