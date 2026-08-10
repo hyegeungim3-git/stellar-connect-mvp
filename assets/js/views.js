@@ -492,7 +492,7 @@
         onButton: function (v) {
           if (v !== 'go') return;
           S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
-            account: { email: user.email } };
+            account: { email: user.email }, resubmit: true };
           suGo(4);
         }
       });
@@ -502,7 +502,7 @@
       Modal.open({
         title: '서류를 다시 확인해 주세요', icon: 'alert',
         body: '<p class="muted mb-2">보내주신 서류를 확인하지 못했어요.</p>' +
-          '<div class="callout mb-2"><div class="faint" style="font-size:.8rem">사유</div>' +
+          '<div class="callout mb-2"><div class="muted" style="font-size:.8rem">사유</div>' +
           '<b>' + esc(user.rejectReason || '서류를 판독하기 어려웠어요') + '</b></div>' +
           '<div class="pill-info">' + icon('bell', 16) +
           '<div>다시 제출해 주시면 빠르게 확인해 드릴게요. 결과는 <b>카카오 알림톡</b>으로 알려 드려요.</div></div>',
@@ -513,7 +513,7 @@
         onButton: function (v) {
           if (v !== 'go') return;
           S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
-            account: { email: user.email } };
+            account: { email: user.email }, resubmit: true };
           suGo(4);
         }
       });
@@ -523,10 +523,11 @@
     Modal.open({
       title: '관리자 확인을 기다리고 있어요', icon: 'clock',
       body: '<p class="muted mb-2">제출해 주신 서류를 확인하고 있어요.</p>' +
+        /* 라벨은 muted — faint(2.98:1)는 흰 배경에서 대비 기준에 못 미친다 */
         '<div class="callout mb-2">' +
-          '<div class="row between wrap" style="gap:8px"><span class="faint">접수일</span>' +
+          '<div class="row between wrap" style="gap:8px"><span class="muted">접수일</span>' +
             '<b>' + UI.fmtDate(user.submittedAt || user.createdAt) + '</b></div>' +
-          '<div class="row between wrap" style="gap:8px;margin-top:4px"><span class="faint">확인 예정</span>' +
+          '<div class="row between wrap" style="gap:8px;margin-top:4px"><span class="muted">확인 예정</span>' +
             '<b>영업일 1~2일 안</b></div></div>' +
         '<div class="pill-info">' + icon('bell', 16) +
         '<div>확인이 끝나면 <b>카카오 알림톡</b>으로 알려 드릴게요. 승인되면 바로 로그인하실 수 있어요.</div></div>',
@@ -537,7 +538,7 @@
       onButton: function (v) {
         if (v !== 'go') return;
         S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
-          account: { email: user.email } };
+          account: { email: user.email }, resubmit: true };
         suGo(4);
       }
     });
@@ -552,14 +553,39 @@
   var SU_DOCS = ['복지카드', '장애인증명서', '특수교육대상자 증명서'];
   var SU_DISABILITY = ['자폐 스펙트럼 장애', '지적장애', '발달지연', '뇌병변장애', '기타 발달장애'];
 
+  /* 가입 임시 저장 — 새로고침·탭 복원으로도 입력이 날아가지 않게 sessionStorage에 둔다.
+     탭을 닫으면 사라지고, 비밀번호는 저장하지 않는다. */
+  var SU_KEY = 'scon_signupDraft';
   function suData() {
-    if (!S.suData) S.suData = { consents: null, ident: null, account: null };
+    if (!S.suData) {
+      try {
+        var raw = sessionStorage.getItem(SU_KEY);
+        S.suData = raw ? JSON.parse(raw) : null;
+      } catch (e) { S.suData = null; }
+      if (!S.suData) S.suData = { consents: null, ident: null, account: null };
+    }
     return S.suData;
+  }
+  function suSave() {
+    var d = S.suData; if (!d) return;
+    var keep = JSON.parse(JSON.stringify(d));
+    if (keep.account) delete keep.account.password;   // 비밀번호는 임시 저장에서 제외
+    try { sessionStorage.setItem(SU_KEY, JSON.stringify(keep)); }
+    catch (e) {
+      /* 용량 초과 — 가장 큰 서류 미리보기부터 덜어 낸다 */
+      delete keep.docPreview;
+      try { sessionStorage.setItem(SU_KEY, JSON.stringify(keep)); } catch (e2) {}
+    }
+  }
+  function suClear() {
+    S.suData = null; S.suStep = 1;
+    try { sessionStorage.removeItem(SU_KEY); } catch (e) {}
   }
   /* 단계를 URL에 둔다 — 브라우저 뒤로가기가 '이전 단계'로 동작해야 한다.
      한 해시에 5단계를 담으면 뒤로가기 한 번에 입력이 전부 사라진다. */
   function suGo(n, replace) {
     S.suStep = n;
+    suSave();
     App[replace ? 'replace' : 'navigate']('#/signup/' + n);
   }
   /* 새로고침·URL 직접 입력으로 앞 단계 데이터 없이 들어오면 되돌린다 */
@@ -570,6 +596,9 @@
     if (step >= 2 && !d.consents) return 1;
     if (step >= 3 && !d.ident) return 1;
     if (step >= 4 && !d.account) return 1;
+    /* 비밀번호는 임시 저장하지 않으므로, 새로고침 뒤에는 3단계에서 다시 받아야 한다.
+       (재제출 경로는 계정이 이미 있어 비밀번호가 필요 없다) */
+    if (step >= 4 && !d.resubmit && !d.account.password) return 3;
     if (step >= 5) return 1;     // 접수 전에는 완료 화면에 들어갈 수 없다
     return step;
   }
@@ -583,7 +612,7 @@
     return '<div class="app-bar"><div class="brand" onclick="App.navigate(\'#/\')">' + UI.brandMark(34) +
       '<div class="wordmark"><b>Stellar Connect</b><span>S:CON · ASTROGEN</span></div></div></div>' +
       '<div class="container narrow" style="padding-top:32px">' +
-        '<div class="card card-pad" style="max-width:520px;margin:0 auto">' + bar + body + '</div>' +
+        '<div class="card card-pad su-card" style="max-width:520px;margin:0 auto">' + bar + body + '</div>' +
         '<p class="center muted" style="margin:18px 0 40px;font-size:.9rem">이미 계정이 있으신가요? ' +
           '<a href="#/login" style="color:var(--primary);font-weight:700">로그인</a></p>' +
       '</div>';
@@ -614,6 +643,7 @@
         S.suStep = ok;
         setTimeout(function () {
           if (ok === 1) toast('처음부터 다시 진행해 주세요');
+          else if (ok === 3) toast('안전을 위해 비밀번호는 다시 입력해 주세요');
           suGo(ok, true);
         }, 0);
         return suShell('<p class="muted" style="padding:20px 0;text-align:center">불러오는 중…</p>');
@@ -867,6 +897,7 @@
         UI.fileToDataURL(file, 900, function (url) {
           if (!url) { box.className = 'su-docprev hide'; return; }
           d.docPreview = url;   // 뒤로 왔다가 돌아와도 첨부가 남아 있게
+          suSave();
           box.className = 'su-docprev';
           box.innerHTML = '<img src="' + url + '" alt="첨부한 서류 사진 미리보기">' +
             '<p>글자가 또렷하게 보이는지 확인해 주세요. 흐리면 다시 찍어 주세요.</p>';
@@ -878,6 +909,7 @@
         var v = readForm(f4form);
         d.childName = v.childName; d.childBirth = v.childBirth;
         d.disabilityType = v.disabilityType; d.docType = v.docType;
+        suSave();
       });
       var f4 = UI.el('su-form4');
       if (f4) f4.addEventListener('submit', function (e) {
@@ -915,7 +947,7 @@
       /* ⑤ 접수 완료 */
       var done = UI.el('su-done');
       if (done) done.onclick = function () {
-        S.suStep = 1; S.suData = null;
+        suClear();
         App.navigate('#/login');
       };
     }
@@ -1117,7 +1149,7 @@
        단 로그인 모달의 '서류 다시 제출'처럼 단계를 지정해 보낸 경우(suResume)만 유지한다 */
     _resetSignup: function (step) {
       if (step) return;   // URL에 단계가 있으면 유지 — 유효성은 suGuard가 판단한다
-      S.suStep = 1; S.suData = null;
+      suClear();
     },
     _demo: function () {
       Store.login('parent@example.com', '1234'); App.navigate('#/dashboard');

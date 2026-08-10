@@ -282,12 +282,16 @@ p.muted { line-height: 1.72; }
 .su-step b {
   display: grid; place-items: center; flex: none;
   width: 19px; height: 19px; border-radius: 50%;
-  background: var(--surface-2); color: var(--text-faint); font-size: .68rem;
+  background: var(--surface-2); color: var(--text-muted); font-size: .68rem;
 }
 .su-step.on { color: var(--primary-dark); }
 .su-step.on b { background: var(--primary); color: #fff; }
 .su-step.done { color: var(--text-muted); }
 .su-step.done b { background: var(--primary-soft); color: var(--primary-dark); }
+/* 가입은 법적 고지 문구가 담기는 화면이라 본문 대비를 AA(4.5:1) 위로 올린다.
+   --text-faint는 흰 배경에서 2.98:1이라 이 화면에서는 쓰지 않는다. */
+.su-card .faint, .su-step, .su-pwmsg, .su-docprev p { color: var(--text-muted); }
+.su-card .req { color: #b3352c; font-weight: 800; }
 .su-all { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 13px; }
 /* 동의 항목 터치 타깃 44px 확보 (짧은 문구 줄이 41px로 떨어졌었다) */
 .su-c, .su-all { min-height: 44px; }
@@ -300,7 +304,7 @@ p.muted { line-height: 1.72; }
   display: block; width: 100%; max-height: 190px; object-fit: contain;
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
 }
-.su-docprev p { margin: 6px 0 0; font-size: .78rem; color: var(--text-faint); }
+.su-docprev p { margin: 6px 0 0; font-size: .78rem; color: var(--text-muted); }
 /* 파일명이 길어도 버튼 밖으로 밀리지 않게 */
 .su-docfile { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
