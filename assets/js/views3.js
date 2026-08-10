@@ -2156,15 +2156,15 @@
           : m.status === 'withdrawn'
             ? '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>'
             : '<button class="btn btn-ghost btn-sm" data-mem-review="1">가입 심사에서 처리</button>';
-        return '<tr><td><span><b>' + esc(m.name) + '</b></span></td>' +
-          '<td><span>' + esc(m.email) + '</span></td>' +
-          '<td class="nw"><span>' + esc(m.phone || '-') + '</span></td>' +
-          '<td><span>' + kids + '명</span></td>' +
-          '<td><span><span class="badge ' + st.cls + '">' + st.t + '</span>' +
+        return '<tr><td><b>' + esc(m.name) + '</b></td>' +
+          '<td>' + esc(m.email) + '</td>' +
+          '<td class="nw">' + esc(m.phone || '-') + '</td>' +
+          '<td>' + kids + '명</td>' +
+          '<td><span class="badge ' + st.cls + '">' + st.t + '</span>' +
             (m.status === 'rejected' && m.rejectReason
               ? '<div class="faint" style="font-size:.76rem;margin-top:2px">' + esc(m.rejectReason) + '</div>' : '') +
-          '</span></td>' +
-          '<td class="nw"><span>' + UI.fmtDate(m.createdAt) + '</span></td>' +
+          '</td>' +
+          '<td class="nw">' + UI.fmtDate(m.createdAt) + '</td>' +
           '<td class="actions">' +
             '<button class="btn btn-ghost btn-sm" data-mem-consent="' + m.id + '">동의 이력</button> ' +
             act + '</td></tr>';
@@ -2184,8 +2184,8 @@
       /* 운영자 계정 — 심사자 권한 부여·회수 (서류 열람 인원 최소화) */
       var staff = db.users.filter(function (x) { return x.role === 'admin' || x.role === 'reviewer'; });
       var staffRows = staff.map(function (m) {
-        return '<tr><td><span><b>' + esc(m.name) + '</b></span></td>' +
-          '<td><span>' + esc(m.email) + '</span></td>' +
+        return '<tr><td><b>' + esc(m.name) + '</b></td>' +
+          '<td>' + esc(m.email) + '</td>' +
           '<td>' + (m.role === 'admin' ? '<span class="badge brand">관리자</span>'
             : '<span class="badge">심사자</span>') + '</td>' +
           '<td class="actions">' + (m.role === 'admin'
@@ -2221,11 +2221,11 @@
       var logs = Store.listAlimtalks();
       var TPL = { submitted: '서류 접수', approve: '가입 승인', reject: '서류 재제출' };
       var arows = logs.slice(0, 100).map(function (l) {
-        return '<tr><td class="nw"><span>' + UI.fmtDateTime(l.at) + '</span></td>' +
-          '<td><span><b>' + esc(l.name) + '</b>' +
-            '<div class="faint nw" style="font-size:.78rem">' + esc(l.phone || '-') + '</div></span></td>' +
+        return '<tr><td class="nw">' + UI.fmtDateTime(l.at) + '</td>' +
+          '<td><b>' + esc(l.name) + '</b>' +
+            '<div class="faint nw" style="font-size:.78rem">' + esc(l.phone || '-') + '</div></td>' +
           '<td><span class="badge brand">' + esc(TPL[l.template] || l.template) + '</span></td>' +
-          '<td><span>' + esc(l.body) + '</span></td>' +
+          '<td>' + esc(l.body) + '</td>' +
           '<td>' + (l.result === 'sent' ? '<span class="badge ok dot">발송</span>'
             : '<span class="badge dot">미발송(수신 미동의)</span>') + '</td></tr>';
       }).join('');
@@ -2249,13 +2249,13 @@
       function shareRow(s, isLocked) {
         var c = db.children.filter(function (x) { return x.id === s.childId; })[0];
         var owner = c ? db.users.filter(function (u) { return u.id === c.ownerId; })[0] : null;
-        return '<tr><td><span><b>' + esc(c ? c.name : '-') + '</b>' +
-            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.name : '') + '</div></span></td>' +
-          '<td><span>' + esc(s.viewerName || '받는 분') +
-            ' <span class="badge">' + esc(s.viewerRole) + '</span></span></td>' +
-          '<td class="nw"><span>' + (isLocked ? '<span class="admin-over">' + (s.failCount || 0) + '회</span>'
-            : (s.failCount || 0) + '회') + '</span></td>' +
-          '<td class="nw"><span>' + UI.fmtDate(s.createdAt) + '</span></td>' +
+        return '<tr><td><b>' + esc(c ? c.name : '-') + '</b>' +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.name : '') + '</div></td>' +
+          '<td>' + esc(s.viewerName || '받는 분') +
+            ' <span class="badge">' + esc(s.viewerRole) + '</span></td>' +
+          '<td class="nw">' + (isLocked ? '<span class="admin-over">' + (s.failCount || 0) + '회</span>'
+            : (s.failCount || 0) + '회') + '</td>' +
+          '<td class="nw">' + UI.fmtDate(s.createdAt) + '</td>' +
           '<td>' + (isLocked ? '<span class="badge danger dot">자동 잠김</span>'
             : '<span class="badge warn dot">실패 누적</span>') + '</td>' +
           '<td class="actions">' + (isLocked
@@ -2329,20 +2329,20 @@
             (h < 1 ? '방금 접수' : h < 24 ? h + '시간 경과' : Math.floor(h / 24) + '일 ' + (h % 24) + '시간 경과') +
             (over ? ' · SLA 초과' : '') + '</div>';
         }
-        return '<tr><td><span><b>' + esc(c.name) + '</b>' +
+        return '<tr><td><b>' + esc(c.name) + '</b>' +
             (x.first ? ' <span class="badge">가입 심사</span>' : ' <span class="badge">추가 아이</span>') +
             ((c.verifyTries || 0) > 1 ? ' <span class="badge warn">재제출 ' + c.verifyTries + '회</span>' : '') +
-          '</span></td>' +
-          '<td><span>' + esc(owner ? owner.name : '-') +
-            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></span></td>' +
-          '<td><span>' + esc((c.verifyDocs || []).join(', ') || '-') +
+          '</td>' +
+          '<td>' + esc(owner ? owner.name : '-') +
+            '<div class="faint" style="font-size:.78rem">' + esc(owner ? owner.email : '') + '</div></td>' +
+          '<td>' + esc((c.verifyDocs || []).join(', ') || '-') +
             (c.verifyDocImage
               ? ' <button class="btn btn-ghost btn-sm" data-vdoc="' + c.id + '">' + icon('eye', 13) + '서류 보기</button>'
               : '<div class="faint" style="font-size:.76rem">사진 파기됨</div>') +
             (c.verifyStatus === 'rejected' && owner && owner.rejectReason
               ? '<div class="faint" style="font-size:.78rem">사유: ' + esc(owner.rejectReason) + '</div>' : '') +
-          '</span></td>' +
-          '<td class="nw"><span>' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</span></td>' +
+          '</td>' +
+          '<td class="nw">' + (x.at ? UI.fmtDate(x.at) : '-') + elapsed + '</td>' +
           '<td>' + sb + '</td><td class="actions">' + act + '</td></tr>';
       }).join('');
       var segs = [['pending', '심사 대기 ' + counts.pending], ['rejected', '반려 ' + counts.rejected],
