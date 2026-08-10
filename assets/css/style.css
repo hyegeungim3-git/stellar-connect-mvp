@@ -295,7 +295,13 @@ p.muted { line-height: 1.72; }
 .su-all { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 13px; }
 /* 동의 항목 터치 타깃 44px 확보 (짧은 문구 줄이 41px로 떨어졌었다) */
 .su-c, .su-all { min-height: 44px; }
-.su-c { align-items: flex-start; }
+/* .checkline이 뒤에서 align-items:center를 덮어써, 2~3줄 항목에서 체크박스가
+   글 한가운데로 내려가 있었다 → 구체도를 높여 첫 줄에 맞춘다 */
+.checkline.su-c { align-items: flex-start; }
+.checkline.su-c input { margin-top: 2px; }
+/* .field label의 display:block이 .btn의 inline-flex를 덮어써 아이콘과 파일명이
+   두 줄로 쌓였다 → 파일 선택 버튼만 구체도를 높여 한 줄로 */
+.field label.su-docbtn { display: inline-flex; }
 
 /* 서류 사진 미리보기 — 흐린 사진을 제출 전에 알아차리게 */
 .su-docprev { margin-bottom: 8px; }

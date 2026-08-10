@@ -659,7 +659,8 @@
           SU_CONSENTS.map(function (c) {
             return '<label class="checkline su-c"><input type="checkbox" data-consent="' + c.k + '"' +
               (c.req ? ' data-req="1"' : '') + '>' +
-              '<span>' + esc(c.t) + (c.req ? ' <span class="req">*</span>' : '') +
+              /* &nbsp; — 필수 표시(*)가 혼자 다음 줄로 떨어지지 않게 앞 단어에 붙인다 */
+              '<span>' + esc(c.t) + (c.req ? '&nbsp;<span class="req">*</span>' : '') +
               (c.d ? '<span class="faint" style="display:block;font-size:.8rem;margin-top:2px">' +
                 esc(c.d) + '</span>' : '') + '</span></label>';
           }).join('') +
@@ -753,7 +754,7 @@
               '<div id="su-docprev" class="su-docprev' + (d.docPreview ? '' : ' hide') + '">' +
                 (d.docPreview ? '<img src="' + d.docPreview + '" alt="첨부한 서류 사진 미리보기">' +
                   '<p>글자가 또렷하게 보이는지 확인해 주세요. 흐리면 다시 찍어 주세요.</p>' : '') + '</div>' +
-              '<label class="btn btn-soft btn-block" style="cursor:pointer">' + icon('camera', 16) +
+              '<label class="btn btn-soft btn-block su-docbtn" style="cursor:pointer">' + icon('camera', 16) +
                 '<span id="su-docname" class="su-docfile">' + esc(d.docFile || '사진 선택') + '</span>' +
                 '<input type="file" id="su-doc" accept="image/*" hidden></label></div>' +
             '<div class="pill-info mb-2">' + icon('lock', 16) +
