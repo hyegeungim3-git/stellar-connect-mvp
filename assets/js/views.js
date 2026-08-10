@@ -627,9 +627,9 @@
     { k: 'identity',  req: true,  t: '본인확인 서비스 이용 동의',
       d: '휴대폰 본인인증을 위해 본인확인기관에 정보를 전달해요.' },
     { k: 'age14',     req: true,  t: '만 14세 이상입니다' },
-    { k: 'alimtalk',  req: false, t: '알림톡 수신 동의 (선택)',
+    { k: 'alimtalk',  req: false, t: '알림톡 수신 동의',
       d: '심사 결과·복약 알림 같은 소식을 카카오 알림톡으로 보내 드려요.' },
-    { k: 'marketing', req: false, t: '서비스 소식·이벤트 수신 (선택)' }
+    { k: 'marketing', req: false, t: '서비스 소식·이벤트 수신' }
   ];
 
   var signup = {
@@ -656,15 +656,19 @@
           '<label class="checkline su-all"><input type="checkbox" id="su-all">' +
             '<span><b>전체 동의</b> <span class="faint" style="font-size:.82rem">— 선택 항목까지 모두</span></span></label>' +
           '<div class="divider"></div>' +
-          SU_CONSENTS.map(function (c) {
-            return '<label class="checkline su-c"><input type="checkbox" data-consent="' + c.k + '"' +
+          SU_CONSENTS.map(function (c, i) {
+            /* 필수 묶음이 끝나는 지점에 '선택 항목' 캡션 — 필수/선택 구분은 법적으로도 분명해야 한다 */
+            var cap = (!c.req && SU_CONSENTS[i - 1] && SU_CONSENTS[i - 1].req)
+              ? '<div class="su-optcap">선택 항목</div>' : '';
+            return cap +
+              '<label class="checkline su-c"><input type="checkbox" data-consent="' + c.k + '"' +
               (c.req ? ' data-req="1"' : '') + '>' +
               /* &nbsp; — 필수 표시(*)가 혼자 다음 줄로 떨어지지 않게 앞 단어에 붙인다 */
               '<span>' + esc(c.t) + (c.req ? '&nbsp;<span class="req">*</span>' : '') +
-              (c.d ? '<span class="faint" style="display:block;font-size:.8rem;margin-top:2px">' +
+              (c.d ? '<span class="faint" style="display:block;font-size:.8rem;margin-top:3px">' +
                 esc(c.d) + '</span>' : '') + '</span></label>';
           }).join('') +
-          '<button class="btn btn-primary btn-block btn-lg mt-2" id="su-next1">다음</button>');
+          '<button class="btn btn-primary btn-block btn-lg su-next" id="su-next1">다음</button>');
       }
       if (S.suStep === 2) {
         var ok = !!d.ident;

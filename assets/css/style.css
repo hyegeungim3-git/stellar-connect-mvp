@@ -292,13 +292,26 @@ p.muted { line-height: 1.72; }
    --text-faint는 흰 배경에서 2.98:1이라 이 화면에서는 쓰지 않는다. */
 .su-card .faint, .su-step, .su-pwmsg, .su-docprev p { color: var(--text-muted); }
 .su-card .req { color: #b3352c; font-weight: 800; }
-.su-all { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 13px; }
+/* 전체 동의 — .checkline의 padding:8px 0가 덮어써 안쪽 여백이 사라져 있었다(구체도 상향) */
+.checkline.su-all {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 13px 14px; margin-bottom: 2px;
+}
 /* 동의 항목 터치 타깃 44px 확보 (짧은 문구 줄이 41px로 떨어졌었다) */
 .su-c, .su-all { min-height: 44px; }
 /* .checkline이 뒤에서 align-items:center를 덮어써, 2~3줄 항목에서 체크박스가
    글 한가운데로 내려가 있었다 → 구체도를 높여 첫 줄에 맞춘다 */
-.checkline.su-c { align-items: flex-start; }
-.checkline.su-c input { margin-top: 2px; }
+.checkline.su-c { align-items: flex-start; padding: 12px 2px; gap: 12px; }
+/* 항목끼리 간격이 0이라 어디까지가 한 항목인지 흐렸다 → 헤어라인으로 경계를 준다 */
+.checkline.su-c + .checkline.su-c { border-top: 1px solid var(--border); }
+.checkline.su-c input { margin-top: 1px; width: 20px; height: 20px; }
+/* 필수 / 선택 그룹 구분 — 법적으로도 구분이 분명해야 한다 */
+.su-optcap {
+  margin: 14px 0 2px; padding-top: 14px; border-top: 1px solid var(--border);
+  font-size: .78rem; font-weight: 800; color: var(--text-muted); letter-spacing: .02em;
+}
+.su-optcap + .checkline.su-c { border-top: 0; }
+.su-next { margin-top: 22px; }
 /* .field label의 display:block이 .btn의 inline-flex를 덮어써 아이콘과 파일명이
    두 줄로 쌓였다 → 파일 선택 버튼만 구체도를 높여 한 줄로 */
 .field label.su-docbtn { display: inline-flex; }
