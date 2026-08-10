@@ -611,24 +611,57 @@
 
   /* ---------- 백오피스: 콘텐츠 / 팝업 / 알림 ---------- */
   function listContents() { return getDB().contents; }
-  function saveContent(c) {
+  /* 약관·방침은 대외 문서라 '언제 누가 고쳤는지'가 남아야 분쟁 때 근거가 된다 */
+  function saveContent(c, editor) {
     var db = getDB();
     if (!c.id) c.id = uid('cnt');
+    c.updatedAt = nowISO();
+    if (editor) c.updatedBy = editor;
     var idx = -1;
     db.contents.forEach(function (x, i) { if (x.id === c.id) idx = i; });
     if (idx >= 0) db.contents[idx] = c; else db.contents.push(c);
     setDB(db);
     return c;
   }
-  function listPopups() { return getDB().popups; }
+  /* 노출 순서대로 — order가 없는 레거시는 뒤로 보낸다 */
+  function listPopups() {
+    return getDB().popups.slice().sort(function (a, b) {
+      return (a.order == null ? 999 : a.order) - (b.order == null ? 999 : b.order);
+    });
+  }
   function savePopup(p) {
     var db = getDB();
-    if (!p.id) { p.id = uid('pop'); p.createdAt = nowISO(); }
+    if (!p.id) {
+      p.id = uid('pop'); p.createdAt = nowISO();
+      p.order = db.popups.length;   // 새 팝업은 맨 뒤
+    }
     var idx = -1;
     db.popups.forEach(function (x, i) { if (x.id === p.id) idx = i; });
     if (idx >= 0) db.popups[idx] = p; else db.popups.push(p);
     setDB(db);
     return p;
+  }
+  /* 노출 순서 바꾸기 — 위/아래 한 칸 */
+  function movePopup(id, dir) {
+    var list = listPopups();
+    var i = -1;
+    list.forEach(function (p, n) { if (p.id === id) i = n; });
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return false;
+    var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+    var db = getDB();
+    list.forEach(function (p, n) {
+      db.popups.forEach(function (x) { if (x.id === p.id) x.order = n; });
+    });
+    return setDB(db) !== false;
+  }
+  /* 오늘 실제로 보이는 팝업인가 — 켜져 있어도 기간이 지났으면 안 보인다 */
+  function popupLive(p, today) {
+    today = today || UI.todayISO();
+    if (!p.active) return false;
+    if (p.startDate && today < p.startDate) return false;
+    if (p.endDate && today > p.endDate) return false;
+    return true;
   }
   function deletePopup(id) {
     var db = getDB();
@@ -644,6 +677,8 @@
     var db = getDB();
     n.id = uid('noti');
     n.sentAt = nowISO();
+    /* 단체 발송은 회수가 안 되니 누가 보냈는지 남는다 */
+    if (!n.sentBy) { var me = currentUser(); n.sentBy = me ? me.name : '관리자'; }
     db.notifications.push(n);
     setDB(db);
     return n;
@@ -741,6 +776,7 @@
     // 백오피스
     listContents: listContents, saveContent: saveContent,
     listPopups: listPopups, savePopup: savePopup, deletePopup: deletePopup,
+    movePopup: movePopup, popupLive: popupLive,
     listNotifications: listNotifications, sendNotification: sendNotification,
     stats: stats
   };

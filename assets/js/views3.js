@@ -2030,7 +2030,7 @@
     alimtalk: ['알림톡 이력', '접수·승인·반려 안내가 언제 나갔는지 확인합니다.'],
     security: ['공유 보안', '인증번호 실패로 잠긴 공유를 살펴봅니다.'],
     contents: ['콘텐츠', '공지·FAQ 등 정적 콘텐츠를 관리합니다.'],
-    popups: ['팝업·배너', '앱 안내 팝업을 관리합니다.'],
+    popups: ['팝업', '앱에 띄울 안내 팝업을 관리합니다.'],
     noti: ['알림 발송', '회원에게 보낼 알림을 작성합니다.']
   };
   V.admin = {
@@ -2067,6 +2067,13 @@
     nodoc:     { cls: 'dot',        t: '서류 미제출' },
     rejected:  { cls: 'danger dot', t: '반려' },
     withdrawn: { cls: 'danger dot', t: '탈퇴' }
+  };
+
+  /* 팝업 노출 대상 — 온보딩 유도(아이 등록 전)와 전체 공지를 나눠 쏜다 */
+  var POPUP_TARGETS = {
+    all: '모든 회원',
+    nochild: '아이 등록 전 회원',
+    verified: '인증 완료 회원'
   };
 
   /* 필터 세그먼트 버튼 — [키, 라벨, 건수] */
@@ -2383,36 +2390,68 @@
     }
 
     if (tab === 'contents') {
-      return '<div class="card"><div class="card-head"><h3>정적 콘텐츠 관리</h3></div>' +
+      /* 약관·방침은 대외 문서다 — 언제 누가 고쳤는지가 없으면 분쟁 때 근거가 없다 */
+      return '<div class="card"><div class="card-head"><h3>정적 콘텐츠 관리</h3>' +
+        '<span class="badge">' + Store.listContents().length + '건</span></div>' +
         '<div class="card-body">' + Store.listContents().map(function (c) {
           return '<div class="row between" style="padding:11px 0;border-bottom:1px solid var(--border)">' +
-            '<div><b>' + esc(c.title) + '</b> <span class="tag">' + esc(c.key) + '</span>' +
+            '<div style="min-width:0"><b>' + esc(c.title) + '</b> <span class="tag">' + esc(c.key) + '</span>' +
             '<div class="muted" style="font-size:.84rem;margin-top:2px">' +
-            esc(c.body.slice(0, 60)) + (c.body.length > 60 ? '…' : '') + '</div></div>' +
+            esc(c.body.slice(0, 60)) + (c.body.length > 60 ? '…' : '') + '</div>' +
+            '<div class="faint" style="font-size:.78rem;margin-top:4px">' +
+              (c.updatedAt
+                ? '마지막 수정 ' + UI.fmtDateTime(c.updatedAt) +
+                  (c.updatedBy ? ' · ' + esc(c.updatedBy) : '')
+                : '수정된 적 없음 (초기 등록본)') + '</div></div>' +
             '<button class="btn btn-ghost btn-sm" data-cedit="' + c.id + '">편집</button></div>';
         }).join('') + '</div></div>';
     }
 
     if (tab === 'popups') {
       var pops = Store.listPopups();
-      var prows = pops.map(function (p) {
+      var today = UI.todayISO();
+      var prows = pops.map(function (p, i) {
+        var live = Store.popupLive(p, today);
+        /* '켜짐'과 '지금 보임'은 다르다 — 켜져 있어도 기간이 지나면 보이지 않는다 */
+        var state = !p.active ? '<span class="badge dot">숨김</span>'
+          : live ? '<span class="badge ok dot">노출 중</span>'
+          : (p.startDate && today < p.startDate)
+            ? '<span class="badge warn dot">노출 예정</span>'
+            : '<span class="badge dot">기간 종료</span>';
+        var period = (p.startDate || p.endDate)
+          ? (p.startDate ? UI.fmtDate(p.startDate) : '시작일 없음') + ' ~ ' +
+            (p.endDate ? UI.fmtDate(p.endDate) : '종료일 없음')
+          : '기간 제한 없음';
         return '<div class="card card-pad mb-2">' +
-          '<div class="row between wrap"><div><b>' + esc(p.title) + '</b> ' +
-          (p.active ? '<span class="badge ok dot">노출 중</span>'
-            : '<span class="badge dot">숨김</span>') + '</div>' +
+          '<div class="row between wrap"><div style="min-width:0">' +
+            '<b>' + esc(p.title) + '</b> ' + state + '</div>' +
           '<div class="row gap-sm">' +
+            '<button class="btn-icon" data-pmove="' + p.id + '|-1" aria-label="노출 순서 위로"' +
+              (i === 0 ? ' disabled' : '') + '><span style="display:inline-flex;transform:rotate(180deg)">' +
+              icon('chevD', 14) + '</span></button>' +
+            '<button class="btn-icon" data-pmove="' + p.id + '|1" aria-label="노출 순서 아래로"' +
+              (i === pops.length - 1 ? ' disabled' : '') + '>' + icon('chevD', 14) + '</button>' +
             '<button class="btn btn-ghost btn-sm" data-ptoggle="' + p.id + '">' +
               (p.active ? '숨기기' : '노출') + '</button>' +
             '<button class="btn btn-ghost btn-sm" data-pedit="' + p.id + '">편집</button>' +
             '<button class="btn btn-danger btn-sm" data-pdelete="' + p.id + '">삭제</button>' +
           '</div></div>' +
-          '<p class="muted" style="font-size:.88rem;margin-top:6px">' + esc(p.body) + '</p></div>';
+          '<div class="row wrap gap-sm" style="margin-top:7px">' +
+            '<span class="tag">' + (i + 1) + '번째로 노출</span>' +
+            '<span class="tag">' + esc(POPUP_TARGETS[p.target] || POPUP_TARGETS.all) + '</span>' +
+            '<span class="tag">' + esc(period) + '</span>' +
+          '</div>' +
+          '<p class="muted" style="font-size:.88rem;margin-top:8px">' + esc(p.body) + '</p></div>';
       }).join('');
-      /* 페이지 제목이 이미 「팝업·배너」다 — 여기선 몇 개가 노출 중인지를 말한다 */
-      var onCnt = pops.filter(function (p) { return p.active; }).length;
-      return '<div class="page-head-row mb-2"><h3>노출 중 ' + onCnt + '개 · 전체 ' + pops.length + '개</h3>' +
+      /* 페이지 제목이 이미 「팝업」이다 — 여기선 지금 몇 개가 실제로 보이는지를 말한다 */
+      var liveCnt = pops.filter(function (p) { return Store.popupLive(p, today); }).length;
+      return '<div class="page-head-row mb-2"><h3>지금 보이는 팝업 ' + liveCnt + '개 · 전체 ' +
+          pops.length + '개</h3>' +
         '<button class="btn btn-primary btn-sm" id="add-popup">' + icon('plus', 15) + '팝업 추가</button>' +
-        '</div>' + (prows || '<div class="card empty"><p>등록된 팝업이 없습니다.</p></div>');
+        '</div>' + (prows || '<div class="card empty"><p>등록된 팝업이 없습니다.</p></div>') +
+        '<p class="faint mt-2" style="font-size:.82rem">' +
+        '여러 개가 동시에 노출되면 위에 있는 것부터 보여 줍니다. ' +
+        '켜 두어도 노출 기간이 지나면 보이지 않습니다.</p>';
     }
 
     if (tab === 'noti') {
@@ -2421,6 +2460,7 @@
       var log = Store.listNotifications().map(function (n) {
         return '<tr><td>' + esc(n.title) + '</td><td>' + esc(n.target) + '</td>' +
           '<td><span class="badge">' + esc(CH[n.channel] || n.channel) + '</span></td>' +
+          '<td class="nw">' + esc(n.sentBy || '-') + '</td>' +
           '<td class="nw">' + UI.fmtDateTime(n.sentAt) + '</td></tr>';
       }).join('');
       return '<div class="card mb-2"><div class="card-head"><h3>보낼 알림 작성</h3></div>' +
@@ -2442,8 +2482,8 @@
         '</form></div></div>' +
         '<div class="card"><div class="card-head"><h3>발송 이력</h3></div>' +
         '<div class="table-wrap"><table class="tbl"><thead><tr>' +
-        '<th>제목</th><th>대상</th><th>채널</th><th>발송 시각</th></tr></thead><tbody>' +
-        (log || '<tr><td colspan="4" class="muted">발송 이력이 없습니다.</td></tr>') +
+        '<th>제목</th><th>대상</th><th>채널</th><th>발송자</th><th>발송 시각</th></tr></thead><tbody>' +
+        (log || '<tr><td colspan="5" class="muted">발송 이력이 없습니다.</td></tr>') +
         '</tbody></table></div></div>';
     }
     return '';
@@ -2706,7 +2746,9 @@
               if (v !== 'ok') return;
               c.title = UI.el('c-title').value.trim();
               c.body = UI.el('c-body').value.trim();
-              Store.saveContent(c); toast('저장했어요', 'ok'); App.refresh();
+              var me = Store.currentUser();
+              Store.saveContent(c, me ? me.name : '관리자');
+              toast('저장했어요', 'ok'); App.refresh();
             }
           });
         };
@@ -2735,6 +2777,13 @@
             });
         };
       });
+      /* 노출 순서 — 여러 개가 동시에 켜져 있을 때 무엇을 먼저 보여줄지 */
+      document.querySelectorAll('[data-pmove]').forEach(function (b) {
+        b.onclick = function () {
+          var p = b.dataset.pmove.split('|');
+          if (Store.movePopup(p[0], parseInt(p[1], 10))) App.refresh();
+        };
+      });
     }
     if (tab === 'noti') {
       var nf = UI.el('noti-form');
@@ -2760,24 +2809,48 @@
 
   function popupModal(p) {
     var isNew = !p;
-    p = p || { title: '', body: '', active: true };
+    p = p || { title: '', body: '', active: true, target: 'all', startDate: '', endDate: '' };
+    var tOpts = Object.keys(POPUP_TARGETS).map(function (k) {
+      return '<option value="' + k + '"' + ((p.target || 'all') === k ? ' selected' : '') + '>' +
+        esc(POPUP_TARGETS[k]) + '</option>';
+    }).join('');
     Modal.open({
       title: isNew ? '팝업 추가' : '팝업 편집', icon: 'bell',
-      body: '<div class="field"><label>제목</label>' +
+      body: '<div class="field"><label for="p-title">제목</label>' +
         '<input class="input" id="p-title" value="' + esc(p.title) + '"></div>' +
-        '<div class="field"><label>내용</label>' +
+        '<div class="field"><label for="p-body">내용</label>' +
         '<textarea class="textarea" id="p-body">' + esc(p.body) + '</textarea></div>' +
+        '<div class="field"><label for="p-target">노출 대상</label>' +
+        '<select class="select" id="p-target">' + tOpts + '</select></div>' +
+        /* 기간을 안 정하면 계속 노출 — 끄는 걸 잊어 옛 공지가 남는 사고가 흔하다 */
+        '<div class="field-row">' +
+          '<div class="field"><label for="p-start">노출 시작</label>' +
+            '<input class="input" type="date" id="p-start" value="' + esc(p.startDate || '') + '"></div>' +
+          '<div class="field"><label for="p-end">노출 종료</label>' +
+            '<input class="input" type="date" id="p-end" value="' + esc(p.endDate || '') + '"></div>' +
+        '</div>' +
+        '<p class="muted" style="font-size:.82rem;margin:-4px 0 10px">' +
+          '비워 두면 기간 제한 없이 계속 노출됩니다.</p>' +
         '<label class="checkline"><input type="checkbox" id="p-active"' +
         (p.active ? ' checked' : '') + '><span>지금 노출하기</span></label>',
       buttons: [{ label: '취소', value: 'cancel', variant: 'ghost' },
         { label: '저장', value: 'ok', variant: 'primary' }],
       onButton: function (v) {
         if (v !== 'ok') return;
+        var s = UI.el('p-start').value, e = UI.el('p-end').value;
+        if (!UI.el('p-title').value.trim()) {
+          toast('제목을 입력해 주세요', 'err'); UI.el('p-title').focus(); return 'keep';
+        }
+        if (s && e && e < s) {
+          toast('종료일이 시작일보다 빠릅니다', 'err'); UI.el('p-end').focus(); return 'keep';
+        }
         p.title = UI.el('p-title').value.trim();
         p.body = UI.el('p-body').value.trim();
+        p.target = UI.el('p-target').value;
+        p.startDate = s; p.endDate = e;
         p.active = UI.el('p-active').checked;
-        if (!p.title) { toast('제목을 입력해 주세요', 'err'); return 'keep'; }
-        Store.savePopup(p); toast('저장했어요', 'ok'); App.refresh();
+        if (!Store.savePopup(p)) return 'keep';
+        toast('저장했어요', 'ok'); App.refresh();
       }
     });
   }

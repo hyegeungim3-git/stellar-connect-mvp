@@ -118,7 +118,7 @@
     { key: 'alimtalk', label: '알림톡 이력', icon: 'message' },
     { key: 'security', label: '공유 보안',  icon: 'lock' },
     { key: 'contents', label: '콘텐츠',     icon: 'book' },
-    { key: 'popups',   label: '팝업·배너',  icon: 'grid' },
+    { key: 'popups',   label: '팝업',      icon: 'grid' },
     { key: 'noti',     label: '알림 발송',  icon: 'bell' }
   ];
   /* 심사자는 가입 심사만 — 서류가 민감정보라 열람 인원을 최소로 둔다 */

@@ -6,7 +6,7 @@
 (function (global) {
   'use strict';
 
-  var SEED_VERSION = 19;  // 데모 데이터 변경 시 이 숫자를 올린다 (v19: 심사 큐 데모 접수 3시간 전)
+  var SEED_VERSION = 20;  // 데모 데이터 변경 시 이 숫자를 올린다 (v20: 콘텐츠 수정 이력·팝업 기간/대상/순서·알림 발송자)
 
   function item(text) { return { id: Store.uid('it'), text: text }; }
   function prob(situation, response, intensity) {
@@ -335,27 +335,36 @@
     /* ---------- 백오피스: 콘텐츠 ---------- */
     db.contents.push(
       { id: 'cnt-about', key: 'about', title: '서비스 소개',
-        body: '「내 아이 설명서」(Stellar Connect, S:CON)는 발달장애 아이를 누구나 이해할 수 있도록 돕는 서비스입니다. 좋아하는 것·의사소통 방법·감각 특성·도전적 행동과 지원 방법을 체계적으로 정리하고, 학교용·병원용·활동지원사용·돌봄기관용 설명서로 만들어 공유합니다. 기록을 쌓는 것이 아니라, 부모를 대신해 우리 아이를 설명해 주는 것을 목표로 합니다.' },
+        body: '「내 아이 설명서」(Stellar Connect, S:CON)는 발달장애 아이를 누구나 이해할 수 있도록 돕는 서비스입니다. 좋아하는 것·의사소통 방법·감각 특성·도전적 행동과 지원 방법을 체계적으로 정리하고, 학교용·병원용·활동지원사용·돌봄기관용 설명서로 만들어 공유합니다. 기록을 쌓는 것이 아니라, 부모를 대신해 우리 아이를 설명해 주는 것을 목표로 합니다.',
+        updatedAt: '2026-05-20T09:10:00.000Z', updatedBy: '운영관리자' },
       { id: 'cnt-terms', key: 'terms', title: '이용약관',
-        body: '제1조(목적) 본 약관은 Stellar Connect(S:CON) 서비스 이용에 관한 사항을 규정합니다.' },
+        body: '제1조(목적) 본 약관은 Stellar Connect(S:CON) 서비스 이용에 관한 사항을 규정합니다.',
+        updatedAt: '2026-06-02T14:25:00.000Z', updatedBy: '운영관리자' },
       { id: 'cnt-privacy', key: 'privacy', title: '개인정보처리방침',
-        body: '본 서비스는 아동 및 보호자의 민감정보를 다루며, 수집 최소화·목적 외 사용 금지 원칙을 준수합니다.' },
+        body: '본 서비스는 아동 및 보호자의 민감정보를 다루며, 수집 최소화·목적 외 사용 금지 원칙을 준수합니다.',
+        updatedAt: '2026-08-05T11:40:00.000Z', updatedBy: '운영관리자' },
       { id: 'cnt-faq', key: 'faq', title: '자주 묻는 질문',
         body: 'Q. 설명서는 어떻게 공유하나요?\nA. 설명서 보기 화면에서 공유 링크와 4자리 인증번호를 발급할 수 있습니다.' }
     );
 
     /* ---------- 백오피스: 팝업 ---------- */
-    db.popups.push({
-      id: 'pop-1', title: '「내 아이 설명서」 오픈 안내',
-      body: '「내 아이 설명서」 서비스가 열렸습니다. 우리 아이를 이해하는 항목을 채우고, 학교·병원용 설명서로 공유해 보세요.',
-      active: true, createdAt: '2026-05-20T00:00:00.000Z'
-    });
+    db.popups.push(
+      { id: 'pop-1', title: '「내 아이 설명서」 오픈 안내',
+        body: '「내 아이 설명서」 서비스가 열렸습니다. 우리 아이를 이해하는 항목을 채우고, 학교·병원용 설명서로 공유해 보세요.',
+        active: true, order: 0, target: 'all', startDate: '2026-05-20', endDate: '',
+        createdAt: '2026-05-20T00:00:00.000Z' },
+      /* 기간이 지난 팝업 — 켜져 있어도 '노출 중'이 아니어야 한다(판정 확인용) */
+      { id: 'pop-2', title: '여름방학 루틴 준비 안내',
+        body: '방학에는 하루 흐름이 달라져요. 미리 준비하면 아이가 훨씬 편안해집니다.',
+        active: true, order: 1, target: 'nochild', startDate: '2026-07-01', endDate: '2026-07-31',
+        createdAt: '2026-06-25T00:00:00.000Z' }
+    );
 
     /* ---------- 알림 로그 ---------- */
     db.notifications.push(
       { id: 'noti-1', target: '전체 양육자', channel: 'push',
         title: '설명서 업데이트 알림', body: '한 달 이상 업데이트되지 않은 설명서가 있어요. 아이의 변화를 기록해 보세요.',
-        sentAt: '2026-05-19T01:00:00.000Z' }
+        sentAt: '2026-05-19T01:00:00.000Z', sentBy: '운영관리자' }
     );
 
     db.meta.seeded = true;
