@@ -2047,6 +2047,16 @@
     }
   };
 
+  /* 계정 상태 5종 — 예전에는 active가 아니면 전부 '탈퇴'로 보여, 심사 대기·반려·서류
+     미제출 계정이 모두 탈퇴로 표시됐다(2026-08-05 가입 심사 도입 이후) */
+  var MEMBER_STATE = {
+    active:    { cls: 'ok dot',     t: '활성' },
+    pending:   { cls: 'warn dot',   t: '심사 대기' },
+    nodoc:     { cls: 'dot',        t: '서류 미제출' },
+    rejected:  { cls: 'danger dot', t: '반려' },
+    withdrawn: { cls: 'danger dot', t: '탈퇴' }
+  };
+
   function adminPanel(tab, db) {
     if (tab === 'stats') {
       var st = Store.stats();
@@ -2077,16 +2087,22 @@
     if (tab === 'members') {
       var rows = db.users.filter(function (x) { return x.role === 'parent'; }).map(function (m) {
         var kids = db.children.filter(function (c) { return c.ownerId === m.id; }).length;
+        var st = MEMBER_STATE[m.status] || MEMBER_STATE.nodoc;
+        /* 심사 단계(nodoc·pending·rejected) 계정은 여기서 상태를 바꾸지 않는다.
+           예전에는 [복구]가 무조건 active로 만들어, 서류 심사를 건너뛰고 로그인이 열렸다. */
+        var act = m.status === 'active'
+          ? '<button class="btn btn-danger btn-sm" data-mem-toggle="' + m.id + '">정지</button>'
+          : m.status === 'withdrawn'
+            ? '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>'
+            : '<button class="btn btn-ghost btn-sm" data-mem-review="1">가입 심사에서 처리</button>';
         return '<tr><td><b>' + esc(m.name) + '</b></td><td>' + esc(m.email) + '</td>' +
           '<td>' + esc(m.phone || '-') + '</td><td>' + kids + '명</td>' +
-          '<td>' + (m.status === 'active'
-            ? '<span class="badge ok dot">활성</span>'
-            : '<span class="badge danger dot">탈퇴</span>') + '</td>' +
+          '<td><span class="badge ' + st.cls + '">' + st.t + '</span>' +
+            (m.status === 'rejected' && m.rejectReason
+              ? '<div class="faint" style="font-size:.76rem;margin-top:2px">' + esc(m.rejectReason) + '</div>' : '') +
+          '</td>' +
           '<td>' + UI.fmtDate(m.createdAt) + '</td>' +
-          '<td class="actions">' + (m.status === 'active'
-            ? '<button class="btn btn-danger btn-sm" data-mem-toggle="' + m.id + '">정지</button>'
-            : '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>') +
-          '</td></tr>';
+          '<td class="actions">' + act + '</td></tr>';
       }).join('');
       return '<div class="card"><div class="card-head"><h3>회원 목록</h3>' +
         '<span class="badge">권한: 양육자</span></div>' +
@@ -2198,9 +2214,23 @@
       document.querySelectorAll('[data-mem-toggle]').forEach(function (b) {
         b.onclick = function () {
           var m = Store.getDB().users.filter(function (x) { return x.id === b.dataset.memToggle; })[0];
-          Store.updateUser(m.id, { status: m.status === 'active' ? 'withdrawn' : 'active' });
-          toast('회원 상태가 변경되었습니다', 'ok'); App.refresh();
+          if (!m) return;
+          /* 활성 ↔ 탈퇴만 여기서 처리한다. 심사 단계 계정을 active로 바꾸면
+             서류 확인 없이 로그인이 열려 보호자 인증 정책이 무력화된다. */
+          var next = m.status === 'active' ? 'withdrawn'
+            : m.status === 'withdrawn' ? 'active' : null;
+          if (!next) {
+            toast('심사 중인 계정은 「아이 인증」에서 승인·반려로 처리해 주세요', 'err');
+            return;
+          }
+          Store.updateUser(m.id, { status: next });
+          toast(next === 'active' ? '계정을 복구했습니다' : '계정을 정지했습니다', 'ok');
+          App.refresh();
         };
+      });
+      var goReview = document.querySelectorAll('[data-mem-review]');
+      goReview.forEach(function (b) {
+        b.onclick = function () { S.adminTab = 'verify'; App.refresh(); };
       });
     }
     if (tab === 'verify') {
