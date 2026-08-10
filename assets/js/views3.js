@@ -2162,14 +2162,20 @@
           ? '<button class="btn btn-danger btn-sm" data-mem-toggle="' + m.id + '">정지</button>'
           : m.status === 'withdrawn'
             ? '<button class="btn btn-soft btn-sm" data-mem-toggle="' + m.id + '">복구</button>'
-            : '<button class="btn btn-ghost btn-sm" data-mem-review="1">가입 심사에서 처리</button>';
-        return '<tr><td><b>' + esc(m.name) + '</b></td>' +
-          '<td>' + esc(m.email) + '</td>' +
+            : '<button class="btn btn-ghost btn-sm" data-mem-review="1">심사하기</button>';
+        return '<tr><td class="nw"><b>' + esc(m.name) + '</b></td>' +
+          /* 이메일은 열 중 가장 길고 잘려도 식별에 지장이 적다 — 여기서 폭을 양보해
+             오른쪽 [정지]·[가입 심사로]가 카드 밖으로 밀리지 않게 한다 */
+          '<td><div class="ell" style="max-width:190px" title="' + esc(m.email) + '">' +
+            esc(m.email) + '</div></td>' +
           '<td class="nw">' + esc(m.phone || '-') + '</td>' +
-          '<td>' + kids + '명</td>' +
+          '<td class="nw">' + kids + '명</td>' +
+          /* 반려 사유는 한 줄로 — 세 줄로 접히면 그 행만 세 배 높아져 목록이 읽히지 않는다.
+             전문은 「가입 심사」 화면에서 본다 */
           '<td><span class="badge ' + st.cls + '">' + st.t + '</span>' +
             (m.status === 'rejected' && m.rejectReason
-              ? '<div class="faint" style="font-size:.76rem;margin-top:2px">' + esc(m.rejectReason) + '</div>' : '') +
+              ? '<div class="faint ell" style="font-size:.76rem;margin-top:2px;max-width:180px" title="' +
+                esc(m.rejectReason) + '">' + esc(m.rejectReason) + '</div>' : '') +
           '</td>' +
           '<td class="nw">' + UI.fmtDate(m.createdAt) + '</td>' +
           '<td class="actions">' +
