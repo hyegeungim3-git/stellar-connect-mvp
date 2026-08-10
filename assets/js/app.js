@@ -23,6 +23,7 @@
     { segs: ['admin'],                   view: 'admin' },
     { segs: ['login'],                   view: 'login' },
     { segs: ['signup'],                  view: 'signup' },
+    { segs: ['signup', ':step'],         view: 'signup' },   // 단계별 URL — 뒤로가기가 이전 단계로
     { segs: [],                          view: 'home' }
   ];
 
@@ -319,7 +320,9 @@
       location.hash = '#/dashboard'; return;
     }
     // 가입 화면에 처음 들어오면 1단계부터
-    if (r.view === 'signup' && App._lastView !== 'signup' && Views._resetSignup) Views._resetSignup();
+    if (r.view === 'signup' && App._lastView !== 'signup' && Views._resetSignup) {
+      Views._resetSignup(r.params.step);
+    }
     App._lastView = r.view;
     // 앱 레이아웃은 로그인 필요
     if (view.layout === 'app' && !loggedIn) {

@@ -493,8 +493,7 @@
           if (v !== 'go') return;
           S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
             account: { email: user.email } };
-          S.suStep = 4; S.suResume = true;
-          App.navigate('#/signup');
+          suGo(4);
         }
       });
       return;
@@ -515,8 +514,7 @@
           if (v !== 'go') return;
           S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
             account: { email: user.email } };
-          S.suStep = 4; S.suResume = true;
-          App.navigate('#/signup');
+          suGo(4);
         }
       });
       return;
@@ -540,8 +538,7 @@
         if (v !== 'go') return;
         S.suData = { consents: user.consents, ident: { name: user.name, phone: user.phone },
           account: { email: user.email } };
-        S.suStep = 4; S.suResume = true;
-        App.navigate('#/signup');
+        suGo(4);
       }
     });
   }
@@ -558,6 +555,23 @@
   function suData() {
     if (!S.suData) S.suData = { consents: null, ident: null, account: null };
     return S.suData;
+  }
+  /* 단계를 URL에 둔다 — 브라우저 뒤로가기가 '이전 단계'로 동작해야 한다.
+     한 해시에 5단계를 담으면 뒤로가기 한 번에 입력이 전부 사라진다. */
+  function suGo(n, replace) {
+    S.suStep = n;
+    App[replace ? 'replace' : 'navigate']('#/signup/' + n);
+  }
+  /* 새로고침·URL 직접 입력으로 앞 단계 데이터 없이 들어오면 되돌린다 */
+  function suGuard(step) {
+    var d = suData();
+    /* 접수를 마쳤으면 앞 단계로 되돌아갈 수 없다 — 뒤로가기로 계정이 다시 만들어지면 안 된다 */
+    if (d.account && d.account.submittedAt) return 5;
+    if (step >= 2 && !d.consents) return 1;
+    if (step >= 3 && !d.ident) return 1;
+    if (step >= 4 && !d.account) return 1;
+    if (step >= 5) return 1;     // 접수 전에는 완료 화면에 들어갈 수 없다
+    return step;
   }
   function suShell(body) {
     var step = S.suStep;
@@ -591,8 +605,20 @@
 
   var signup = {
     layout: 'public',
-    render: function () {
+    render: function (p) {
       var d = suData();
+      /* 단계는 URL이 정본 — 뒤로가기·새로고침·직접 입력 모두 여기로 들어온다 */
+      var want = Math.max(1, Math.min(5, parseInt((p && p.step) || S.suStep, 10) || 1));
+      var ok = suGuard(want);
+      if (ok !== want) {
+        S.suStep = ok;
+        setTimeout(function () {
+          if (ok === 1) toast('처음부터 다시 진행해 주세요');
+          suGo(ok, true);
+        }, 0);
+        return suShell('<p class="muted" style="padding:20px 0;text-align:center">불러오는 중…</p>');
+      }
+      S.suStep = want;
       if (S.suStep === 1) {
         return suShell(
           '<h1 class="mb-1">약관에 동의해 주세요</h1>' +
@@ -644,13 +670,21 @@
                 'style="background:var(--surface-2)"></div>' +
             '</div>' +
             '<p class="faint mb-2" style="font-size:.78rem">본인인증으로 확인된 정보예요.</p>' +
-            '<div class="field"><label>이메일 (아이디) <span class="req">*</span></label>' +
-              '<input class="input" name="email" type="email" placeholder="you@example.com"></div>' +
-            '<div class="field"><label>비밀번호 <span class="req">*</span> ' +
+            /* label-for·autocomplete — 스크린리더 연결과 비밀번호 관리자 자동 채움.
+               뒤로 왔을 때 값이 비어 있으면 다시 적어야 하므로 입력값을 되살린다
+               (비밀번호는 보안상 되살리지 않는다) */
+            '<div class="field"><label for="su-email">이메일 (아이디) <span class="req">*</span></label>' +
+              '<input class="input" id="su-email" name="email" type="email" ' +
+              'autocomplete="username" inputmode="email" placeholder="you@example.com" value="' +
+              esc((d.account || {}).email || '') + '"></div>' +
+            '<div class="field"><label for="su-pw">비밀번호 <span class="req">*</span> ' +
               '<span class="faint">8자 이상, 영문·숫자를 함께</span></label>' +
-              '<input class="input" name="password" type="password"></div>' +
-            '<div class="field"><label>비밀번호 확인 <span class="req">*</span></label>' +
-              '<input class="input" name="password2" type="password"></div>' +
+              '<input class="input" id="su-pw" name="password" type="password" ' +
+              'autocomplete="new-password"></div>' +
+            '<div class="field"><label for="su-pw2">비밀번호 확인 <span class="req">*</span></label>' +
+              '<input class="input" id="su-pw2" name="password2" type="password" ' +
+              'autocomplete="new-password">' +
+              '<p class="su-pwmsg" id="su-pwmsg" aria-live="polite"></p></div>' +
             '<div class="row gap-sm mt-2">' +
               '<button type="button" class="btn btn-ghost btn-lg" id="su-prev">이전</button>' +
               '<button type="submit" class="btn btn-primary btn-lg" style="flex:1">다음</button></div>' +
@@ -662,25 +696,35 @@
           '<p class="muted mb-3" style="font-size:.92rem">발달장애 아동 보호자를 위한 서비스라, ' +
             '보호자 확인을 위한 서류를 한 번 받고 있어요. 여기서 받은 정보는 아이 프로필의 시작점이 돼요.</p>' +
           '<form id="su-form4">' +
-            '<div class="field"><label>아이 이름 또는 별명 <span class="req">*</span></label>' +
-              '<input class="input" name="childName" placeholder="예) 준호 · 우리 별"></div>' +
+            '<div class="field"><label for="su-cname">아이 이름 또는 별명 <span class="req">*</span></label>' +
+              '<input class="input" id="su-cname" name="childName" placeholder="예) 준호 · 우리 별" ' +
+              'value="' + esc(d.childName || '') + '"></div>' +
             '<p class="faint mb-2" style="font-size:.78rem">별명으로 적으셔도 괜찮아요. 나중에 바꿀 수 있어요.</p>' +
             '<div class="field-row">' +
-              '<div class="field"><label>생년월일 <span class="req">*</span></label>' +
-                '<input class="input" name="childBirth" type="date" min="1900-01-01" max="' +
-                UI.todayISO() + '"></div>' +
-              '<div class="field"><label>장애 유형 <span class="req">*</span></label>' +
-                '<select class="select" name="disabilityType">' +
-                SU_DISABILITY.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') +
+              '<div class="field"><label for="su-cbirth">생년월일 <span class="req">*</span></label>' +
+                '<input class="input" id="su-cbirth" name="childBirth" type="date" min="1900-01-01" max="' +
+                UI.todayISO() + '" value="' + esc(d.childBirth || '') + '"></div>' +
+              '<div class="field"><label for="su-dis">장애 유형 <span class="req">*</span></label>' +
+                '<select class="select" id="su-dis" name="disabilityType">' +
+                SU_DISABILITY.map(function (t) {
+                  return '<option' + (d.disabilityType === t ? ' selected' : '') + '>' + esc(t) + '</option>';
+                }).join('') +
                 '</select></div>' +
             '</div>' +
-            '<div class="field"><label>제출 서류 <span class="req">*</span></label>' +
-              '<select class="select" name="docType">' +
-              SU_DOCS.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') +
+            '<div class="field"><label for="su-doctype">제출 서류 <span class="req">*</span></label>' +
+              '<select class="select" id="su-doctype" name="docType">' +
+              SU_DOCS.map(function (t) {
+                return '<option' + (d.docType === t ? ' selected' : '') + '>' + esc(t) + '</option>';
+              }).join('') +
               '</select></div>' +
-            '<div class="field"><label>서류 사진 <span class="req">*</span></label>' +
+            /* 미리보기를 보여줘야 흐리게 찍힌 사진을 제출 전에 알아차린다
+               (반려 사유 1순위가 '판독 불가'라, 여기서 막는 게 심사 왕복을 줄인다) */
+            '<div class="field"><label for="su-doc">서류 사진 <span class="req">*</span></label>' +
+              '<div id="su-docprev" class="su-docprev' + (d.docPreview ? '' : ' hide') + '">' +
+                (d.docPreview ? '<img src="' + d.docPreview + '" alt="첨부한 서류 사진 미리보기">' +
+                  '<p>글자가 또렷하게 보이는지 확인해 주세요. 흐리면 다시 찍어 주세요.</p>' : '') + '</div>' +
               '<label class="btn btn-soft btn-block" style="cursor:pointer">' + icon('camera', 16) +
-                '<span id="su-docname">사진 선택</span>' +
+                '<span id="su-docname" class="su-docfile">' + esc(d.docFile || '사진 선택') + '</span>' +
                 '<input type="file" id="su-doc" accept="image/*" hidden></label></div>' +
             '<div class="pill-info mb-2">' + icon('lock', 16) +
               '<div><b>주민등록번호 뒷자리는 가리고</b> 촬영해 주세요. 서류 사진은 확인이 끝나면 ' +
@@ -711,7 +755,8 @@
     mount: function () {
       var d = suData();
       var prev = UI.el('su-prev');
-      if (prev) prev.onclick = function () { S.suStep--; App.refresh(); };
+      /* 화면 안 [이전]도 히스토리를 되감아, 브라우저 뒤로가기와 동작이 어긋나지 않게 */
+      if (prev) prev.onclick = function () { history.back(); };
 
       /* ① 동의 */
       var all = UI.el('su-all');
@@ -734,7 +779,7 @@
           var c = { at: Store.nowISO() };
           boxes.forEach(function (b) { c[b.dataset.consent] = b.checked; });
           d.consents = c;
-          S.suStep = 2; App.refresh();
+          suGo(2);
         };
       }
 
@@ -745,12 +790,14 @@
           title: 'NICE 본인확인 (시연)', icon: 'shield',
           body: '<p class="muted mb-2" style="font-size:.9rem">정식 서비스에서는 본인확인 창이 열려요. ' +
             '시연에서는 아래 정보로 인증을 마친 것으로 처리합니다.</p>' +
-            '<div class="field"><label>이름</label><input class="input" name="name" placeholder="홍길동"></div>' +
+            '<div class="field"><label for="nice-name">이름</label>' +
+              '<input class="input" id="nice-name" name="name" autocomplete="name" placeholder="홍길동"></div>' +
             '<div class="field-row">' +
-              '<div class="field"><label>생년월일</label>' +
-                '<input class="input" name="birth" type="date" max="' + UI.todayISO() + '"></div>' +
-              '<div class="field"><label>휴대전화</label>' +
-                '<input class="input" name="phone" placeholder="010-0000-0000"></div></div>',
+              '<div class="field"><label for="nice-birth">생년월일</label>' +
+                '<input class="input" id="nice-birth" name="birth" type="date" max="' + UI.todayISO() + '"></div>' +
+              '<div class="field"><label for="nice-phone">휴대전화</label>' +
+                '<input class="input" id="nice-phone" name="phone" type="tel" inputmode="numeric" ' +
+                'autocomplete="tel" placeholder="010-0000-0000"></div></div>',
           buttons: [
             { label: '취소', value: 'cancel', variant: 'ghost' },
             { label: '인증 완료', value: 'ok', variant: 'primary' }
@@ -768,10 +815,28 @@
         });
       };
       var n2 = UI.el('su-next2');
-      if (n2) n2.onclick = function () { S.suStep = 3; App.refresh(); };
+      if (n2) n2.onclick = function () { suGo(3); };
 
-      /* ③ 회원정보 */
+      /* ③ 회원정보 — 비밀번호 조건·일치를 입력 중에 바로 알려 준다(제출해야 아는 건 늦다) */
       var f3 = UI.el('su-form3');
+      if (f3) {
+        var pw = f3.querySelector('[name=password]'), pw2 = f3.querySelector('[name=password2]');
+        var msg = UI.el('su-pwmsg');
+        function pwCheck() {
+          var v = pw.value, v2 = pw2.value;
+          if (!v && !v2) { msg.textContent = ''; msg.className = 'su-pwmsg'; return; }
+          if (v.length < 8 || !/[a-zA-Z]/.test(v) || !/[0-9]/.test(v)) {
+            msg.textContent = '8자 이상, 영문과 숫자를 함께 넣어 주세요';
+            msg.className = 'su-pwmsg warn'; return;
+          }
+          if (!v2) { msg.textContent = '한 번 더 입력해 주세요'; msg.className = 'su-pwmsg'; return; }
+          var same = v === v2;
+          msg.textContent = same ? '비밀번호가 일치해요' : '비밀번호가 서로 달라요';
+          msg.className = 'su-pwmsg ' + (same ? 'ok' : 'warn');
+        }
+        pw.addEventListener('input', pwCheck);
+        pw2.addEventListener('input', pwCheck);
+      }
       if (f3) f3.addEventListener('submit', function (e) {
         e.preventDefault();
         var f = readForm(e.target);
@@ -787,7 +852,7 @@
         }
         if (f.password !== f.password2) { bad('[name=password2]', '비밀번호가 서로 달라요'); return; }
         d.account = { email: f.email, password: f.password };
-        S.suStep = 4; App.refresh();
+        suGo(4);
       });
 
       /* ④ 서류 등록 — 계정 생성 + 서류 접수를 한 번에 */
@@ -796,6 +861,23 @@
         var file = this.files[0];
         UI.el('su-docname').textContent = file ? file.name : '사진 선택';
         d.docFile = file ? file.name : '';
+        var box = UI.el('su-docprev');
+        if (!box) return;
+        if (!file) { box.className = 'su-docprev hide'; box.innerHTML = ''; return; }
+        UI.fileToDataURL(file, 900, function (url) {
+          if (!url) { box.className = 'su-docprev hide'; return; }
+          d.docPreview = url;   // 뒤로 왔다가 돌아와도 첨부가 남아 있게
+          box.className = 'su-docprev';
+          box.innerHTML = '<img src="' + url + '" alt="첨부한 서류 사진 미리보기">' +
+            '<p>글자가 또렷하게 보이는지 확인해 주세요. 흐리면 다시 찍어 주세요.</p>';
+        });
+      });
+      /* 4단계 입력은 이동할 때마다 담아 둔다 — 뒤로 갔다 와도 다시 적지 않게 */
+      var f4form = UI.el('su-form4');
+      if (f4form) f4form.addEventListener('input', function () {
+        var v = readForm(f4form);
+        d.childName = v.childName; d.childBirth = v.childBirth;
+        d.disabilityType = v.disabilityType; d.docType = v.docType;
       });
       var f4 = UI.el('su-form4');
       if (f4) f4.addEventListener('submit', function (e) {
@@ -827,7 +909,7 @@
         });
         if (!sub.ok) { toast(sub.error, 'err'); return; }
         d.account.submittedAt = sub.user.submittedAt;
-        S.suStep = 5; App.refresh();
+        suGo(5, true);   // 접수 후에는 뒤로가서 재제출되지 않게 replace
       });
 
       /* ⑤ 접수 완료 */
@@ -1033,8 +1115,8 @@
     /* 가입 화면에 새로 들어올 때마다 1단계부터. 이전 사용자의 입력이 남아 있으면
        다음 방문자가 4단계로 들어가 버리므로 데이터까지 지운다.
        단 로그인 모달의 '서류 다시 제출'처럼 단계를 지정해 보낸 경우(suResume)만 유지한다 */
-    _resetSignup: function () {
-      if (S.suResume) { S.suResume = false; return; }
+    _resetSignup: function (step) {
+      if (step) return;   // URL에 단계가 있으면 유지 — 유효성은 suGuard가 판단한다
       S.suStep = 1; S.suData = null;
     },
     _demo: function () {

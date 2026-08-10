@@ -289,10 +289,31 @@ p.muted { line-height: 1.72; }
 .su-step.done { color: var(--text-muted); }
 .su-step.done b { background: var(--primary-soft); color: var(--primary-dark); }
 .su-all { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 13px; }
+/* 동의 항목 터치 타깃 44px 확보 (짧은 문구 줄이 41px로 떨어졌었다) */
+.su-c, .su-all { min-height: 44px; }
 .su-c { align-items: flex-start; }
+
+/* 서류 사진 미리보기 — 흐린 사진을 제출 전에 알아차리게 */
+.su-docprev { margin-bottom: 8px; }
+.su-docprev.hide { display: none; }
+.su-docprev img {
+  display: block; width: 100%; max-height: 190px; object-fit: contain;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.su-docprev p { margin: 6px 0 0; font-size: .78rem; color: var(--text-faint); }
+/* 파일명이 길어도 버튼 밖으로 밀리지 않게 */
+.su-docfile { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* 비밀번호 조건·일치 실시간 안내 */
+.su-pwmsg { margin: 6px 0 0; font-size: .78rem; color: var(--text-faint); min-height: 1em; }
+.su-pwmsg.ok { color: var(--ok, #1d8a5b); font-weight: 700; }
+.su-pwmsg.warn { color: var(--danger); font-weight: 700; }
+
 @media (max-width: 520px) {
-  .su-step span, .su-step { font-size: 0; gap: 0; }   /* 좁은 화면에서는 번호만 */
+  /* 번호만 남기지 않는다 — 지금이 무슨 단계인지는 늘 읽혀야 한다 */
+  .su-step { font-size: 0; gap: 0; flex: none; }
   .su-step b { font-size: .68rem; }
+  .su-step.on { flex: 1; font-size: .74rem; gap: 5px; }
 }
 
 /* 아이 미등록 — 메뉴는 보이되 잠금. 클릭하면 등록 화면으로 안내한다(무반응 금지) */
