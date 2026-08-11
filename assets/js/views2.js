@@ -1772,30 +1772,44 @@
       '<ul><li>' + nl2br(sv) + '</li></ul></div>';
   }
   /* 건강 정보 — 주치 병원 + 복용 약물 요약 (알레르기·응급은 상단 안전 블록에 포함) */
-  function healthBlock(child) {
+  /* skipMeds — 같은 설명서에 「복용 약물」 블록이 따로 실릴 때는 복약을 싣지 않는다
+     (둘 다 child.medications를 읽어 같은 약이 두 번 나오던 문제) */
+  function healthBlock(child, skipMeds) {
     var e = child.emergency || {};
     var li = '';
     if (e.hospital) li += '<li><b>주치 병원</b> · ' + esc(e.hospital) +
       (e.doctor ? ' · ' + esc(e.doctor) : '') + '</li>';
-    (child.medications || []).forEach(function (m) {
-      li += '<li><b>복약</b> · ' + (m.kind ? '[' + esc(m.kind) + '] ' : '') + esc(m.name) + ' ' + esc(medDose(m)) +
-        (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') + '</li>';
-    });
+    if (!skipMeds) {
+      (child.medications || []).forEach(function (m) {
+        li += '<li><b>복약</b> · ' + (m.kind ? '[' + esc(m.kind) + '] ' : '') + esc(m.name) + ' ' + esc(medDose(m)) +
+          (m.time ? ' · ' + esc(m.time) : '') + (medPeriod(m) ? ' · ' + esc(medPeriod(m)) : '') + '</li>';
+      });
+    }
     if (!li) return '';
     return '<div class="summary-block"><div class="blk-title">' +
       '<span class="dot" style="background:var(--brand-grow)"></span>건강 정보</div><ul>' + li + '</ul></div>';
   }
   /* 병력 및 치료 이력 — 치료·검사 기록에서 자동 집계 */
+  /* 최근 6건만 싣는다 — 받는 사람이 한 장에서 읽을 수 있는 분량이라서.
+     예전에는 말없이 잘려, 이력이 많은 아이는 빠진 줄도 몰랐다 → 몇 건 중 몇 건인지 밝힌다 */
+  var HISTORY_MAX = 6;
   function historyBlock(child) {
-    var recs = (Store.recordsOf(child.id) || []).filter(function (r) {
+    var all = (Store.recordsOf(child.id) || []).filter(function (r) {
       return r.type === 'treatment' || r.type === 'assessment';
-    }).slice(0, 6);
-    if (!recs.length) return '';
+    });
+    if (!all.length) return '';
+    var recs = all.slice(0, HISTORY_MAX);
     var li = recs.map(function (r) {
       return '<li>' + UI.fmtDate(r.date) + ' · ' + esc(r.title) + '</li>';
     }).join('');
+    var more = all.length > HISTORY_MAX;
     return '<div class="summary-block"><div class="blk-title">' +
-      '<span class="dot" style="background:var(--c-comm)"></span>병력 및 치료 이력</div><ul>' + li + '</ul></div>';
+      '<span class="dot" style="background:var(--c-comm)"></span>병력 및 치료 이력' +
+      '<span class="blk-count">' + (more
+        ? '전체 ' + all.length + '건 중 최근 ' + HISTORY_MAX + '건'
+        : all.length + '건') + '</span></div><ul>' + li + '</ul>' +
+      (more ? '<p class="blk-more">이전 기록은 보호자에게 요청하시면 함께 확인하실 수 있어요.</p>' : '') +
+      '</div>';
   }
   /* 보호자 한마디 — 보호자가 꼭 전달하고 싶은 내용 */
   function parentNoteBlock(manual) {
@@ -1832,8 +1846,12 @@
         '<div class="summary-block"><div class="blk-title"><span class="dot" style="background:var(--c-dislike)"></span>싫어해요</div><p class="faint" style="font-size:.85rem">-</p></div>') + '</div>' +
     '</div>';
   }
-  function renderBlock(key, child, manual) {
+  /* ctx.blocks — 이 설명서에 함께 실리는 블록 목록.
+     「건강 정보」와 「복용 약물」이 둘 다 child.medications를 싣기 때문에,
+     함께 선택되면 같은 약이 두 번 나온다. 그래서 블록 구성을 알고 그려야 한다. */
+  function renderBlock(key, child, manual, ctx) {
     var s = manual.sections;
+    ctx = ctx || {};
     switch (key) {
       case 'canDo':       return summaryBlock('할 수 있어요', 'var(--c-cando)', s.canDo);
       case 'needHelp':    return summaryBlock('도움이 필요해요', 'var(--c-help)', s.needHelp);
@@ -1846,7 +1864,8 @@
       case 'handover':    return handoverBlock(child);
       case 'diagnosis':   return diagnosisBlock(child);
       case 'sensory':     return sensoryBlock(child);
-      case 'health':      return healthBlock(child);
+      /* 「복용 약물」이 따로 실리면 여기서는 복약을 빼고 병원 정보만 — 중복 방지 */
+      case 'health':      return healthBlock(child, (ctx.blocks || []).indexOf('meds') >= 0);
       case 'history':     return historyBlock(child);
       case 'parentNote':  return parentNoteBlock(manual);
       default:            return '';
@@ -1885,7 +1904,9 @@
     sheet += emergencyBlock(child, { safe: !!opts.safe, token: opts.token });
 
     if (aud) {
-      aud.blocks.forEach(function (k) { sheet += renderBlock(k, child, manual); });
+      /* 어떤 블록들이 함께 실리는지 알려 준다 — 건강 정보/복용 약물 중복 방지 */
+      var ctx = { blocks: aud.blocks };
+      aud.blocks.forEach(function (k) { sheet += renderBlock(k, child, manual, ctx); });
     } else if (scope === 'emergency') {
       sheet += renderBlock('safety', child, manual);
       sheet += renderBlock('comm', child, manual);

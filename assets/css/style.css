@@ -1030,6 +1030,14 @@ a.stat-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2
   font-weight: 800; font-size: 1rem; margin-bottom: 9px; color: var(--text);
 }
 .summary-block .blk-title .dot { width: 13px; height: 13px; border-radius: 5px; flex: none; }
+/* 몇 건 중 몇 건을 실었는지 — 말없이 잘리면 받는 사람이 빠진 줄 모른다 */
+.summary-block .blk-title .blk-count {
+  margin-left: auto; font-size: .78rem; font-weight: 700; color: var(--text-muted);
+  background: var(--surface-2); border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+.summary-block .blk-more {
+  margin: 8px 0 0; font-size: .82rem; color: var(--text-muted); line-height: 1.6;
+}
 .summary-block ul li {
   padding: 7px 0 7px 19px; position: relative; font-size: .92rem; line-height: 1.72;
   border-bottom: 1px dotted var(--border);
