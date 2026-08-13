@@ -46,8 +46,9 @@
     /* 복용 기록 — 복약 사실·시간을 남겨 약효/컨디션 변화와 함께 보도록 (2차 리뷰 요청) */
     medication: { label: '복용 기록', color: 'var(--brand-grow)', icon: 'pill' },
     change:     { label: '변화 기록', color: 'var(--accent)',  icon: 'sparkle' },
-    /* 검사·평가 — 여러 기관의 검사 결과를 한곳에 (링크아이 벤치마킹: 재공유 불필요) */
-    assessment: { label: '검사·평가', color: 'var(--brand-understand)', icon: 'chart' }
+    /* 검사 — 여러 기관의 검사 결과를 한곳에 (링크아이 벤치마킹: 재공유 불필요).
+       '평가'는 아이를 평가한다는 인상을 줘 뺐다(2026-08-10 사용자 지시) */
+    assessment: { label: '검사 기록', color: 'var(--brand-understand)', icon: 'chart' }
   };
   /* 관계 드롭다운 공용 옵션 — 비상연락처·돌봄 인계 등 (2차 리뷰 요청) */
   var REL_OPTS = ['', '모', '부', '조모', '조부', '외조모', '외조부', '배우자',
