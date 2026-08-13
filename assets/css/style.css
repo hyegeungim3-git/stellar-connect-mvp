@@ -2317,6 +2317,11 @@ table.tbl td.nw, table.tbl th.nw { white-space: nowrap; }
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px; margin-bottom: 14px;
 }
+/* 320px대(구형 폰)에서는 타일이 54px까지 좁아져 「행동 기록」이 두 줄로 접힌다
+   → 3열로 바꿔 타일을 키운다(93px). 두 줄이 되는 것보다 두 행이 되는 편이 읽기 쉽다 */
+@media (max-width: 359px) {
+  .quick-log { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .quick-tile {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   padding: 11px 3px; border-radius: var(--radius-sm);
@@ -2324,8 +2329,25 @@ table.tbl td.nw, table.tbl th.nw { white-space: nowrap; }
   min-height: 74px; transition: .14s var(--ease); font: inherit; color: var(--text);
 }
 .quick-tile:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.quick-tile:active { transform: translateY(0); }
-.qt-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+/* 눌리는 느낌을 분명히 — 카드가 아니라 버튼임을 손끝으로도 알린다 */
+.quick-tile:active { transform: scale(.96); background: var(--surface-2); }
+.quick-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.qt-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  position: relative; }
+/* ⊕ 배지 — '새로 남긴다'는 행위를 아이콘 위에서 한 번 더 말해 준다.
+   라벨 앞에 +를 붙이면 320px 폭에서 「행동 기록」이 두 줄로 접힌다.
+   +는 SVG 대신 글자로 그린다 — 17px 배지 안에서 SVG는 크기 지정이 어긋났다. */
+.qt-plus {
+  position: absolute; right: -4px; top: -4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--surface);
+}
+.qt-plus::before {
+  content: '+'; font-size: 14px; font-weight: 800; line-height: 1;
+  margin-top: -1px;
+}
 .qt-ico svg { width: 19px; height: 19px; }
 .qt-label { font-size: .8rem; font-weight: 600; color: var(--text); line-height: 1.1; }
 @media (min-width: 680px) {
@@ -2449,8 +2471,3 @@ table.tbl td.nw, table.tbl th.nw { white-space: nowrap; }
   .area-tag { background: var(--surface-2); border-color: var(--border); }
 }
 .plan-row .txt { min-width: 0; }
-/* 빠른 기록 타일 성격 안내 — 「+ 기록하기」와 타일의 관계를 한 줄로 밝힌다.
-   기존 .quick-cap(추천 칩 헤더, 3곳 사용)과 겹치지 않도록 별도 클래스로 둔다 */
-.quicklog-cap {
-  margin: 0 0 8px; font-size: .8rem; color: var(--text-muted); text-align: center;
-}

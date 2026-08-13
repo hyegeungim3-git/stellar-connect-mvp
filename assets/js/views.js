@@ -1127,20 +1127,32 @@
       '</section>';
 
       /* 3) 기록 — Setlog식 빠른 기록 타일 + 최근 기록 피드 */
+      /* 타일이 '분류 버튼'처럼 보여 기록 진입점으로 안 읽힌다는 의견(아스트로젠 2).
+         타일 자체가 행위를 말하도록 — 라벨을 「행동 기록」 동사형으로 바꾸고
+         아이콘에 ⊕를 얹는다. 5열 격자는 그대로 둬 5종이 한눈에 보인다
+         (「행동 기록」 47px < 타일 내부 65px @393, 320에서도 들어감). */
       var QUICK = [
-        { k: 'behavior', label: '행동' }, { k: 'treatment', label: '치료' },
-        { k: 'change', label: '변화' }, { k: 'assessment', label: '검사' }
+        { k: 'behavior', label: '행동 기록' }, { k: 'treatment', label: '치료 기록' },
+        { k: 'change', label: '변화 기록' }, { k: 'assessment', label: '검사 기록' }
       ];
+      /* meta.color는 var(--x) 형태다 — 뒤에 '22'를 붙이는 알파 표기는 CSS 변수에는
+         통하지 않아 배경이 투명해진다(기존 버그). color-mix로 옅은 면을 만든다. */
+      function qtIco(inner, color) {
+        return '<span class="qt-ico" style="background:color-mix(in srgb,' + color +
+          ' 14%,#fff);color:' + color + '">' + inner +
+          '<span class="qt-plus" aria-hidden="true"></span></span>';
+      }
       var quickTiles = '<div class="quick-log">' +
         QUICK.map(function (o) {
           var meta = RT[o.k];
-          return '<button class="quick-tile" data-qrec="' + o.k + '">' +
-            '<span class="qt-ico" style="background:' + meta.color + '22;color:' + meta.color + '">' +
-              icon(meta.icon, 22) + '</span><span class="qt-label">' + o.label + '</span></button>';
+          return '<button class="quick-tile" data-qrec="' + o.k + '" ' +
+            'aria-label="' + esc(o.label) + '하기">' +
+            qtIco(icon(meta.icon, 22), meta.color) +
+            '<span class="qt-label">' + o.label + '</span></button>';
         }).join('') +
-        '<button class="quick-tile" data-qreels="1">' +
-          '<span class="qt-ico" style="background:var(--brand-connect-soft);color:var(--brand-connect)">' +
-            icon('video', 22) + '</span><span class="qt-label">영상</span></button>' +
+        '<button class="quick-tile" data-qreels="1" aria-label="영상 기록하기">' +
+          qtIco(icon('video', 22), 'var(--brand-connect)') +
+          '<span class="qt-label">영상 기록</span></button>' +
       '</div>';
 
       var recs = Store.recordsOf(child.id).sort(function (a, b) {
@@ -1154,15 +1166,9 @@
         : '<div class="card card-pad"><p class="muted center" style="padding:8px 0">' +
           '아직 기록이 없어요. 위 버튼으로 오늘 첫 순간을 남겨 보세요.</p></div>';
 
-      /* 타일 5종만으로는 '기록하러 가는 버튼'으로 읽히지 않는다는 의견(아스트로젠 2).
-         「+ 기록하기」를 기록 화면과 같은 모양으로 두고, 타일은 유형을 미리 고르는
-         지름길로 성격을 밝힌다 — 빠른 기록의 이점은 유지하면서 진입점을 분명히 한다. */
       var recSection = '<section class="home-sec">' +
         '<div class="home-sec-head"><h2>기록</h2>' +
           '<a class="hp-link" href="#/records/' + child.id + '">전체 보기 ›</a></div>' +
-        '<button class="btn btn-primary btn-block mb-2" id="home-add-rec">' +
-          icon('plus', 16) + '기록하기</button>' +
-        '<p class="quicklog-cap">유형을 고르면 바로 시작해요</p>' +
         quickTiles + feed +
       '</section>';
 
@@ -1178,11 +1184,6 @@
       document.querySelectorAll('[data-homechild]').forEach(function (b) {
         b.onclick = function () { S.homeChild = b.dataset.homechild; App.refresh(); };
       });
-      var addRec = UI.el('home-add-rec');
-      if (addRec) addRec.onclick = function () {
-        if (global.Views._recordModal) global.Views._recordModal(child.id, null, {});
-        else App.navigate('#/records/' + child.id);
-      };
       document.querySelectorAll('[data-qrec]').forEach(function (b) {
         b.onclick = function () {
           if (global.Views._recordModal) global.Views._recordModal(child.id, null, { type: b.dataset.qrec });

@@ -650,7 +650,7 @@
       '<div class="card rec-card" data-rec="' + r.id + '">' +
         '<div class="rec-main">' +
           '<div class="rec-top">' +
-            '<span class="badge" style="background:' + meta.color + '1f;color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' +
+            '<span class="badge" style="background:color-mix(in srgb,' + meta.color + ' 13%,#fff);color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' +
               esc(meta.label) + '</span>' +
             (r.hasClip ? '<span class="badge brand">' + icon('video', 11) + ' 영상</span>' : '') +
             UI.moodStars(r.mood) +
@@ -698,8 +698,8 @@
     var meta = RT[r.type] || RT.behavior;
     Modal.open({
       title: '기록 상세', icon: meta.icon, wide: true,
-      body: '<div class="row mb-2"><span class="badge" style="background:' + meta.color +
-        '1f;color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' + esc(meta.label) + '</span>' +
+      body: '<div class="row mb-2"><span class="badge" style="background:color-mix(in srgb,' + meta.color +
+        ' 13%,#fff);color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' + esc(meta.label) + '</span>' +
         UI.moodStars(r.mood) +
         '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) +
           (r.time ? ' ' + esc(r.time) : '') + '</span></div>' +
