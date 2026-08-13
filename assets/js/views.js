@@ -1154,9 +1154,15 @@
         : '<div class="card card-pad"><p class="muted center" style="padding:8px 0">' +
           '아직 기록이 없어요. 위 버튼으로 오늘 첫 순간을 남겨 보세요.</p></div>';
 
+      /* 타일 5종만으로는 '기록하러 가는 버튼'으로 읽히지 않는다는 의견(아스트로젠 2).
+         「+ 기록하기」를 기록 화면과 같은 모양으로 두고, 타일은 유형을 미리 고르는
+         지름길로 성격을 밝힌다 — 빠른 기록의 이점은 유지하면서 진입점을 분명히 한다. */
       var recSection = '<section class="home-sec">' +
         '<div class="home-sec-head"><h2>기록</h2>' +
           '<a class="hp-link" href="#/records/' + child.id + '">전체 보기 ›</a></div>' +
+        '<button class="btn btn-primary btn-block mb-2" id="home-add-rec">' +
+          icon('plus', 16) + '기록하기</button>' +
+        '<p class="quicklog-cap">유형을 고르면 바로 시작해요</p>' +
         quickTiles + feed +
       '</section>';
 
@@ -1172,6 +1178,11 @@
       document.querySelectorAll('[data-homechild]').forEach(function (b) {
         b.onclick = function () { S.homeChild = b.dataset.homechild; App.refresh(); };
       });
+      var addRec = UI.el('home-add-rec');
+      if (addRec) addRec.onclick = function () {
+        if (global.Views._recordModal) global.Views._recordModal(child.id, null, {});
+        else App.navigate('#/records/' + child.id);
+      };
       document.querySelectorAll('[data-qrec]').forEach(function (b) {
         b.onclick = function () {
           if (global.Views._recordModal) global.Views._recordModal(child.id, null, { type: b.dataset.qrec });

@@ -109,7 +109,8 @@
     if (!medGrid.length) return '';
     return '<div class="card mb-2" id="med-today"><div class="card-head med-acc-head" id="med-acc-head" ' +
         'role="button" aria-expanded="' + accOpen + '" title="탭하면 펼치거나 접어요">' +
-        '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3>오늘의 복약</h3>' +
+        /* 좁은 폭에서 「오늘의 / 복약」으로 접히던 문제 — 제목은 한 줄로 고정한다 */
+        '<span style="color:var(--brand-grow)">' + icon('pill', 18) + '</span><h3 class="nw">오늘의 복약</h3>' +
         '<span class="badge ' + (pendingN === 0 ? 'ok' : 'warn') + '">' +
           doneN + '/' + flat.length + ' 기록됨</span>' +
         (pendingN > 0
@@ -649,7 +650,7 @@
       '<div class="card rec-card" data-rec="' + r.id + '">' +
         '<div class="rec-main">' +
           '<div class="rec-top">' +
-            '<span class="badge" style="background:' + meta.color + '22;color:' + meta.color + '">' +
+            '<span class="badge" style="background:' + meta.color + '1f;color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' +
               esc(meta.label) + '</span>' +
             (r.hasClip ? '<span class="badge brand">' + icon('video', 11) + ' 영상</span>' : '') +
             UI.moodStars(r.mood) +
@@ -698,7 +699,7 @@
     Modal.open({
       title: '기록 상세', icon: meta.icon, wide: true,
       body: '<div class="row mb-2"><span class="badge" style="background:' + meta.color +
-        '22;color:' + meta.color + '">' + esc(meta.label) + '</span>' +
+        '1f;color:color-mix(in srgb,' + meta.color + ' 58%,#12203a)">' + esc(meta.label) + '</span>' +
         UI.moodStars(r.mood) +
         '<span class="rec-date" style="margin-left:auto">' + UI.fmtDate(r.date) +
           (r.time ? ' ' + esc(r.time) : '') + '</span></div>' +

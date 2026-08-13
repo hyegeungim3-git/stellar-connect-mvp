@@ -117,14 +117,18 @@
               '" data-pterm="' + it.id + '" style="font-size:.68rem;cursor:pointer" ' +
               'title="탭해서 단기·장기 구분을 바꿔요">' +
               (it.term === 'short' ? '단기' : it.term === 'long' ? '장기' : '기간 지정') + '</span>';
-            return '<div class="item-row' + (it.status === 'done' ? ' plan-done' : '') + '">' +
-              '<span class="bullet" style="background:' + a.color + '">' + icon('check', 12) + '</span>' +
-              '<div class="txt"><span class="badge" style="font-size:.68rem">' + esc(a.label) +
-                '</span> ' + termBadge +
-                '<div style="margin-top:3px">' + esc(it.text) + '</div></div>' +
+            /* 예전에는 체크 불릿에만 색이 있어 무슨 영역인지 알 수 없었다
+               (아스트로젠 디자인 의견 8) — 색을 카테고리 태그로 옮기고 불릿은 뺀다.
+               완료 여부는 아래 준비/진행 중/완료 세그먼트가 이미 말해 준다. */
+            return '<div class="item-row plan-row' + (it.status === 'done' ? ' plan-done' : '') + '">' +
+              '<div class="txt"><span class="area-tag" style="--area:' + a.color + '">' +
+                esc(a.label) + '</span> ' + termBadge +
+                '<div style="margin-top:4px">' + esc(it.text) + '</div></div>' +
               '<div class="row gap-sm" style="flex:none;align-items:center">' +
                 '<span class="seg" style="padding:3px">' + segBtns + '</span>' +
-                '<button class="btn-icon" data-pdel2="' + it.id + '">' + icon('trash', 14) + '</button>' +
+                '<div class="item-actions" style="opacity:1">' +
+                  '<button class="btn-icon" data-pdel2="' + it.id + '" aria-label="삭제">' +
+                  icon('trash', 14) + '</button></div>' +
               '</div></div>';
           }).join('')
         : '<p class="muted" style="font-size:.9rem;padding:10px 0">이 시기의 플랜이 아직 없어요. ' +

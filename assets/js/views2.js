@@ -1256,9 +1256,10 @@
                 '<div class="muted" style="font-size:.9rem;margin-top:5px">' +
                   '<b style="color:var(--primary-dark)">이렇게 대응해요</b> · ' + esc(it.response) + '</div>' +
               '</div>' +
-              '<div class="row gap-sm">' +
-                '<button class="btn-icon" data-pedit="' + it.id + '">' + icon('edit', 15) + '</button>' +
-                '<button class="btn-icon" data-pdel="' + it.id + '">' + icon('trash', 15) + '</button>' +
+              /* 수정·삭제는 항목마다 반복되는 조작이라 면 없는 아이콘으로 (디자인 의견 7) */
+              '<div class="item-actions" style="opacity:1">' +
+                '<button class="btn-icon" data-pedit="' + it.id + '" aria-label="수정">' + icon('edit', 15) + '</button>' +
+                '<button class="btn-icon" data-pdel="' + it.id + '" aria-label="삭제">' + icon('trash', 15) + '</button>' +
               '</div></div></div>';
         }).join('')
       : '<p class="muted" style="font-size:.9rem;padding:8px 0">' +
